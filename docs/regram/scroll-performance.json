@@ -1,0 +1,666 @@
+{
+  "date": "2026-10-10",
+  "platform": "macOS arm64",
+  "configuration": "Debug",
+  "window": {
+    "width": 1200,
+    "height": 850,
+    "dpr": 2
+  },
+  "dataset": {
+    "synthetic_chats": 500,
+    "synthetic_long_messages": 300,
+    "real_chats": 312
+  },
+  "cache_regression_checks": 10,
+  "graphics": {
+    "pixel_cases_identical": 4,
+    "text_and_metrics_cases_identical": 10,
+    "text_frames": 1000,
+    "before_ms": 250.649539,
+    "after_ms": 171.944126,
+    "ratio": 1.4577383062216385,
+    "scope": "standalone Qt Debug shaping/rasterization; not screen FPS"
+  },
+  "runtime": {
+    "synthetic": {
+      "before": [
+        {
+          "dispatch_ms": 0.588125,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.2445,
+              "total_ms": 43.658838999999965
+            },
+            {
+              "count": 139,
+              "event": 43,
+              "max_ms": 0.103834,
+              "total_ms": 5.420003000000001
+            },
+            {
+              "count": 195,
+              "event": 77,
+              "max_ms": 9.809542,
+              "total_ms": 1567.039624
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 25.346042000000125,
+          "name": "dialogs-scroll-0",
+          "p95_event_loop_gap_ms": 16.87670900000012,
+          "visible_ms": 17.532333
+        },
+        {
+          "dispatch_ms": 0.926042,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.46325,
+              "total_ms": 62.828958000000014
+            },
+            {
+              "count": 181,
+              "event": 43,
+              "max_ms": 0.438875,
+              "total_ms": 9.876924000000002
+            },
+            {
+              "count": 195,
+              "event": 77,
+              "max_ms": 11.551958,
+              "total_ms": 1590.6701229999987
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 26.776917000000026,
+          "name": "dialogs-scroll-1",
+          "p95_event_loop_gap_ms": 16.92687499999988,
+          "visible_ms": 17.407625
+        },
+        {
+          "dispatch_ms": 4.16025,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.493041,
+              "total_ms": 72.2342539999999
+            },
+            {
+              "count": 120,
+              "event": 43,
+              "max_ms": 0.107666,
+              "total_ms": 8.087417000000002
+            },
+            {
+              "count": 194,
+              "event": 77,
+              "max_ms": 22.908583,
+              "total_ms": 1378.246457
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 26.047375000000102,
+          "name": "dialogs-scroll-2",
+          "p95_event_loop_gap_ms": 18.00008300000036,
+          "visible_ms": 17.38325
+        },
+        {
+          "dispatch_ms": 1.042875,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.6235,
+              "total_ms": 67.70262099999994
+            },
+            {
+              "count": 140,
+              "event": 43,
+              "max_ms": 0.112625,
+              "total_ms": 1.7323300000000006
+            },
+            {
+              "count": 180,
+              "event": 77,
+              "max_ms": 28.78225,
+              "total_ms": 2541.3480879999984
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 32.624416999999994,
+          "name": "history-scroll-0",
+          "p95_event_loop_gap_ms": 25.387708000000202,
+          "visible_ms": 20.391041
+        },
+        {
+          "dispatch_ms": 0.693,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.418417,
+              "total_ms": 65.087156
+            },
+            {
+              "count": 117,
+              "event": 43,
+              "max_ms": 0.11575,
+              "total_ms": 1.1199079999999997
+            },
+            {
+              "count": 196,
+              "event": 77,
+              "max_ms": 17.457958,
+              "total_ms": 2636.6153329999993
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 29.507875000000013,
+          "name": "history-scroll-1",
+          "p95_event_loop_gap_ms": 19.32941700000015,
+          "visible_ms": 18.254333
+        },
+        {
+          "dispatch_ms": 0.715959,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.435958,
+              "total_ms": 65.61091800000001
+            },
+            {
+              "count": 110,
+              "event": 43,
+              "max_ms": 0.047833,
+              "total_ms": 0.9688749999999999
+            },
+            {
+              "count": 195,
+              "event": 77,
+              "max_ms": 28.682667,
+              "total_ms": 2636.972875
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 35.01554199999964,
+          "name": "history-scroll-2",
+          "p95_event_loop_gap_ms": 19.329208000000108,
+          "visible_ms": 17.024541
+        },
+        {
+          "dispatch_ms": 0.933834,
+          "events": [
+            {
+              "count": 200,
+              "event": 31,
+              "max_ms": 0.626083,
+              "total_ms": 66.51316599999997
+            },
+            {
+              "count": 381,
+              "event": 43,
+              "max_ms": 0.101542,
+              "total_ms": 10.743093000000009
+            },
+            {
+              "count": 194,
+              "event": 77,
+              "max_ms": 44.371167,
+              "total_ms": 3628.1127990000005
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 50.190833999999995,
+          "name": "settings-scroll",
+          "p95_event_loop_gap_ms": 33.89195900000004,
+          "visible_ms": 16.756292
+        }
+      ],
+      "after": [
+        {
+          "dispatch_ms": 1.152375,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.808208,
+              "total_ms": 112.05353000000004
+            },
+            {
+              "count": 7,
+              "event": 43,
+              "max_ms": 0.06975,
+              "total_ms": 0.197041
+            },
+            {
+              "count": 195,
+              "event": 77,
+              "max_ms": 8.435333,
+              "total_ms": 619.8966319999998
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 19.65670799999998,
+          "name": "dialogs-scroll-0",
+          "p95_event_loop_gap_ms": 17.69383300000004,
+          "visible_ms": 18.323334
+        },
+        {
+          "dispatch_ms": 57.586667,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.963042,
+              "total_ms": 141.13663499999996
+            },
+            {
+              "count": 21,
+              "event": 43,
+              "max_ms": 0.267209,
+              "total_ms": 0.439625
+            },
+            {
+              "count": 197,
+              "event": 77,
+              "max_ms": 5.630875,
+              "total_ms": 651.451954
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 61.60349999999971,
+          "name": "dialogs-scroll-1",
+          "p95_event_loop_gap_ms": 17.461499999999887,
+          "visible_ms": 17.535542
+        },
+        {
+          "dispatch_ms": 2.288459,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 1.565792,
+              "total_ms": 144.48661900000013
+            },
+            {
+              "count": 4,
+              "event": 43,
+              "max_ms": 0.025584,
+              "total_ms": 0.031833
+            },
+            {
+              "count": 195,
+              "event": 77,
+              "max_ms": 11.396625,
+              "total_ms": 690.6776269999996
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 19.861208000000033,
+          "name": "dialogs-scroll-2",
+          "p95_event_loop_gap_ms": 17.889166999999986,
+          "visible_ms": 18.495792
+        },
+        {
+          "dispatch_ms": 1.500625,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 1.033125,
+              "total_ms": 122.66028699999991
+            },
+            {
+              "count": 200,
+              "event": 43,
+              "max_ms": 0.123833,
+              "total_ms": 5.543922999999996
+            },
+            {
+              "count": 189,
+              "event": 77,
+              "max_ms": 18.618792,
+              "total_ms": 2311.7632170000006
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 28.515625,
+          "name": "history-scroll-0",
+          "p95_event_loop_gap_ms": 20.289166999999907,
+          "visible_ms": 28.241583
+        },
+        {
+          "dispatch_ms": 1.183792,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.799542,
+              "total_ms": 102.0514130000001
+            },
+            {
+              "count": 257,
+              "event": 43,
+              "max_ms": 0.208334,
+              "total_ms": 7.410547
+            },
+            {
+              "count": 195,
+              "event": 77,
+              "max_ms": 13.732334,
+              "total_ms": 2153.271458
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 24.9912089999998,
+          "name": "history-scroll-1",
+          "p95_event_loop_gap_ms": 18.913125000000036,
+          "visible_ms": 18.276
+        },
+        {
+          "dispatch_ms": 1.074083,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.8,
+              "total_ms": 107.07424699999999
+            },
+            {
+              "count": 230,
+              "event": 43,
+              "max_ms": 0.070583,
+              "total_ms": 6.9419979999999955
+            },
+            {
+              "count": 194,
+              "event": 77,
+              "max_ms": 25.866333,
+              "total_ms": 2203.3522560000015
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 28.915458999999828,
+          "name": "history-scroll-2",
+          "p95_event_loop_gap_ms": 19.100417000000107,
+          "visible_ms": 16.040959
+        },
+        {
+          "dispatch_ms": 0.943042,
+          "events": [
+            {
+              "count": 200,
+              "event": 31,
+              "max_ms": 0.560292,
+              "total_ms": 68.49016299999998
+            },
+            {
+              "count": 322,
+              "event": 43,
+              "max_ms": 0.188375,
+              "total_ms": 7.310670000000005
+            },
+            {
+              "count": 188,
+              "event": 77,
+              "max_ms": 27.304875,
+              "total_ms": 3028.5956710000014
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 37.53658400000006,
+          "name": "settings-scroll",
+          "p95_event_loop_gap_ms": 33.82941699999992,
+          "visible_ms": 17.28925
+        }
+      ],
+      "passed": true,
+      "wheel_events": 1400
+    },
+    "real": {
+      "before": [
+        {
+          "dispatch_ms": 1.029042,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.874,
+              "total_ms": 43.14475599999999
+            },
+            {
+              "count": 557,
+              "event": 43,
+              "max_ms": 28.358875,
+              "total_ms": 366.8774220000002
+            },
+            {
+              "count": 211,
+              "event": 77,
+              "max_ms": 44.811667,
+              "total_ms": 1827.1414950000017
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 62.95966599999997,
+          "name": "dialogs-scroll-0",
+          "p95_event_loop_gap_ms": 40.0072090000001,
+          "visible_ms": 16.656167
+        },
+        {
+          "dispatch_ms": 0.904333,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.443333,
+              "total_ms": 51.72313299999999
+            },
+            {
+              "count": 81,
+              "event": 43,
+              "max_ms": 10.663708,
+              "total_ms": 48.388584000000016
+            },
+            {
+              "count": 194,
+              "event": 77,
+              "max_ms": 21.359083,
+              "total_ms": 734.7943280000002
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 34.15095800000006,
+          "name": "dialogs-scroll-1",
+          "p95_event_loop_gap_ms": 20.339,
+          "visible_ms": 17.824458
+        },
+        {
+          "dispatch_ms": 3.253042,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.545167,
+              "total_ms": 62.042335
+            },
+            {
+              "count": 17,
+              "event": 43,
+              "max_ms": 1.287416,
+              "total_ms": 2.128916
+            },
+            {
+              "count": 194,
+              "event": 77,
+              "max_ms": 11.58575,
+              "total_ms": 598.9816239999996
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 25.395792000000256,
+          "name": "dialogs-scroll-2",
+          "p95_event_loop_gap_ms": 18.059834000000137,
+          "visible_ms": 16.540416
+        },
+        {
+          "dispatch_ms": 0.881083,
+          "events": [
+            {
+              "count": 200,
+              "event": 31,
+              "max_ms": 0.494083,
+              "total_ms": 49.23212599999999
+            },
+            {
+              "count": 207,
+              "event": 43,
+              "max_ms": 0.655541,
+              "total_ms": 2.749738
+            },
+            {
+              "count": 189,
+              "event": 77,
+              "max_ms": 18.690625,
+              "total_ms": 1842.1482129999993
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 31.854250000000008,
+          "name": "settings-scroll",
+          "p95_event_loop_gap_ms": 25.376541999999972,
+          "visible_ms": 17.997958
+        }
+      ],
+      "after": [
+        {
+          "dispatch_ms": 1.329917,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 1.090375,
+              "total_ms": 47.66499099999998
+            },
+            {
+              "count": 494,
+              "event": 43,
+              "max_ms": 22.995333,
+              "total_ms": 278.50171800000004
+            },
+            {
+              "count": 208,
+              "event": 77,
+              "max_ms": 42.259875,
+              "total_ms": 1691.952451
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 59.981832999999995,
+          "name": "dialogs-scroll-0",
+          "p95_event_loop_gap_ms": 36.462167000000136,
+          "visible_ms": 19.0125
+        },
+        {
+          "dispatch_ms": 0.826375,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.343625,
+              "total_ms": 47.51808699999999
+            },
+            {
+              "count": 177,
+              "event": 43,
+              "max_ms": 13.2765,
+              "total_ms": 130.55029799999997
+            },
+            {
+              "count": 191,
+              "event": 77,
+              "max_ms": 24.52775,
+              "total_ms": 723.7238240000003
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 33.18404200000009,
+          "name": "dialogs-scroll-1",
+          "p95_event_loop_gap_ms": 21.780458999999837,
+          "visible_ms": 16.126667
+        },
+        {
+          "dispatch_ms": 1.1225,
+          "events": [
+            {
+              "count": 400,
+              "event": 31,
+              "max_ms": 0.523041,
+              "total_ms": 53.46575300000002
+            },
+            {
+              "count": 25,
+              "event": 43,
+              "max_ms": 1.004042,
+              "total_ms": 4.682668
+            },
+            {
+              "count": 194,
+              "event": 77,
+              "max_ms": 51.9585,
+              "total_ms": 563.605578
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 66.13516699999991,
+          "name": "dialogs-scroll-2",
+          "p95_event_loop_gap_ms": 18.085041999999703,
+          "visible_ms": 16.597208
+        },
+        {
+          "dispatch_ms": 0.977334,
+          "events": [
+            {
+              "count": 200,
+              "event": 31,
+              "max_ms": 0.516458,
+              "total_ms": 50.14804199999999
+            },
+            {
+              "count": 234,
+              "event": 43,
+              "max_ms": 1.678959,
+              "total_ms": 8.934374000000004
+            },
+            {
+              "count": 190,
+              "event": 77,
+              "max_ms": 14.855375,
+              "total_ms": 1686.781415999999
+            }
+          ],
+          "first_paint_ms": -1,
+          "max_event_loop_gap_ms": 24.205457999999908,
+          "name": "settings-scroll",
+          "p95_event_loop_gap_ms": 23.302916000000096,
+          "visible_ms": 18.074917
+        }
+      ],
+      "passed": true,
+      "wheel_events": 800
+    }
+  },
+  "limits": [
+    "Event-loop timing is not compositor FPS.",
+    "Real account cold loading and occasional long frames remain.",
+    "The real-account target lookup was corrected to select the visible full list.",
+    "Release and macOS 12 runtime performance are not inferred from these Debug measurements."
+  ],
+  "user_executable_preserved": true
+}

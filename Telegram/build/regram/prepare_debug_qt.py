@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare an isolated Qt Debug archive with optimized ARM pixel arithmetic."""
+"""Prepare an isolated Qt Debug archive with optimized ARM rendering primitives."""
 
 import argparse
 import hashlib
@@ -11,7 +11,18 @@ import shlex
 import subprocess
 import tempfile
 
-PIXEL_SOURCES = ("qcompositionfunctions", "qdrawhelper", "qdrawhelper_neon")
+RENDER_SOURCES = (
+    "painting/qcompositionfunctions.cpp",
+    "painting/qdrawhelper.cpp",
+    "painting/qdrawhelper_neon.cpp",
+    "painting/qgrayraster.c",
+    "painting/qimagescale.cpp",
+    "painting/qpaintengine_raster.cpp",
+    "text/qtextengine.cpp",
+    "text/qtextlayout.cpp",
+    "text/qfontengine.cpp",
+    "text/coretext/qfontengine_coretext.mm",
+)
 
 
 def run(args, **kwargs):
@@ -26,12 +37,12 @@ def digest(path):
     return value.hexdigest()
 
 
-def compiler_args(qt_build, name, output):
-    target = f"qtbase/src/gui/CMakeFiles/Gui.dir/painting/{name}.cpp.o"
+def compiler_args(qt_build, source, output):
+    target = f"qtbase/src/gui/CMakeFiles/Gui.dir/{source}.o"
     lines = subprocess.check_output(
         ["ninja", "-t", "commands", target], cwd=qt_build, text=True).splitlines()
     command = next(line for line in reversed(lines)
-        if " -c " in line and f"/{name}.cpp" in line)
+        if " -c " in line and f"/{source}" in line)
     original = shlex.split(command)
     if any(value.startswith(("-DNDEBUG", "-DQT_NO_DEBUG"))
             or value in ("&&", ";") for value in original):
@@ -77,13 +88,14 @@ def main():
     with tempfile.TemporaryDirectory(prefix="pixel-build.", dir=output) as temporary:
         work = Path(temporary)
         sources = []
-        for name in PIXEL_SOURCES:
-            print(f"Compiling Debug pixel arithmetic: {name}", flush=True)
-            obj = work / f"{name}.cpp.o"
-            command = compiler_args(build, name, obj)
+        for relative in RENDER_SOURCES:
+            name = Path(relative).name
+            print(f"Compiling Debug rendering primitive: {name}", flush=True)
+            obj = work / f"{name}.o"
+            command = compiler_args(build, relative, obj)
             with (output / f"{name}.log").open("w") as log:
                 run(command, cwd=build, stdout=log, stderr=subprocess.STDOUT)
-            source = build / f"qtbase/src/gui/painting/{name}.cpp"
+            source = build / "qtbase/src/gui" / relative
             sources.append({"source": str(source), "sha256": digest(source)})
         arm = work / "arm64.a"
         if len(architectures) == 1:
@@ -93,7 +105,7 @@ def main():
             run(["xcrun", "lipo", "-thin", "arm64", str(original),
                 "-output", str(arm)])
         run(["xcrun", "ar", "-r", str(arm)]
-            + [str(work / f"{name}.cpp.o") for name in PIXEL_SOURCES])
+            + [str(work / f"{Path(relative).name}.o") for relative in RENDER_SOURCES])
         run(["xcrun", "ranlib", str(arm)])
         archive = work / "libQt6Gui_debug.a"
         if len(architectures) == 1:

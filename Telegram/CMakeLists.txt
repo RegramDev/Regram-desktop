@@ -2234,6 +2234,8 @@ PRIVATE
     test/test_rpc_fixture.h
     test/test_rpc_retry.cpp
     test/test_rpc_retry.h
+    test/test_rows_scroll_cache.cpp
+    test/test_rows_scroll_cache.h
     test/test_runner.cpp
     test/test_runner.h
     test/test_scenario.cpp

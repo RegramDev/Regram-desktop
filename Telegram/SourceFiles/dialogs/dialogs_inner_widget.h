@@ -670,6 +670,8 @@ private:
 	Ui::RowsScrollCache _rowsScrollCache{[this] {
 		_cachedRows.clear();
 		update();
+	}, [this](uint64 rowId) {
+		_cachedRows.erase(rowId);
 	}};
 	bool _selectedChatTypeFilter = false;
 	bool _pressedChatTypeFilter = false;

@@ -1138,7 +1138,8 @@ void InnerWidget::paintEvent(QPaintEvent *e) {
 			&& !expanding
 			&& !childListShown.shown
 			&& (fullWidth > 0);
-		if (cacheAllowed && _rowsScrollCache.hasFresh(cacheKey, cacheSize)) {
+		if (cacheAllowed
+			&& _rowsScrollCache.hasFresh(cacheKey, cacheSize, cacheRatio)) {
 			context.topicsExpanded = 0.;
 			context.active = false;
 			context.selected = false;

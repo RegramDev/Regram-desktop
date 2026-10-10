@@ -59,4 +59,4 @@ if (NOT DESKTOP_APP_USE_PACKAGED AND NOT regram_debug_qt_replaced)
 endif()
 set_target_properties(external_qt PROPERTIES
     INTERFACE_LINK_LIBRARIES "${regram_debug_qt_fast_links}")
-message(STATUS "Regram: using isolated Qt Debug pixel-loop optimizations.")
+message(STATUS "Regram: using isolated Qt Debug rendering optimizations.")

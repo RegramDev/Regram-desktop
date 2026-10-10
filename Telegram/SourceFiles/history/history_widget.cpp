@@ -5561,11 +5561,13 @@ void HistoryWidget::preloadHistoryIfNeeded() {
 		preloadHistoryByScroll();
 		checkReplyReturns();
 	}
-	const auto hasNonEmpty = _history->findFirstNonEmpty();
-	const auto readyForBotStart = hasNonEmpty
-		|| (_history->loadedAtTop() && _history->loadedAtBottom());
-	if (readyForBotStart && clearMaybeSendStart() && hasNonEmpty) {
-		sendBotStartCommand();
+	if (_showAndMaybeSendStart) {
+		const auto hasNonEmpty = _history->findFirstNonEmpty();
+		const auto readyForBotStart = hasNonEmpty
+			|| (_history->loadedAtTop() && _history->loadedAtBottom());
+		if (readyForBotStart && clearMaybeSendStart() && hasNonEmpty) {
+			sendBotStartCommand();
+		}
 	}
 }
 
