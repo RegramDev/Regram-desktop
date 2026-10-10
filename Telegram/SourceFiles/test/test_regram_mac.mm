@@ -1,3 +1,5 @@
+#ifdef _DEBUG
+
 #include "test/test_regram_integration.h"
 
 #include "test/test_agent.h"
@@ -128,3 +130,5 @@ void VerifyRegramMacWindow() {
 }
 
 } // namespace Test
+
+#endif // _DEBUG

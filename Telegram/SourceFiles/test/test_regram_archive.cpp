@@ -1,3 +1,5 @@
+#ifdef _DEBUG
+
 #include "test/test_regram_archive.h"
 
 #include "core/application.h"
@@ -152,3 +154,5 @@ void VerifyRegramArchive() {
 }
 
 } // namespace Test
+
+#endif // _DEBUG
