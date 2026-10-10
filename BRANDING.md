@@ -19,7 +19,7 @@ Regram is an independent Telegram client based on Telegram Desktop. Upstream sou
 
 No Telegram profile or legacy Telegram portable folder is imported automatically. Automatic registration of Telegram links is skipped by default. Protocol compatibility with `tg` and `tonsite` remains available through explicit registration.
 
-Upstream automatic updates and crash submission are disabled. Regram store distribution and its own update infrastructure are not configured. The macOS bundle uses the Regram iOS Icon Composer document. In-app logos and color variants use the Regram source image; tray and QR marks use Regram vector artwork. The Windows installer and platform packaging still need verification, and current builds are not finished release packages.
+Upstream automatic updates and crash submission are disabled. Regram store distribution and its own update infrastructure are not configured. The macOS bundle uses the Regram iOS Icon Composer document. In-app logos and color variants use the Regram source image; QR marks use Regram vector artwork. Tray icons retain the original Telegram artwork on all platforms and are independent of the application icon preference. Platform installers are built and verified separately before release.
 
 API credentials and signing material are local build inputs. Runtime account data belongs only in Regram's independent data location or disposable verification folders.
 

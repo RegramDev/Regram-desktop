@@ -106,9 +106,11 @@ bool DarkTasbarValueValid/* = false*/;
 		Window::CounterLayerArgs &&args,
 		bool supportMode,
 		bool smallIcon,
-		bool monochrome) {
+		bool monochrome,
+		bool trayIcon) {
 	static auto ScaledLogo = base::flat_map<int, QImage>();
 	static auto ScaledLogoNoMargin = base::flat_map<int, QImage>();
+	static auto ScaledTrayLogo = base::flat_map<int, QImage>();
 	static auto ScaledLogoDark = base::flat_map<int, QImage>();
 	static auto ScaledLogoLight = base::flat_map<int, QImage>();
 	static auto Generation = 0;
@@ -139,6 +141,8 @@ bool DarkTasbarValueValid/* = false*/;
 		? (*darkMode
 			? ScaledLogoDark
 			: ScaledLogoLight)
+		: trayIcon
+		? ScaledTrayLogo
 		: smallIcon
 		? ScaledLogoNoMargin
 		: ScaledLogo;
@@ -151,7 +155,9 @@ bool DarkTasbarValueValid/* = false*/;
 		}
 		return scaled.emplace(
 			args.size,
-			(smallIcon
+			(trayIcon
+				? Window::TrayLogo(true)
+				: smallIcon
 				? Window::LogoNoMargin()
 				: Window::Logo()
 			).scaledToWidth(args.size, Qt::SmoothTransformation)
@@ -244,14 +250,15 @@ void Tray::updateIcon() {
 	// Force Qt to use right icon size, not the larger one.
 	QIcon forTrayIcon;
 	forTrayIcon.addPixmap(
-		Tray::IconWithCounter(
+		Ui::PixmapFromImage(ImageIconWithCounter(
 			CounterLayerArgs(
 				GetSystemMetrics(SM_CXSMICON),
 				Core::App().unreadBadge(),
 				Core::App().unreadBadgeMuted()),
+			session && session->supportMode(),
 			true,
 			Core::App().settings().trayIconMonochrome(),
-			session && session->supportMode()));
+			true)));
 	_icon->updateIcon(forTrayIcon);
 	_icon->updateToolTip(Core::TrayIconToolTip());
 }
@@ -354,7 +361,8 @@ QPixmap Tray::IconWithCounter(
 		std::move(args),
 		supportMode,
 		smallIcon,
-		monochrome));
+		monochrome,
+		false));
 }
 
 void WriteIco(const QString &path, std::vector<QImage> images) {

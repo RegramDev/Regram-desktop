@@ -37,6 +37,7 @@ struct SeparateId;
 
 [[nodiscard]] QImage Logo();
 [[nodiscard]] QImage LogoNoMargin();
+[[nodiscard]] QImage TrayLogo(bool noMargin = false);
 [[nodiscard]] const QImage &LogoTelegramDefault();
 void OverrideApplicationIcon(QImage image);
 [[nodiscard]] QIcon CreateIcon(

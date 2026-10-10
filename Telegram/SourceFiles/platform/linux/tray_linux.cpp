@@ -89,7 +89,6 @@ QIcon IconGraphic::systemIcon() const {
 
 	const auto candidates = {
 		_new.monochrome ? PanelIconName(_new.counter, _new.muted) : QString(),
-		ApplicationIconName(),
 	};
 
 	for (const auto &candidate : candidates) {
@@ -102,13 +101,15 @@ QIcon IconGraphic::systemIcon() const {
 		}
 	}
 
-	return QIcon();
+	return _new.monochrome
+		? QIcon(u":/gui/icons/tray/monochrome"_q + ((_new.counter > 0)
+			? (_new.muted ? u"_mute"_q : u"_attention"_q)
+			: QString()) + u".svg"_q)
+		: QIcon();
 }
 
 bool IconGraphic::isCounterNeeded(const State &state) const {
-	return state.systemIcon.name() != PanelIconName(
-		state.counter,
-		state.muted);
+	return !state.monochrome || state.systemIcon.isNull();
 }
 
 int IconGraphic::counterSlice(int counter) const {
@@ -133,11 +134,11 @@ bool IconGraphic::isRefreshNeeded() const {
 	return _trayIcon.isNull()
 		|| _new.iconThemeName != _current.iconThemeName
 		|| _new.systemIcon.name() != _current.systemIcon.name()
+		|| _new.monochrome != _current.monochrome
+		|| _new.muted != _current.muted
 		|| (isCounterNeeded(_new)
-			? _new.muted != _current.muted
-				|| counterSlice(_new.counter) != counterSlice(
-						_current.counter)
-			: false);
+			? counterSlice(_new.counter) != counterSlice(_current.counter)
+			: (_new.counter > 0) != (_current.counter > 0));
 }
 
 QIcon IconGraphic::trayIcon() {
@@ -193,7 +194,7 @@ QIcon IconGraphic::trayIcon() {
 			}
 
 			if (currentImageBack.isNull()) {
-				currentImageBack = Window::Logo();
+				currentImageBack = Window::TrayLogo();
 			}
 
 			if (dprSize(currentImageBack) != desiredSize) {

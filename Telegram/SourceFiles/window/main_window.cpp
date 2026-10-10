@@ -164,6 +164,13 @@ QImage LogoNoMargin() {
 	return result;
 }
 
+QImage TrayLogo(bool noMargin) {
+	static const auto normal = QImage(u":/gui/art/tray_logo_256.png"_q);
+	static const auto compact = QImage(
+		u":/gui/art/tray_logo_256_no_margin.png"_q);
+	return noMargin ? compact : normal;
+}
+
 const QImage &LogoTelegramDefault() {
 	static const auto result = QImage(u":/gui/art/logo_256_no_margin.png"_q);
 	return result;
