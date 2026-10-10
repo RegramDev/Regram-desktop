@@ -369,14 +369,20 @@ bool RemoveFont(not_null<Ui::GenericBox*> box, Installed entry) {
 		box->showToast(tr::lng_regram_font_import_error(tr::now));
 		return false;
 	}
+	const auto unavailable = [&](const QString &family) {
+		return entry.families.contains(family)
+			&& !ranges::any_of(installed, [&](const auto &current) {
+				return current.families.contains(family);
+			});
+	};
 	auto &settings = Core::App().settings();
-	if (entry.families.contains(settings.customFontFamily())) {
+	if (unavailable(settings.customFontFamily())) {
 		settings.setCustomFontFamily({});
 	}
-	if (entry.families.contains(settings.readPref<QString>(kCjkFamilyKey))) {
+	if (unavailable(settings.readPref<QString>(kCjkFamilyKey))) {
 		settings.writePref<QString>(kCjkFamilyKey, QString());
 	}
-	if (entry.families.contains(AyuSettings::getInstance().monoFont())) {
+	if (unavailable(AyuSettings::getInstance().monoFont())) {
 		AyuSettings::getInstance().setMonoFont({});
 	}
 	for (const auto &path : entry.files) {
@@ -573,6 +579,10 @@ void SettingsBox(
 					if (!entry.imported && !RemoveFont(box, entry)) {
 						return;
 					}
+				}
+				if (!QDir(Root() + u"cloud"_q).removeRecursively()) {
+					box->showToast(tr::lng_regram_font_import_error(tr::now));
+					return;
 				}
 				state->refresh();
 				close();

@@ -23,7 +23,8 @@ def main():
             if len(data) != entry["bytes"] or hashlib.sha256(data).hexdigest() != entry["sha256"]:
                 raise RuntimeError("Font download does not match the frozen catalog: " + entry["file"])
             path.write_bytes(data)
-    subprocess.run([str(args.executable.resolve()), str(args.fixtures.resolve())], check=True)
+    subprocess.run([str(args.executable.resolve()), str(args.fixtures.resolve())],
+                   cwd=args.fixtures.resolve(), check=True)
 
 
 if __name__ == "__main__":
