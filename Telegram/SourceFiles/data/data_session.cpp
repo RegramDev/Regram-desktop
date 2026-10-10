@@ -98,7 +98,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
 #include "regram/ayu/data/messages_storage.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 #include "regram/ayu/utils/telegram_helpers.h"
 
 
@@ -3115,7 +3114,6 @@ void Session::updateEditedMessage(const MTPMessage &data) {
 		AyuMessages::addEditedMessage(existing);
 	}
 
-	FiltersController::invalidate(existing);
 
 proceed:
 

@@ -21,7 +21,7 @@ ScopeResult ParseScopes(const QString &text) {
 			continue;
 		}
 		const auto parts = value.split(u':');
-		if (parts.size() < 2 || parts.size() > 3) {
+		if (parts.size() != 2) {
 			return { .error = value };
 		}
 		const auto name = parts[0].trimmed().toLower();
@@ -30,14 +30,10 @@ ScopeResult ParseScopes(const QString &text) {
 			: (name == u"channel"_q) ? std::optional(PeerKind::Channel)
 			: std::nullopt;
 		const auto id = ParseServerId(parts[1].trimmed().toStdString());
-		const auto thread = (parts.size() == 3)
-			? ParseServerId(parts[2].trimmed().toStdString())
-			: std::optional<uint64_t>(0);
-		if (!kind || !id || !thread
-			|| (parts.size() == 3 && *kind != PeerKind::Channel)) {
+		if (!kind || !id || !ToIosPeerId({ *kind, *id })) {
 			return { .error = value };
 		}
-		result.scopes.push_back({ *kind, *id, *thread });
+		result.scopes.push_back({ *kind, *id });
 		if (result.scopes.size() > kMaxScopes) {
 			return { .error = value };
 		}

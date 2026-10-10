@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/notifications_manager.h"
+
+#include "regram/filters/runtime.h"
 #include "regram/nagram/interface/notifications.h"
 #include "regram/nagram/privacy/options.h"
 
@@ -463,7 +465,7 @@ void System::schedule(Data::ItemNotification notification) {
 		thread->popNotification(notification);
 		return;
 	}
-	if (isMessageHidden(item)) {
+	if (Regram::Filters::SuppressNotification(item)) {
 		thread->popNotification(notification);
 		return;
 	}

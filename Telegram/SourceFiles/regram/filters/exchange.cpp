@@ -204,7 +204,7 @@ bool ReadRule(const QJsonValue &value, int version, Rule &rule) {
 
 } // namespace
 
-ImportResult ImportRules(const QByteArray &data) {
+ImportResult ImportStoredRules(const QByteArray &data) {
 	if (data.size() > kMaxImportBytes) {
 		return { .error = u"Rule file exceeds the size limit"_q };
 	}
@@ -265,7 +265,17 @@ ImportResult ImportRules(const QByteArray &data) {
 	return result;
 }
 
-QByteArray ExportRules(const std::vector<Rule> &rules) {
+ImportResult ImportRules(const QByteArray &data) {
+	if (data.size() > kMaxImportBytes) {
+		return { .error = u"Rule file exceeds the size limit"_q };
+	}
+	if (!QJsonDocument::fromJson(data).isArray()) {
+		return { .error = u"Expected a Regram iOS message filter JSON array"_q };
+	}
+	return ImportStoredRules(data);
+}
+
+QByteArray ExportStoredRules(const std::vector<Rule> &rules) {
 	auto entries = QJsonArray();
 	for (const auto &rule : rules) {
 		auto scopes = QJsonArray();
@@ -301,13 +311,13 @@ ExportResult ExportIosRules(const std::vector<Rule> &rules) {
 	auto entries = QJsonArray();
 	for (const auto &rule : rules) {
 		if (!rule.unresolvedScopes.empty()) {
-			return { .error = u"Unresolved scopes require a Desktop backup"_q };
+			return { .error = u"Resolve unsupported conversation scopes before exporting"_q };
 		}
 		auto scopes = QJsonArray();
 		for (const auto &peer : rule.scopes) {
 			const auto packed = ToIosPeerId(peer);
 			if (!packed) {
-				return { .error = u"Topic scopes or unsupported peer IDs require a Desktop backup"_q };
+				return { .error = u"Topic scopes and unsupported peer IDs cannot be exported to iOS"_q };
 			}
 			scopes.append(qint64(*packed));
 		}
@@ -331,8 +341,7 @@ ExportResult ExportIosRules(const std::vector<Rule> &rules) {
 bool IsRulesFileName(const QString &name) {
 	const auto lower = name.toLower();
 	return lower.endsWith(u".json"_q)
-		&& (lower.startsWith(u"regram-message-filter"_q)
-			|| lower.startsWith(u"regram-filters"_q));
+		&& lower.startsWith(u"regram-message-filter"_q);
 }
 
 MergeResult MergeRules(

@@ -14,7 +14,6 @@
 #include "regram/ayu/ui/settings/settings_appearance.h"
 #include "regram/ayu/ui/settings/settings_ayu.h"
 #include "regram/ayu/ui/settings/settings_chats.h"
-#include "regram/ayu/ui/settings/settings_filters.h"
 #include "regram/ayu/ui/settings/settings_general.h"
 #include "regram/ayu/ui/settings/settings_other.h"
 #include "core/version.h"

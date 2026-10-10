@@ -1,10 +1,11 @@
 #include "regram/filters/reveal.h"
 
+#include "regram/filters/runtime.h"
+
 #include "base/timer.h"
 #include "base/weak_ptr.h"
 #include "data/data_peer.h"
 #include "main/main_session.h"
-#include "regram/ayu/features/filters/filters_cache_controller.h"
 #include "regram/filters/reveal_policy.h"
 #include "regram/nagram/display/view_refresher.h"
 
@@ -22,7 +23,7 @@ struct State {
 void Refresh(not_null<State*> state) {
 	if (const auto session = state->session.get()) {
 		Nagram::ViewRefresher::Refresh(session->data());
-		FiltersCacheController::fireUpdate();
+		NotifyChanged(session);
 	}
 }
 

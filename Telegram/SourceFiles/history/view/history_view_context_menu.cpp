@@ -1446,8 +1446,13 @@ void AddMessageActions(
 		not_null<ListWidget*> list) {
 	if (request.item) {
 		const auto context = request.view ? request.view->context() : Context::History;
+		if (!request.item->isService() && !request.item->forbidsForward()
+			&& request.selectedItems.empty()) {
+			Regram::Filters::AddRuleAction(menu, list->controller(),
+				request.overSelection ? list->getSelectedText().rich.text
+					: request.item->originalText().text);
+		}
 		AyuUi::AddHistoryAction(menu, request.item);
-		AyuUi::AddHideMessageAction(menu, request.item);
 		AyuUi::AddUserMessagesAction(menu, request.item);
 		AyuUi::AddRepeatMessageAction(menu, request.item, context);
 		AyuUi::AddMessageDetailsAction(menu, request.item);

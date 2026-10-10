@@ -9,7 +9,6 @@
 #include "regram/nagram/compose/options.h"
 #include "regram/nagram/core/device_options.h"
 #include "regram/nagram/core/diagnostics.h"
-#include "regram/nagram/filters/model.h"
 #include "regram/nagram/interface/options.h"
 #include "regram/nagram/links/inline_rules.h"
 #include "regram/nagram/links/model.h"
@@ -126,11 +125,10 @@ const Registry &RegisteredOptions() {
 		Privacy::RegisterOptions(result);
 		Privacy::RegisterAliasOptions(result);
 		Messages::RegisterOptions(result);
-		Filters::RegisterOptions(result);
 		Expects(result.Add(Regram::Filters::kPortableRules));
 		Expects(result.Add(Regram::Filters::kSuppressNotifications));
-		Expects(result.Add(Regram::Filters::kEnabled));
 		Expects(result.Add(Regram::Filters::kDisabledChats));
+		Expects(result.Add(Regram::Filters::kHiddenSenders));
 		Links::RegisterOptions(result);
 		Links::RegisterBehaviorOptions(result);
 		Links::RegisterInlineOptions(result);

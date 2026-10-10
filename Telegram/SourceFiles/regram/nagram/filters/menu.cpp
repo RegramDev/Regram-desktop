@@ -1,19 +1,13 @@
 #include "regram/nagram/filters/menu.h"
-#include "regram/filters/runtime.h"
-#include "regram/filters/reveal.h"
-#include "regram/ayu/ayu_settings.h"
 
-#include "regram/nagram/filters/model.h"
-#include "regram/nagram/filters/settings.h"
-#include "regram/nagram/menu/actions.h"
-#include "data/data_forum_topic.h"
 #include "data/data_peer.h"
-#include "data/data_peer_id.h"
 #include "history/history.h"
 #include "history/history_item.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
-#include "ui/layers/generic_box.h"
+#include "regram/filters/reveal.h"
+#include "regram/filters/runtime.h"
+#include "regram/nagram/menu/actions.h"
 #include "ui/widgets/menu/menu_action.h"
 #include "ui/widgets/menu/menu.h"
 #include "ui/widgets/popup_menu.h"
@@ -21,54 +15,33 @@
 
 #include "styles/style_menu_icons.h"
 
-#include <QtCore/QJsonArray>
-#include <QtCore/QJsonDocument>
-
 namespace Nagram::Filters {
+namespace {
+
+void ToggleSender(
+		not_null<Window::SessionController*> controller,
+		not_null<PeerData*> peer) {
+	if (!Regram::Filters::SetSenderHidden(peer, !Regram::Filters::SenderHidden(peer))) {
+		controller->showToast(tr::lng_regram_filter_scope_limit(tr::now));
+	}
+}
+
+} // namespace
 
 void InsertAuthorAction(
 		Ui::PopupMenu *menu,
 		HistoryItem *item,
 		Window::SessionController *controller) {
-	if (!menu || !item || !controller || !item->from()) {
+	if (!menu || !item || !controller || (item->from()->isSelf() || !item->from()->isUser())) {
 		return;
 	}
-	const auto session = &controller->session();
-	const auto author = QString::number(SerializePeerId(item->from()->id));
-	const auto raw = ForAccount(session).Get(kRules);
-	if (!Validate(raw)) {
-		return;
-	}
-	const auto config = raw.isEmpty()
-		? Defaults() : QJsonDocument::fromJson(raw).object();
-	const auto hidden = config.value(u"hiddenAuthors"_q).toArray().contains(author);
+	const auto author = item->from();
+	const auto hidden = Regram::Filters::SenderHidden(author);
 	const auto title = hidden
 		? tr::lng_nagram_filter_author_show(tr::now)
 		: tr::lng_nagram_filter_author_hide(tr::now);
 	const auto action = Ui::Menu::CreateAction(menu, title,
-		crl::guard(controller, [=] {
-			const auto current = ForAccount(session).Get(kRules);
-			if (!Validate(current)) {
-				controller->showToast(tr::lng_nagram_filter_invalid(tr::now));
-				return;
-			}
-			auto updated = current.isEmpty()
-				? Defaults() : QJsonDocument::fromJson(current).object();
-			auto authors = updated.value(u"hiddenAuthors"_q).toArray();
-			if (const auto index = authors.toVariantList().indexOf(author); index >= 0) {
-				authors.removeAt(index);
-			} else {
-				authors.push_back(author);
-				updated.insert(u"enabled"_q, true);
-			}
-			updated.insert(u"hiddenAuthors"_q, authors);
-			const auto bytes = QJsonDocument(updated).toJson(QJsonDocument::Compact);
-			if (!ForAccount(session).Set(kRules, bytes)) {
-				controller->showToast(tr::lng_nagram_filter_invalid(tr::now));
-				return;
-			}
-			controller->showToast(tr::lng_nagram_filter_menu_saved(tr::now));
-		}));
+		crl::guard(controller, [=] { ToggleSender(controller, author); }));
 	auto widget = base::make_unique_q<Ui::Menu::Action>(
 		menu->menu(), menu->menu()->st(), action,
 		&st::menuIconBlock, &st::menuIconBlock);
@@ -80,26 +53,21 @@ void AddScopeAction(
 		const Ui::Menu::MenuCallback &addAction,
 		not_null<Window::SessionController*> controller,
 		PeerData *peer,
-		Data::ForumTopic *topic) {
+		Data::ForumTopic *) {
 	if (!peer) {
 		return;
 	}
 	const auto session = &controller->session();
-	if (!ForAccount(session).Get(Regram::Filters::kPortableRules).isEmpty()
-		|| !ForAccount(session).Get(kRules).isEmpty()
-		|| !ForDevice().Get(kGlobalRules).isEmpty()
-		|| AyuSettings::getInstance().filtersEnabled()
-		|| Regram::Filters::TemporarilyRevealed(peer)) {
-		const auto revealed = Regram::Filters::TemporarilyRevealed(peer);
-		addAction(revealed ? tr::lng_regram_filter_reveal_end(tr::now)
-			: tr::lng_regram_filter_reveal(tr::now), crl::guard(controller, [=] {
-			if (!Regram::Filters::ToggleTemporaryReveal(peer)) {
-				controller->showToast(tr::lng_regram_filter_scope_limit(tr::now));
-			}
-		}), revealed ? &st::menuIconCaptionHide : &st::menuIconCaptionShow);
+	if (!peer->isSelf() && peer->isUser()) {
+		const auto hidden = Regram::Filters::SenderHidden(peer);
+		addAction(hidden ? tr::lng_nagram_filter_author_show(tr::now)
+			: tr::lng_nagram_filter_author_hide(tr::now),
+			crl::guard(controller, [=] { ToggleSender(controller, peer); }),
+			&st::menuIconBlock);
 	}
-	if (!ForAccount(session).Get(Regram::Filters::kPortableRules).isEmpty()) {
-		const auto enabled = Regram::Filters::EnabledForPeer(peer);
+	const auto hasRules = !ForAccount(session).Get(Regram::Filters::kPortableRules).isEmpty();
+	const auto enabled = Regram::Filters::EnabledForPeer(peer);
+	if (hasRules || !enabled) {
 		addAction(enabled
 			? tr::lng_regram_filter_disable_chat(tr::now)
 			: tr::lng_regram_filter_enable_chat(tr::now),
@@ -109,35 +77,15 @@ void AddScopeAction(
 				}
 			}), &st::menuIconTagFilter);
 	}
-	const auto account = ForAccount(session).Get(kRules);
-	const auto scopes = ForAccount(session).Get(kScopes);
-	const auto peerId = QString::number(SerializePeerId(peer->id));
-	const auto topicId = QString::number(topic ? topic->rootId().bare : 0);
-	const auto own = [&] {
-		for (const auto &entry : QJsonDocument::fromJson(scopes).object(
-				).value(u"scopes"_q).toArray()) {
-			const auto scope = entry.toObject();
-			if (scope.value(u"peer"_q) == peerId
-				&& scope.value(u"topic"_q) == topicId) {
-				return true;
+	const auto revealed = Regram::Filters::TemporarilyRevealed(peer);
+	if (hasRules || revealed || !Regram::Filters::HiddenSenders(session).empty()) {
+		addAction(revealed ? tr::lng_regram_filter_reveal_end(tr::now)
+			: tr::lng_regram_filter_reveal(tr::now), crl::guard(controller, [=] {
+			if (!Regram::Filters::ToggleTemporaryReveal(peer)) {
+				controller->showToast(tr::lng_regram_filter_scope_limit(tr::now));
 			}
-		}
-		return false;
-	}();
-	if (!own
-		&& ForDevice().Get(kGlobalRules).isEmpty()
-		&& !QJsonDocument::fromJson(account).object().value(
-			u"enabled"_q).toBool()) {
-		return;
+		}), revealed ? &st::menuIconCaptionHide : &st::menuIconCaptionShow);
 	}
-	addAction(topic
-		? tr::lng_nagram_filter_scope_topic(tr::now)
-		: tr::lng_nagram_filter_scope_chat(tr::now),
-		crl::guard(controller, [=] {
-			controller->show(
-				Box(ScopeSettingsBox, session, peerId, topicId));
-		}),
-		&st::menuIconBlock);
 }
 
 } // namespace Nagram::Filters

@@ -1,10 +1,15 @@
 #pragma once
 
-#include "regram/nagram/filters/model.h"
+#include "ui/text/text_entity.h"
 
 class HistoryItem;
 
 namespace Nagram::Filters {
+
+struct Result {
+	TextWithEntities text;
+	bool hidden = false;
+};
 
 [[nodiscard]] Result Project(
 	HistoryItem *item,

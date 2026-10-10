@@ -170,18 +170,10 @@ set(ayugram_files
         regram/ayu/ui/settings/settings_general.h
         regram/ayu/ui/settings/settings_ayu.cpp
         regram/ayu/ui/settings/settings_ayu.h
-        regram/ayu/ui/settings/settings_filters.cpp
-        regram/ayu/ui/settings/settings_filters.h
         regram/ayu/ui/settings/settings_main.cpp
         regram/ayu/ui/settings/settings_main.h
         regram/ayu/ui/settings/settings_other.cpp
         regram/ayu/ui/settings/settings_other.h
-        regram/ayu/ui/settings/filters/settings_filters_list.cpp
-        regram/ayu/ui/settings/filters/settings_filters_list.h
-        regram/ayu/ui/settings/filters/per_dialog_filter.cpp
-        regram/ayu/ui/settings/filters/per_dialog_filter.h
-        regram/ayu/ui/settings/filters/edit_filter.cpp
-        regram/ayu/ui/settings/filters/edit_filter.h
         regram/ayu/ui/context_menu/context_menu.cpp
         regram/ayu/ui/context_menu/context_menu.h
         regram/ayu/ui/context_menu/menu_item_subtext.cpp
@@ -196,8 +188,6 @@ set(ayugram_files
         regram/ayu/ui/boxes/edit_mark_box.h
         regram/ayu/ui/boxes/font_selector.cpp
         regram/ayu/ui/boxes/font_selector.h
-        regram/ayu/ui/boxes/import_filters_box.cpp
-        regram/ayu/ui/boxes/import_filters_box.h
         regram/ayu/ui/boxes/theme_selector_box.cpp
         regram/ayu/ui/boxes/theme_selector_box.h
         regram/ayu/ui/boxes/message_shot_box.cpp
@@ -254,12 +244,6 @@ set(ayugram_files
         regram/ayu/features/translator/implementations/yandex.h
         regram/ayu/features/translator/implementations/base.cpp
         regram/ayu/features/translator/implementations/base.h
-        regram/ayu/features/filters/filters_controller.cpp
-        regram/ayu/features/filters/filters_controller.h
-        regram/ayu/features/filters/filters_cache_controller.cpp
-        regram/ayu/features/filters/filters_cache_controller.h
-        regram/ayu/features/filters/filters_utils.cpp
-        regram/ayu/features/filters/filters_utils.h
         regram/ayu/data/messages_storage.cpp
         regram/ayu/data/messages_storage.h
         regram/ayu/data/entities.h

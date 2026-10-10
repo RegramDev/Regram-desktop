@@ -75,11 +75,8 @@ set(nagram_sources
     regram/nagram/messages/reactions.cpp
     regram/nagram/messages/reading.cpp
     test/nagram_menu_scenario.cpp
-    regram/nagram/filters/model.cpp
     regram/nagram/filters/view.cpp
-    regram/nagram/filters/settings.cpp
     regram/nagram/filters/menu.cpp
-    regram/nagram/filters/hidden_messages.cpp
     regram/nagram/links/model.cpp
     regram/nagram/links/open.cpp
     regram/nagram/links/behavior.cpp
@@ -244,7 +241,6 @@ if (DESKTOP_APP_TEST_APPS)
         regram/settings/advanced_model.cpp
         regram/nagram/tests/test_advanced_settings.cpp
         regram/nagram/tests/test_translation.cpp
-        regram/nagram/tests/test_performance.cpp
         regram/nagram/privacy/registration_model.cpp
         regram/nagram/messages/markdown.cpp
         regram/nagram/services/send_translation_model.cpp
@@ -260,8 +256,6 @@ if (DESKTOP_APP_TEST_APPS)
         regram/nagram/tests/test_services.cpp
         regram/nagram/tests/test_chat_translation.cpp
         regram/nagram/tests/test_auto_translate.cpp
-        regram/nagram/tests/test_filters.cpp
-        regram/nagram/tests/test_filter_scopes.cpp
         regram/nagram/tests/test_links.cpp
         regram/nagram/tests/test_inline_rules.cpp
         regram/nagram/tests/test_privacy.cpp
@@ -286,7 +280,6 @@ if (DESKTOP_APP_TEST_APPS)
         regram/nagram/services/presets.cpp
         regram/nagram/services/summary_model.cpp
         regram/nagram/services/transcription_queue.cpp
-        regram/nagram/filters/model.cpp
         regram/nagram/links/model.cpp
         regram/nagram/links/inline_rules.cpp
         regram/nagram/links/webview.cpp

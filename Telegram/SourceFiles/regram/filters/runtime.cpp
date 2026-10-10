@@ -1,7 +1,4 @@
 #include "regram/filters/runtime.h"
-#include "regram/filters/search_text.h"
-#include "regram/nagram/filters/view.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 
 #include "base/weak_ptr.h"
 #include "data/data_peer.h"
@@ -9,12 +6,14 @@
 #include "history/history_item.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
+#include "regram/filters/reveal.h"
+#include "regram/filters/search_text.h"
 #include "storage/storage_account.h"
 
 #include <QtCore/QCache>
-#include <QtCore/QJsonDocument>
 #include <QtCore/QJsonArray>
-
+#include <QtCore/QJsonDocument>
+#include <QtCore/QSet>
 #include <algorithm>
 #include <map>
 
@@ -35,6 +34,11 @@ struct State {
 	Engine engine;
 	QCache<quintptr, Cached> results;
 	bool loaded = false;
+	QByteArray hiddenRaw;
+	QSet<uint64> hiddenSenders;
+	QByteArray disabledRaw;
+	QSet<uint64> disabledChats;
+	rpl::event_stream<> updates;
 };
 
 State::State(not_null<Main::Session*> session)
@@ -60,7 +64,7 @@ State &StateFor(not_null<Main::Session*> session) {
 	if (!state.loaded || state.stored.raw != raw) {
 		state.loaded = true;
 		state.results.clear();
-		auto imported = raw.isEmpty() ? ImportResult() : ImportRules(raw);
+		auto imported = raw.isEmpty() ? ImportResult() : ImportStoredRules(raw);
 		state.stored = {
 			.raw = raw,
 			.rules = std::move(imported.rules),
@@ -69,6 +73,22 @@ State &StateFor(not_null<Main::Session*> session) {
 		};
 		if (!state.engine.setRules(state.stored.rules)) {
 			state.stored.error = tr::lng_nagram_filter_invalid(tr::now);
+		}
+	}
+	const auto hidden = Nagram::ForAccount(session).Get(kHiddenSenders);
+	if (state.hiddenRaw != hidden) {
+		state.hiddenRaw = hidden;
+		state.hiddenSenders.clear();
+		for (const auto &entry : QJsonDocument::fromJson(hidden).array()) {
+			state.hiddenSenders.insert(entry.toString().toULongLong());
+		}
+	}
+	const auto disabled = Nagram::ForAccount(session).Get(kDisabledChats);
+	if (state.disabledRaw != disabled) {
+		state.disabledRaw = disabled;
+		state.disabledChats.clear();
+		for (const auto &entry : QJsonDocument::fromJson(disabled).array()) {
+			state.disabledChats.insert(entry.toString().toULongLong());
 		}
 	}
 	return state;
@@ -90,7 +110,7 @@ std::optional<PeerAddress> Address(not_null<HistoryItem*> item) {
 } // namespace
 
 bool ValidateStored(const QByteArray &raw) {
-	return raw.isEmpty() || ImportRules(raw).error.isEmpty();
+	return raw.isEmpty() || ImportStoredRules(raw).error.isEmpty();
 }
 
 StoredRules Read(not_null<Main::Session*> session) {
@@ -104,8 +124,10 @@ QString Write(
 	if (Raw(session) != expected) {
 		return tr::lng_nagram_config_changed_error(tr::now);
 	}
-	const auto raw = rules.empty() ? QByteArray() : ExportRules(rules);
-	const auto checked = raw.isEmpty() ? ImportResult() : ImportRules(raw);
+	const auto ios = ExportIosRules(rules);
+	const auto raw = rules.empty() ? QByteArray()
+		: ios.error.isEmpty() ? ios.data : ExportStoredRules(rules);
+	const auto checked = raw.isEmpty() ? ImportResult() : ImportStoredRules(raw);
 	if (!checked.error.isEmpty()) {
 		return checked.error;
 	}
@@ -122,31 +144,38 @@ QString Write(
 	return QString();
 }
 
-bool Hidden(not_null<HistoryItem*> item) {
-	if (item->out() || !item->isRegular()
-		|| !Nagram::ForAccount(&item->history()->session()).Get(kEnabled)
-		|| !EnabledForPeer(item->history()->peer)) {
+bool Hidden(not_null<HistoryItem*> item, bool displayOverrides) {
+	const auto peer = item->history()->peer;
+	if (!item->isRegular()
+		|| (displayOverrides && TemporarilyRevealed(peer))) {
 		return false;
 	}
-	auto &state = StateFor(&item->history()->session());
+	auto &state = StateFor(&peer->session());
+	if (!item->from()->isSelf()
+		&& state.hiddenSenders.contains(SerializePeerId(item->from()->id))) {
+		return true;
+	}
+	if (item->out() || state.disabledChats.contains(SerializePeerId(peer->id))) {
+		return false;
+	}
 	if (!state.stored.error.isEmpty() || state.stored.rules.empty()) {
 		return false;
 	}
-	const auto peer = Address(item);
+	const auto address = Address(item);
 	const auto text = SearchText(item);
 	const auto key = reinterpret_cast<quintptr>(item.get());
 	if (const auto cached = state.results.object(key)
 		; cached && cached->id == item->fullId()
-		&& cached->peer == peer && cached->text == text) {
+		&& cached->peer == address && cached->text == text) {
 		return cached->hidden;
 	}
 	const auto result = state.engine.evaluate(
 		std::u16string_view(
 			reinterpret_cast<const char16_t*>(text.utf16()), text.size()),
-		peer);
+		address);
 	state.results.insert(key, new Cached{
 		.id = item->fullId(),
-		.peer = peer,
+		.peer = address,
 		.text = text,
 		.hidden = result.hidden,
 	}, std::max(1, int(text.size() * sizeof(char16_t) + sizeof(Cached))));
@@ -169,17 +198,7 @@ bool ValidDisabledChats(const QByteArray &raw) {
 }
 
 bool EnabledForPeer(not_null<PeerData*> peer) {
-	const auto raw = Nagram::ForAccount(&peer->session()).Get(kDisabledChats);
-	if (raw.isEmpty()) {
-		return true;
-	}
-	static auto cached = QByteArray();
-	static auto entries = QJsonArray();
-	if (cached != raw) {
-		cached = raw;
-		entries = QJsonDocument::fromJson(raw).array();
-	}
-	return !entries.contains(QString::number(SerializePeerId(peer->id)));
+	return !StateFor(&peer->session()).disabledChats.contains(SerializePeerId(peer->id));
 }
 
 bool SetEnabledForPeer(not_null<PeerData*> peer, bool enabled) {
@@ -203,9 +222,58 @@ bool SetEnabledForPeer(not_null<PeerData*> peer, bool enabled) {
 		QJsonDocument(entries).toJson(QJsonDocument::Compact));
 }
 
+rpl::producer<> Updates(not_null<Main::Session*> session) {
+	return rpl::merge(
+		StateFor(session).updates.events(),
+		Nagram::ForAccount(session).changes()
+			| rpl::filter([](std::string_view key) {
+				return key == kPortableRules.key
+					|| key == kDisabledChats.key || key == kHiddenSenders.key;
+			}) | rpl::to_empty);
+}
+
+void NotifyChanged(not_null<Main::Session*> session) {
+	StateFor(session).updates.fire({});
+}
+
+std::vector<uint64> HiddenSenders(not_null<Main::Session*> session) {
+	const auto &senders = StateFor(session).hiddenSenders;
+	auto result = std::vector<uint64>(senders.begin(), senders.end());
+	std::sort(result.begin(), result.end());
+	return result;
+}
+
+bool SenderHidden(not_null<PeerData*> peer) {
+	return !peer->isSelf()
+		&& StateFor(&peer->session()).hiddenSenders.contains(SerializePeerId(peer->id));
+}
+
+bool SetSenderHidden(not_null<PeerData*> peer, bool hidden) {
+	if (peer->isSelf() || !peer->isUser()) {
+		return false;
+	}
+	const auto session = &peer->session();
+	auto senders = StateFor(session).hiddenSenders;
+	const auto id = SerializePeerId(peer->id);
+	if (hidden) {
+		if (!senders.contains(id) && senders.size() >= kMaxScopes) {
+			return false;
+		}
+		senders.insert(id);
+	} else {
+		senders.remove(id);
+	}
+	auto entries = QJsonArray();
+	for (const auto sender : senders) {
+		entries.push_back(QString::number(sender));
+	}
+	return Nagram::ForAccount(session).Set(kHiddenSenders,
+		QJsonDocument(entries).toJson(QJsonDocument::Compact));
+}
+
 bool SuppressNotification(not_null<HistoryItem*> item) {
 	return Nagram::ForAccount(&item->history()->session()).Get(kSuppressNotifications)
-		&& (Nagram::Filters::HiddenForNotification(item) || FiltersController::filtered(item, false));
+		&& Hidden(item, false);
 }
 
 } // namespace Regram::Filters

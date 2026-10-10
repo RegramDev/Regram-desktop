@@ -82,3 +82,5 @@ Regram preserves the upstream [GPLv3 license with OpenSSL exception](LICENSE) an
 * Ada ([Apache License 2.0](https://github.com/ada-url/ada/blob/main/LICENSE-APACHE))
 * zxcvbn-c ([MIT License](https://github.com/tsyrogit/zxcvbn-c/blob/master/LICENSE.txt))
 * FrequencyWords by Hermit Dave ([Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/))
+
+Message filtering follows the Regram iOS rule model and JSON format. See [usage and compatibility](docs/regram/message-filters.md). Retired Desktop-only rules no longer run.

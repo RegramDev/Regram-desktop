@@ -28,7 +28,8 @@ struct ExportResult {
 inline constexpr auto kMaxImportBytes = 8 * 1024 * 1024;
 
 [[nodiscard]] ImportResult ImportRules(const QByteArray &data);
-[[nodiscard]] QByteArray ExportRules(const std::vector<Rule> &rules);
+[[nodiscard]] ImportResult ImportStoredRules(const QByteArray &data);
+[[nodiscard]] QByteArray ExportStoredRules(const std::vector<Rule> &rules);
 [[nodiscard]] ExportResult ExportIosRules(const std::vector<Rule> &rules);
 [[nodiscard]] bool IsRulesFileName(const QString &name);
 [[nodiscard]] MergeResult MergeRules(

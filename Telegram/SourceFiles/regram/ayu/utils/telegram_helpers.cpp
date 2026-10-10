@@ -6,6 +6,8 @@
 // Copyright @Radolyn, 2026
 #include "regram/ayu/utils/telegram_helpers.h"
 
+#include "regram/filters/runtime.h"
+
 #include "apiwrap.h"
 #include "lang_auto.h"
 #include "api/api_common.h"
@@ -14,7 +16,6 @@
 #include "regram/ayu/ayu_worker.h"
 #include "regram/ayu/data/entities.h"
 #include "regram/ayu/data/messages_storage.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 #include "regram/ayu/ui/boxes/donate_info_box.h"
 #include "regram/ayu/ui/toasts.h"
 #include "regram/ayu/utils/rc_manager.h"
@@ -277,11 +278,7 @@ Fn<void()> badgeClickHandler(not_null<PeerData*> peer) {
 }
 
 bool isMessageHidden(const not_null<HistoryItem*> item) {
-	if (AyuState::isHidden(item)) {
-		return true;
-	}
-
-	return FiltersController::filtered(item);
+	return Regram::Filters::Hidden(item);
 }
 
 void MarkAsReadChatList(not_null<Dialogs::MainList*> list) {

@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_list_widget.h"
+#include "regram/filters/runtime.h"
 #include "regram/nagram/messages/online.h"
 #include "regram/nagram/messages/content.h"
 #include "regram/nagram/messages/reactions.h"
@@ -112,7 +113,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QMimeData>
 
 // AyuGram includes
-#include "regram/ayu/features/filters/filters_cache_controller.h"
 #include "regram/ayu/utils/telegram_helpers.h"
 
 
@@ -672,7 +672,7 @@ ListWidget::ListWidget(
 		_session->changes().peerUpdates(
 			Data::PeerUpdate::Flag::IsBlocked
 		) | rpl::to_empty,
-		FiltersCacheController::updates()
+		Regram::Filters::Updates(_session)
 	) | rpl::on_next([=] {
 		crl::on_main(this, [=] {
 			if (_viewsCapacity.empty()) {

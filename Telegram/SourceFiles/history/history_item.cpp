@@ -98,7 +98,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 #include "regram/ayu/features/message_shot/message_shot.h"
 #include "regram/ayu/utils/telegram_helpers.h"
 #include "ui/emoji_config.h"
@@ -5045,10 +5044,6 @@ bool HistoryItem::hasPossibleRestrictions() const {
 }
 
 bool HistoryItem::isEmpty() const {
-	if (isMessageHidden(const_cast<HistoryItem*>(this))) {
-		return true;
-	}
-
 	return _text.empty()
 		&& !_media
 		&& !Has<HistoryMessageRichPageSource>()
@@ -5144,8 +5139,8 @@ TextWithEntities HistoryItem::notificationText(
 }
 
 ItemPreview HistoryItem::toPreview(ToPreviewOptions options) const {
-	if (FiltersController::filtered(const_cast<HistoryItem*>(this))
-		|| Nagram::Filters::Hidden(const_cast<HistoryItem*>(this))) {
+	if (options.applyRegramFilters
+		&& Regram::Filters::Hidden(const_cast<HistoryItem*>(this))) {
 		return {};
 	}
 

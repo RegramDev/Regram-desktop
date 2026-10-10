@@ -18,7 +18,6 @@
 #include "regram/nagram/interface/options.h"
 #include "core/application.h"
 #include "core/core_settings.h"
-#include "features/filters/filters_cache_controller.h"
 #include "features/translator/ayu_translator.h"
 #include "main/main_domain.h"
 #include "main/main_session.h"
@@ -551,16 +550,12 @@ void AyuSettings::setUseGlobalGhostMode(bool val) {
 
 void AyuSettings::addShadowBan(int64 id) {
 	if (_shadowBanIds.insert(id).second) {
-		FiltersCacheController::rebuildCache();
-		FiltersCacheController::fireUpdate();
 		save();
 	}
 }
 
 void AyuSettings::removeShadowBan(int64 id) {
 	if (_shadowBanIds.erase(id) > 0) {
-		FiltersCacheController::rebuildCache();
-		FiltersCacheController::fireUpdate();
 		save();
 	}
 }

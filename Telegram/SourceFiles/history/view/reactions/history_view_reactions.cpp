@@ -36,7 +36,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "regram/ayu/ayu_settings.h"
 #include "regram/ayu/features/message_shot/message_shot.h"
 #include "regram/ayu/ui/ayu_userpic.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 
 
 namespace HistoryView::Reactions {
@@ -1007,29 +1006,6 @@ InlineListData InlineListDataFromMessage(not_null<Element*> view) {
 				for (const auto &r : list) {
 					out.push_back(r.peer);
 				}
-			}
-		}
-	}
-	if (AyuSettings::getInstance().filtersEnabled()) {
-		for (auto &[id, peers] : result.recent) {
-			peers.erase(ranges::remove_if(peers, [](not_null<PeerData*> peer) {
-				return FiltersController::isBlocked(peer);
-			}), end(peers));
-		}
-		for (auto i = result.reactions.begin(); i != result.reactions.end();) {
-			const auto j = result.recent.find(i->id);
-			if (j == end(result.recent)) {
-				++i;
-				continue;
-			}
-			if (const auto hidden = i->count - int(j->second.size()); hidden > 0) {
-				i->count -= hidden;
-			}
-			if (i->count > 0) {
-				++i;
-			} else {
-				result.recent.erase(j);
-				i = result.reactions.erase(i);
 			}
 		}
 	}

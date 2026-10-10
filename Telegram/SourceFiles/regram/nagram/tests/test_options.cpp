@@ -8,7 +8,6 @@
 #include "regram/nagram/compose/options.h"
 #include "regram/nagram/media/options.h"
 #include "regram/nagram/menu/model.h"
-#include "regram/nagram/filters/model.h"
 #include "regram/nagram/privacy/options.h"
 #include "regram/nagram/messages/time_format.h"
 
@@ -171,10 +170,11 @@ void TestOptions() {
 	Require(Menu::EndPosition({ at(ActionId::Reply), info }) == 2
 		&& Menu::EndPosition({ info, bar, info }) == 3,
 		"menu end without a footer");
-	Require(Filters::ValidHiddenMessages(QString::fromLatin1("5:10,6:2"))
-		&& !Filters::ValidHiddenMessages(QString::fromLatin1("5:-1"))
-		&& !Filters::ValidHiddenMessages(QString::fromLatin1("x:1")),
-		"hidden messages format");
+	const auto retiredHide = QByteArray(
+		R"({"version":2,"states":{"E30":"show","E23":"show"}})");
+	Require(Menu::ValidateConfig(retiredHide)
+		&& Menu::ReadVisibility(retiredHide, ActionId::FilterAuthor) == Visibility::Show,
+		"retired hide action preserves unrelated menu preferences");
 	const auto oldReading = QByteArray(
 		R"({"version":1,"states":{"E21":"show","E23":"show"}})");
 	Require(Menu::ValidateConfig(oldReading), "old menu config valid");

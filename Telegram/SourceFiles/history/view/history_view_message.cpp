@@ -79,7 +79,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 #include "regram/ayu/features/message_shot/message_shot.h"
 #include "styles/style_ayu_icons.h"
 
@@ -2491,7 +2490,7 @@ void Message::paintCommentsButton(
 		filteredRepliers.reserve(std::min(int(views->recentRepliers.size()), limit));
 		for (const auto peerId : views->recentRepliers) {
 			const auto peer = history()->owner().peer(peerId);
-			if (!peer || FiltersController::isBlocked(peer)) {
+			if (!peer) {
 				continue;
 			}
 			filteredRepliers.push_back(peerId);

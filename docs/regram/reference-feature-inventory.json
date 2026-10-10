@@ -554,38 +554,6 @@
       "accepted": false
     },
     {
-      "key": "nagram.filters",
-      "scope": "Account",
-      "category": "Rules",
-      "title_key": "lng_nagram_filter_rules",
-      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
-      "accepted": false
-    },
-    {
-      "key": "nagram.filtersGlobal",
-      "scope": "Device",
-      "category": "Rules",
-      "title_key": "lng_nagram_filter_global",
-      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
-      "accepted": false
-    },
-    {
-      "key": "nagram.filterScopes",
-      "scope": "Account",
-      "category": "Rules",
-      "title_key": "lng_nagram_filter_scopes",
-      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
-      "accepted": false
-    },
-    {
-      "key": "nagram.hiddenMessages",
-      "scope": "Account",
-      "category": "Rules",
-      "title_key": "lng_nagram_hidden_messages",
-      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
-      "accepted": false
-    },
-    {
       "key": "nagram.bubbleRoundness",
       "scope": "Device",
       "category": "Interface",
@@ -1658,6 +1626,22 @@
       "accepted": false,
       "unit_tests": "passed",
       "application_validation": "Qt settings and consumer smoke tests passed where applicable; real network/system notification acceptance pending"
+    },
+    {
+      "key": "nagram.regramHiddenSenders",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_regram_filter_hidden_senders",
+      "source": "Telegram/SourceFiles/regram/filters/runtime.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.regramFilterDisabledChats",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_regram_filter_enabled_chat",
+      "source": "Telegram/SourceFiles/regram/filters/runtime.h",
+      "accepted": false
     }
   ],
   "advanced_settings": [
@@ -1720,13 +1704,10 @@
         "disableStories",
         "editedMark",
         "filterZalgo",
-        "filtersEnabled",
-        "filtersEnabledInChats",
         "ghostModeSettings",
         "gifConfirmation",
         "hideAllChatsFolder",
         "hideFastShare",
-        "hideFromBlocked",
         "hideNotificationBadge",
         "hideNotificationCounters",
         "hidePremiumStatuses",
@@ -1748,7 +1729,6 @@
         "saveMessagesHistory",
         "semiTransparentDeletedMessages",
         "shadowBanIds",
-        "showAddFilterInContextMenu",
         "showAiEditorButtonInMessageField",
         "showAttachButtonInMessageField",
         "showAttachPopup",
@@ -1764,7 +1744,6 @@
         "showGhostToggleInTray",
         "showGiftButtonInMessageField",
         "showGroupReactions",
-        "showHideMessageInContextMenu",
         "showLReadToggleInDrawer",
         "showMessageDetailsInContextMenu",
         "showMessageSeconds",
@@ -1852,5 +1831,31 @@
       "accepted": false
     }
   ],
-  "reference_nagram": "5d0222ca152396aa213f3455528ce09c544cce30"
+  "reference_nagram": "5d0222ca152396aa213f3455528ce09c544cce30",
+  "retired_filter_features": {
+    "date": "2026-10-11",
+    "reason": "User requested only Regram iOS message-filter behavior and exchange format",
+    "inactive_stored_keys": [
+      "nagram.filters",
+      "nagram.filtersGlobal",
+      "nagram.filterScopes",
+      "nagram.hiddenMessages",
+      "nagram.regramFiltersEnabled",
+      "filtersEnabled",
+      "filtersEnabledInChats",
+      "hideFromBlocked",
+      "showHideMessageInContextMenu",
+      "showAddFilterInContextMenu"
+    ],
+    "removed_features": [
+      "shared regex database filters",
+      "mask and replace actions",
+      "reverse matching",
+      "global and topic inheritance",
+      "individual-message hiding",
+      "blocked forward/bot attribution",
+      "reaction and typing suppression"
+    ],
+    "ios_reference": "a5c80b6d5ff8b995cd6e4d5737a058dd894e3293"
+  }
 }

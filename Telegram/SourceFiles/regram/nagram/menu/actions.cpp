@@ -5,7 +5,6 @@
 #include "regram/nagram/menu/download.h"
 #include "regram/nagram/menu/rating.h"
 #include "regram/nagram/menu/message_tools.h"
-#include "regram/nagram/filters/hidden_messages.h"
 #include "regram/nagram/menu/reading.h"
 #include "regram/nagram/filters/menu.h"
 #include "regram/nagram/services/summary.h"
@@ -86,7 +85,6 @@ void Apply(
 			InsertDeleteDownloadAction(menu, item, controller);
 			InsertReadingAction(menu, item, controller);
 			Filters::InsertAuthorAction(menu, item, controller);
-			Filters::InsertHideMessageAction(menu, item, controller);
 			InsertMessageToolActions(menu, item, controller, select);
 		}
 	}

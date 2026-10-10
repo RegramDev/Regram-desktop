@@ -3,7 +3,6 @@
 #include "regram/nagram/compose/options.h"
 #include "regram/nagram/core/diagnostics.h"
 #include "regram/nagram/core/exchange.h"
-#include "regram/nagram/filters/model.h"
 #include "regram/nagram/interface/options.h"
 #include "regram/nagram/links/inline_rules.h"
 #include "regram/nagram/links/model.h"
@@ -613,7 +612,6 @@ void TestLocalOnlyList() {
 	Menu::RegisterOptions(registry);
 	Privacy::RegisterOptions(registry);
 	Messages::RegisterOptions(registry);
-	Filters::RegisterOptions(registry);
 	Links::RegisterOptions(registry);
 	Links::RegisterBehaviorOptions(registry);
 	Links::RegisterInlineOptions(registry);

@@ -37,7 +37,6 @@ enum class ActionId : int {
 	SelectBetween = 27,
 	SeenBy = 28,
 	MessageDetails = 29,
-	HideMessage = 30,
 	SaveToSaved = 31,
 	SelectAll = 32,
 	Summarize = 36,
@@ -57,7 +56,7 @@ struct Slot {
 	bool separator = false;
 };
 
-inline constexpr auto kEntries = std::array<Entry, 34>({{
+inline constexpr auto kEntries = std::array<Entry, 33>({{
 	{ ActionId::Reply, "lng_nagram_menu_reply" },
 	{ ActionId::Edit, "lng_nagram_menu_edit" },
 	{ ActionId::Copy, "lng_nagram_menu_copy" },
@@ -86,7 +85,6 @@ inline constexpr auto kEntries = std::array<Entry, 34>({{
 	{ ActionId::SelectBetween, "lng_nagram_menu_select_between" },
 	{ ActionId::SeenBy, "lng_nagram_menu_seen_by" },
 	{ ActionId::MessageDetails, "lng_nagram_menu_details" },
-	{ ActionId::HideMessage, "lng_nagram_hide_message" },
 	{ ActionId::SaveToSaved, "lng_nagram_menu_save_to_saved" },
 	{ ActionId::SelectAll, "lng_nagram_menu_select_all" },
 	{ ActionId::Summarize, "lng_nagram_menu_summarize" },

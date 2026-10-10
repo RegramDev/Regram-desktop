@@ -42,7 +42,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 #include "regram/ayu/ui/ayu_userpic.h"
 
 
@@ -1011,7 +1010,6 @@ void FakeRow::invalidateTopic() {
 const Ui::Text::String &FakeRow::name() const {
 	if (_name.isEmpty()) {
 		const auto from = _searchInChat
-			&& !FiltersController::filtered(_item)
 			? _item->displayFrom()
 			: nullptr;
 		const auto peer = from ? from : _item->history()->peer.get();

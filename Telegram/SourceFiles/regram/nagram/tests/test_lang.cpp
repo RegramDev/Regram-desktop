@@ -19,7 +19,6 @@
 #include <stdexcept>
 #include <string>
 
-void BenchmarkFilters();
 void TestOptions();
 void TestSpacing();
 void TestServices();
@@ -27,8 +26,6 @@ void TestTranslation();
 void TestAdvancedSettings();
 void TestChatTranslation();
 void TestAutoTranslate();
-void TestFilters();
-void TestFilterScopes();
 void TestLinks();
 void TestInlineRules();
 void TestPrivacy();
@@ -233,10 +230,6 @@ int main() {
 			std::cout << "PASS: explicit code font override " << family.toStdString() << std::endl;
 			return 0;
 		}
-		if (std::getenv("REGRAM_BENCHMARK")) {
-			BenchmarkFilters();
-			return 0;
-		}
 		TestOptions();
 		TestSpacing();
 		TestServices();
@@ -244,8 +237,6 @@ int main() {
 		TestAdvancedSettings();
 		TestChatTranslation();
 		TestAutoTranslate();
-		TestFilters();
-		TestFilterScopes();
 		TestLinks();
 		TestInlineRules();
 		TestPrivacy();

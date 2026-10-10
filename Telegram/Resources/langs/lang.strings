@@ -9189,7 +9189,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_regram_hide_stories" = "Hide stories bar";
 "lng_regram_hide_stories_about" = "Hide the stories bar in chat lists and archived chats. Stories remain available from profiles. Applies to all accounts and windows on this device.";
 
-
 // AyuGram keys generated
 
 "ayu_AyuPreferences" = "Privacy, message history and advanced tools";
@@ -9605,7 +9604,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "ayu_UtilityRestartRequired" = "The app will close in 5 seconds.";
 
 "lng_regram_ios_filters" = "Message filters";
-"lng_regram_ios_filters_about" = "Import your Regram iOS filters or a Regram filter backup. Rules belong to this account and hide matching messages locally. Unrecognized conversations and invalid patterns stay disabled. New rules apply to all conversations; imported conversation scopes are preserved.";
+"lng_regram_ios_filters_about" = "Rules use the same format as Regram iOS and hide matching incoming text locally. Keep rules take priority. Invalid patterns and unsupported conversations stay disabled.";
 "lng_regram_filter_regex" = "Regular expression";
 "lng_regram_filter_scopes#one" = "Applies to {count} conversation scope. This scope is preserved when you edit the pattern.";
 "lng_regram_filter_scopes#other" = "Applies to {count} conversation scopes. These scopes are preserved when you edit the pattern.";
@@ -9615,22 +9614,17 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_regram_local_premium_about" = "Enable local emoji and sticker previews. Features provided by Telegram servers follow your account subscription.";
 "lng_regram_filter_mute_notifications" = "Mute notifications for filtered messages";
 "lng_regram_filter_all_chats" = "Apply to all conversations";
-"lng_regram_filter_scope_hint" = "Enter user:123, group:456 or channel:789. For a topic, use channel:789:123. Separate conversations with commas or new lines.";
+"lng_regram_filter_scope_hint" = "Enter user:123, group:456 or channel:789. Separate chats with commas or new lines.";
 
-"lng_regram_filter_choose_chats" = "Choose a chat or topic";
+"lng_regram_filter_choose_chats" = "Choose chats";
 
 "lng_regram_filter_scope_limit" = "The conversation limit has been reached. Remove a conversation before adding another.";
 
 "lng_regram_advanced_backup" = "Advanced device settings (restart required)";
 
 "lng_regram_advanced_tools" = "Advanced tools";
-"lng_regram_legacy_filters" = "Regular expression exclusions and blocked users";
-"lng_regram_content_rules" = "Content replacement and advanced rules";
 "lng_regram_filter_keep" = "Keep matching messages";
-"lng_regram_filter_export_ios" = "Regram iOS compatible backup";
-"lng_regram_filter_export_desktop" = "Full Desktop backup";
-"lng_regram_filter_export_about" = "The iOS format preserves enable switches, keep rules and conversation scopes. Use a full Desktop backup for topic scopes or unresolved conversations.";
-"lng_regram_filter_ios_scope_error" = "These rules contain topic scopes or conversations iOS cannot represent. Choose Full Desktop backup to preserve them.";
+"lng_regram_filter_ios_scope_error" = "Remove or reassign unsupported conversation scopes before exporting to Regram iOS.";
 "lng_regram_filter_import_document" = "Add to message filters";
 "lng_regram_filter_import_download" = "The file will be downloaded and checked before you confirm the rules. If downloading fails, try Add again.";
 "lng_regram_filter_import_too_large" = "This filter backup exceeds the 8 MB import limit.";
@@ -9674,3 +9668,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_regram_filter_test_problems#other" = "{count} invalid rules are inactive.";
 "lng_regram_filter_reveal" = "Show filtered messages for 5 minutes";
 "lng_regram_filter_reveal_end" = "Hide filtered messages again";
+
+"lng_regram_filter_hidden_senders" = "Hidden users";
+
+"lng_regram_filter_hidden_senders_about" = "Their messages stay hidden in every chat, even when keyword filtering is off. Select a user to stop hiding their messages. This does not block them on Telegram.";
+
+"lng_regram_filter_hidden_senders_empty" = "No hidden users. Hide a user from their profile or a message context menu.";

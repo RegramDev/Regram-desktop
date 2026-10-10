@@ -27,7 +27,7 @@
 | RD-F08 | 聊天附件中的规则快捷导入 | 适配／M1 | 识别规则文件，由用户触发导入；收到文件不自动执行 |
 | RD-F09 | 隐藏用户／机器人 | 移植／M1 | 在其出现的不同会话中一致隐藏，自己不被加入隐藏名单 |
 | RD-F10 | 隐藏用户管理 | 适配／M1 | 列表、打开资料、解除隐藏；桌面按钮／右键替代左滑 |
-| RD-F11 | 对话预览与结果一致性 | 适配／M1 | 预览回查可见消息；历史、评论、搜索及多窗口行为一致；没有空白占位行 |
+| RD-F11 | 对话预览与结果一致性 | 适配／M1 | 预览回查可见消息；历史、评论和多窗口判定一致；搜索保留原文；没有空白占位行 |
 | RD-F12 | 缓存与即时刷新 | 移植／M1 | 编辑消息、改规则、切换账户后正确失效；缓存有界；旧后台任务不覆盖新规则 |
 
 来源：[规则](https://github.com/RegramDev/Regram-ios/blob/61c8a38bd6012faa2f00ddb1bedfc70007f390c7/Regram/RGSimpleSettings/Sources/MessageFilter.swift)、[过滤判定](https://github.com/RegramDev/Regram-ios/blob/61c8a38bd6012faa2f00ddb1bedfc70007f390c7/submodules/AccountContext/Sources/RGContentFilter.swift)。系统通知联动另由 RD-N03 验收；本机隐藏不改变服务器的未读状态。

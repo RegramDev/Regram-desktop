@@ -50,6 +50,7 @@ struct ToPreviewOptions {
 	bool ignoreTopic = true;
 	bool spoilerLoginCode = false;
 	bool translated = false;
+	bool applyRegramFilters = true;
 };
 
 } // namespace HistoryView

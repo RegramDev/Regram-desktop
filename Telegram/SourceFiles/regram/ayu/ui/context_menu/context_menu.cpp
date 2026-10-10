@@ -13,13 +13,10 @@
 #include "regram/ayu/ayu_settings.h"
 #include "regram/ayu/ayu_state.h"
 #include "regram/ayu/data/messages_storage.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 #include "regram/ayu/features/forward/ayu_forward.h"
 #include "regram/ayu/features/forward/ayu_forward_rich.h"
 #include "regram/ayu/ui/context_menu/menu_item_subtext.h"
 #include "regram/ayu/ui/message_history/history_section.h"
-#include "regram/ayu/ui/settings/filters/edit_filter.h"
-#include "regram/ayu/ui/settings/filters/settings_filters_list.h"
 #include "regram/ayu/utils/qt_key_modifiers_extended.h"
 #include "regram/ayu/utils/telegram_helpers.h"
 #include "base/call_delayed.h"
@@ -256,11 +253,8 @@ void AddAyuGramActions(PeerData *peerData,
 	}
 
 	const auto &settings = AyuSettings::getInstance();
-	const auto user = peerData->asUser();
-	const auto showFilters = settings.filtersEnabled()
-		&& (!user || user->isBot());
 	const auto saveDeletedMessages = settings.saveDeletedMessages();
-	if (!showFilters && !saveDeletedMessages) {
+	if (!saveDeletedMessages) {
 		return;
 	}
 
@@ -273,18 +267,6 @@ void AddAyuGramActions(PeerData *peerData,
 		.icon = &st::menuIconGroupReactions,
 		.fillSubmenu = [=](not_null<Ui::PopupMenu*> menu) {
 			const auto addAction = Ui::Menu::CreateAddActionCallback(menu);
-			if (showFilters) {
-				addAction(
-					tr::ayu_ViewFiltersMenuText(tr::now),
-					[=]
-					{
-						sessionController->dialogId = getDialogIdFromPeer(peerData);
-						sessionController->showExclude = true;
-						sessionController->shadowBan = false;
-						sessionController->showSettings(Settings::AyuFiltersList::Id());
-					},
-					&st::menuIconAddToFolder);
-			}
 			if (saveDeletedMessages) {
 				addAction(
 					tr::ayu_ViewDeletedMenuText(tr::now),
@@ -415,38 +397,6 @@ void AddOpenChannelAction(PeerData *peerData,
 		&st::menuIconChannel);
 }
 
-void AddShadowBanAction(PeerData *peerData,
-						const Window::PeerMenuCallback &addCallback) {
-	const auto &settings = AyuSettings::getInstance();
-	if (!peerData || !(peerData->isUser() || peerData->isBroadcast()) || !settings.filtersEnabled()) {
-		return;
-	}
-
-	if (const auto user = peerData->asUser()) {
-		if (user->isSelf()) {
-			return;
-		}
-	}
-
-	const auto realId = getDialogIdFromPeer(peerData);
-	const auto shadowBanned = AyuSettings::getInstance().isShadowBanned(realId);
-	const auto toggleShadowBan = [=]
-	{
-		if (shadowBanned) {
-			AyuSettings::getInstance().removeShadowBan(realId);
-		} else {
-			AyuSettings::getInstance().addShadowBan(realId);
-		}
-	};
-
-	addCallback({
-		.text = (shadowBanned
-					 ? tr::ayu_FiltersQuickUnshadowBan(tr::now)
-					 : tr::ayu_FiltersQuickShadowBan(tr::now)),
-		.handler = toggleShadowBan,
-		.icon = shadowBanned ? &st::menuIconShowInChat : &st::menuIconStealth,
-	});
-}
 
 void AddDeleteOwnMessagesAction(PeerData *peerData,
 								Data::ForumTopic *topic,
@@ -499,33 +449,6 @@ void AddHistoryAction(not_null<Ui::PopupMenu*> menu, HistoryItem *item) {
 		&st::ayuEditsHistoryIcon);
 }
 
-void AddHideMessageAction(not_null<Ui::PopupMenu*> menu, HistoryItem *item) {
-	const auto &settings = AyuSettings::getInstance();
-	if (!needToShowItem(settings.showHideMessageInContextMenu())) {
-		return;
-	}
-
-	if (item->history()->peer->isSelf()) {
-		return;
-	}
-
-	const auto history = item->history();
-	const auto owner = &history->owner();
-	menu->addAction(
-		tr::ayu_ContextHideMessage(tr::now),
-		[=]()
-		{
-			const auto ids = owner->itemOrItsGroup(item);
-			for (const auto &fullId : ids) {
-				if (const auto current = owner->message(fullId)) {
-					AyuState::hide(current);
-					current->destroy();
-				}
-			}
-			history->requestChatListMessage();
-		},
-		&st::menuIconClear);
-}
 
 void AddUserMessagesAction(not_null<Ui::PopupMenu*> menu, HistoryItem *item) {
 	const auto &settings = AyuSettings::getInstance();
@@ -960,32 +883,5 @@ void AddBurnAction(not_null<Ui::PopupMenu*> menu, HistoryItem *item) {
 		&st::menuIconTTLAny);
 }
 
-void AddCreateFilterAction(not_null<Ui::PopupMenu*> menu,
-						   not_null<Window::SessionController*> controller,
-						   HistoryItem *item,
-						   const QString &selectedText) {
-	const auto &settings = AyuSettings::getInstance();
-	if (!needToShowItem(settings.showAddFilterInContextMenu()) || !settings.filtersEnabled()) {
-		return;
-	}
-
-	if (!item || selectedText.isEmpty()) {
-		return;
-	}
-
-	menu->addAction(
-		tr::ayu_RegexFilterQuickAdd(tr::now),
-		[=]
-		{
-			RegexFilter filter;
-			filter.text = selectedText.toStdString();
-			filter.enabled = true;
-			filter.caseInsensitive = true;
-			filter.reversed = false;
-
-			controller->show(Settings::RegexEditBox(&filter, {}, getDialogIdFromPeer(item->history()->peer), true));
-		},
-		&st::menuIconAddToFolder);
-}
 
 } // namespace AyuUi

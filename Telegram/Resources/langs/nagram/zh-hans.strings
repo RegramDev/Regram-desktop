@@ -830,7 +830,7 @@
 "lng_nagram_send_translation_original" = "发送原文";
 "lng_nagram_send_translation_limit" = "无法保存此设置。最多 {amount} 个聊天可以使用发送前翻译。";
 
-"lng_regram_filter_choose_chats" = "选择聊天或话题";
+"lng_regram_filter_choose_chats" = "选择聊天";
 
 "lng_regram_filter_scope_limit" = "已达到对话数量上限，请先移除一个对话再添加。";
 
@@ -839,13 +839,8 @@
 "lng_regram_advanced_backup" = "高级设备配置（重启后生效）";
 
 "lng_regram_advanced_tools" = "高级工具";
-"lng_regram_legacy_filters" = "正则排除与屏蔽用户";
-"lng_regram_content_rules" = "内容替换与高级规则";
 "lng_regram_filter_keep" = "保留匹配的消息";
-"lng_regram_filter_export_ios" = "兼容 Regram iOS 的备份";
-"lng_regram_filter_export_desktop" = "完整桌面端备份";
-"lng_regram_filter_export_about" = "iOS 格式保留启用开关、保留规则和会话范围。含话题范围或未识别会话时，请选择完整桌面端备份。";
-"lng_regram_filter_ios_scope_error" = "这些规则包含 iOS 无法表示的话题范围或会话。请选择完整桌面端备份以保留它们。";
+"lng_regram_filter_ios_scope_error" = "请先删除或重新选择不受支持的聊天范围，再导出为 Regram iOS 格式。";
 "lng_regram_filter_import_document" = "添加到消息过滤器";
 "lng_regram_filter_import_download" = "下载并检查文件后，会显示导入确认。下载失败时可以再次点击添加。";
 "lng_regram_filter_import_too_large" = "此过滤器备份超过 8 MB 导入上限。";
@@ -889,3 +884,13 @@
 "lng_regram_filter_test_problems#other" = "{count} 条无效规则未执行。";
 "lng_regram_filter_reveal" = "临时显示过滤消息（5 分钟）";
 "lng_regram_filter_reveal_end" = "重新隐藏过滤消息";
+
+"lng_regram_ios_filters_about" = "与 Regram iOS 使用相同规则格式，在本地隐藏匹配的收到消息。保留规则优先生效；无效正则和无法识别的会话保持停用。";
+
+"lng_regram_filter_scope_hint" = "输入 user:123、group:456 或 channel:789，使用逗号或换行分隔聊天。";
+
+"lng_regram_filter_hidden_senders" = "隐藏的用户";
+
+"lng_regram_filter_hidden_senders_about" = "这些用户的消息会在所有聊天中隐藏，不受聊天关键词过滤开关影响。点击用户可恢复显示；此操作不会在 Telegram 上拉黑用户。";
+
+"lng_regram_filter_hidden_senders_empty" = "尚无隐藏用户。可从用户资料或消息右键菜单隐藏用户。";

@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/ui/dialogs_layout.h"
+#include "regram/filters/runtime.h"
 #include "regram/nagram/chats/layout.h"
 #include "regram/nagram/chats/local_pins.h"
 #include "regram/nagram/privacy/options.h"
@@ -55,7 +56,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_window.h"
 
 // AyuGram includes
-#include "regram/ayu/features/filters/filters_controller.h"
 #include "styles/style_ayu_icons.h"
 
 
@@ -471,11 +471,8 @@ void PaintRow(
 	const auto history = entry->asHistory();
 	const auto thread = entry->asThread();
 	const auto sublist = entry->asSublist();
-	const auto itemIsFiltered = item && FiltersController::filtered(item);
+	const auto itemIsFiltered = !fakeRow && item && Regram::Filters::Hidden(item);
 	const auto itemIsEmpty = item && (item->isEmpty() || itemIsFiltered);
-	const auto showFilteredItem = !fakeRow
-		&& itemIsEmpty
-		&& itemIsFiltered;
 
 	auto bg = context.active
 		? st::dialogsBgActive
@@ -579,7 +576,7 @@ void PaintRow(
 	if (context.narrow) {
 		if (!draft
 			&& item
-			&& (!itemIsEmpty || showFilteredItem)) {
+			&& !itemIsEmpty) {
 			PaintNarrowCounter(p, context, badgesState);
 		}
 		return;
@@ -853,7 +850,7 @@ void PaintRow(
 					tr::lng_community_chat_loading(tr::now));
 			}
 		}
-	} else if (!itemIsEmpty || showFilteredItem) {
+	} else if (!itemIsEmpty) {
 		if ((thread || sublist) && !promoted) {
 			PaintDialogDate(p, entry, fakeRow, date, rectForName, context);
 		}
@@ -1334,7 +1331,6 @@ void RowPainter::Paint(
 		not_null<const FakeRow*> row,
 		const PaintContext &context) {
 	const auto item = row->item();
-	const auto itemIsFiltered = FiltersController::filtered(item);
 	const auto topic = context.forum ? row->topic() : nullptr;
 	const auto history = topic ? nullptr : item->history().get();
 	const auto entry = topic ? (Entry*)topic : (Entry*)history;
@@ -1343,7 +1339,7 @@ void RowPainter::Paint(
 		const auto in = row->searchInChat();
 		if (topic && (in.topic() != topic)) {
 			return (PeerData*)nullptr;
-		} else if (in && !itemIsFiltered) {
+		} else if (in) {
 			return item->displayFrom();
 		} else if (!history) {
 			return (PeerData*)nullptr;
@@ -1353,9 +1349,6 @@ void RowPainter::Paint(
 			: history->peer.get();
 	}();
 	const auto hiddenSenderInfo = [&]() -> const HiddenSenderInfo* {
-		if (itemIsFiltered) {
-			return nullptr;
-		}
 		if (const auto searchChat = row->searchInChat()) {
 			if (const auto peer = searchChat.peer()) {
 				if (const auto forwarded = item->Get<HistoryMessageForwarded>()) {
@@ -1381,6 +1374,7 @@ void RowPainter::Paint(
 		}
 		return {};
 	}();
+	previewOptions.applyRegramFilters = false;
 	previewOptions.ignoreGroup = true;
 	previewOptions.searchLowerText = context.searchLowerText;
 

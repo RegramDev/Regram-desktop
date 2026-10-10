@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_inner_widget.h"
+#include "regram/filters/exchange.h"
+#include "regram/filters/settings.h"
 #include "regram/nagram/messages/online.h"
 #include "regram/nagram/messages/content.h"
 #include "regram/nagram/messages/reactions.h"
@@ -144,9 +146,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
-#include "regram/ayu/features/filters/filters_cache_controller.h"
 #include "regram/ayu/ui/context_menu/context_menu.h"
-#include "regram/ayu/ui/settings/filters/edit_filter.h"
 #include "regram/ayu/utils/telegram_helpers.h"
 #include "data/data_document_media.h"
 
@@ -3170,8 +3170,12 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 			Nagram::Menu::Tag(_menu->actions().back(), Nagram::Menu::ActionId::Statistics);
 		}
 
+		if (!item->isService() && !item->forbidsForward()
+			&& (_selected.empty() || isUponSelected == 1)) {
+			Regram::Filters::AddRuleAction(_menu, controller,
+				(isUponSelected > 0) ? getSelectedText().rich.text : item->originalText().text);
+		}
 		AyuUi::AddHistoryAction(_menu, item);
-		AyuUi::AddHideMessageAction(_menu, item);
 		AyuUi::AddUserMessagesAction(_menu, item);
 		AyuUi::AddRepeatMessageAction(_menu, item, HistoryView::Context::History);
 		AyuUi::AddMessageDetailsAction(_menu, item);
@@ -3200,6 +3204,15 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 	};
 	auto rateTranscriptionItem = (HistoryItem*)(nullptr);
 	const auto addDocumentActions = [&](not_null<DocumentData*> document, HistoryItem *item) {
+		if (item && !item->isSending() && !hasCopyMediaRestriction(item)
+			&& Regram::Filters::IsRulesFileName(document->filename())) {
+			const auto contextId = item->fullId();
+			_menu->addAction(tr::lng_regram_filter_import_document(tr::now),
+				crl::guard(controller, [=] {
+					controller->show(Box(Regram::Filters::ImportDocumentBox,
+						document, contextId));
+				}), &st::menuIconTagFilter);
+		}
 		if (document->loading()) {
 			_menu->addAction(tr::lng_context_cancel_download(tr::now), [=] {
 				cancelContextDownload(document);
@@ -3696,7 +3709,6 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 				}, &st::menuIconTranslate);
 				Nagram::Menu::Tag(_menu->actions().back(), Nagram::Menu::ActionId::Translate);
 			}
-			AyuUi::AddCreateFilterAction(_menu, _controller, item, selectedText.rich.text);
 			const auto editItem = [&]() -> HistoryItem* {
 				const auto view = (item && item->groupId())
 					? viewByItem(item)

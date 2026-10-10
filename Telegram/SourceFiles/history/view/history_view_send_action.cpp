@@ -23,7 +23,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
-#include "regram/ayu/features/filters/filters_controller.h"
 
 
 namespace HistoryView {
@@ -69,9 +68,6 @@ bool SendActionPainter::updateNeedsAnimating(
 		return false;
 	}
 
-	if (FiltersController::isBlocked(user)) {
-		return false;
-	}
 
 	const auto now = crl::now();
 	const auto emplaceAction = [&](

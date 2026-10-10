@@ -510,10 +510,6 @@ std::unique_ptr<BaseLayout> Provider::createLayout(
 		return nullptr;
 	}
 
-	if (isMessageHidden(item)) {
-		return nullptr;
-	}
-
 	const auto getPhoto = [&]() -> PhotoData* {
 		if (const auto media = item->media()) {
 			return media->photo();

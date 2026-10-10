@@ -261,15 +261,6 @@ void BuildContextMenuElements(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 		.icon = { &st::menuIconShowInChat },
 	});
 	ayu.addChooseButton({
-		.id = u"regram/ayu/showHideMessageInContextMenu"_q,
-		.title = tr::ayu_ContextHideMessage(),
-		.boxTitle = tr::ayu_SettingsContextMenuTitle(),
-		.initialSelection = static_cast<int>(settings->showHideMessageInContextMenu()),
-		.options = options,
-		.setter = [](int i) { AyuSettings::getInstance().setShowHideMessageInContextMenu(static_cast<ContextMenuVisibility>(i)); },
-		.icon = { &st::menuIconClear },
-	});
-	ayu.addChooseButton({
 		.id = u"regram/ayu/showUserMessagesInContextMenu"_q,
 		.title = tr::ayu_UserMessagesMenuText(),
 		.boxTitle = tr::ayu_SettingsContextMenuTitle(),
@@ -296,17 +287,6 @@ void BuildContextMenuElements(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 		.setter = [](int i) { AyuSettings::getInstance().setShowRepeatMessageInContextMenu(static_cast<ContextMenuVisibility>(i)); },
 		.icon = { &st::ayuRepeatMenuIcon },
 	});
-	if (settings->filtersEnabled()) {
-		ayu.addChooseButton({
-			.id = u"regram/ayu/showAddFilterInContextMenu"_q,
-			.title = tr::ayu_RegexFilterQuickAdd(),
-			.boxTitle = tr::ayu_SettingsContextMenuTitle(),
-			.initialSelection = static_cast<int>(settings->showAddFilterInContextMenu()),
-			.options = options,
-			.setter = [](int i) { AyuSettings::getInstance().setShowAddFilterInContextMenu(static_cast<ContextMenuVisibility>(i)); },
-			.icon = { &st::menuIconAddToFolder },
-		});
-	}
 
 	builder.addSkip();
 	builder.addDividerText(tr::ayu_SettingsContextMenuDescription());

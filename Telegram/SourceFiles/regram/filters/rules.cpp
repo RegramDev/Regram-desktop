@@ -5,13 +5,10 @@
 #include <unicode/regex.h>
 
 #include <algorithm>
-#include <chrono>
 #include <set>
 
 namespace Regram::Filters {
 namespace {
-
-constexpr auto kTotalTimeLimit = std::chrono::milliseconds(20);
 
 struct CompiledRule {
 	Rule rule;
@@ -46,7 +43,7 @@ bool AppliesTo(const Rule &rule, std::optional<PeerAddress> peer) {
 		[=](PeerAddress scope) {
 			return scope.kind == peer->kind
 				&& scope.id == peer->id
-				&& (!scope.thread || scope.thread == peer->thread);
+				&& !scope.thread;
 		});
 }
 
@@ -95,7 +92,7 @@ bool Engine::setRules(std::vector<Rule> rules) {
 			problem.reason = "Unresolved conversation scope";
 		} else if (rule.scopes.size() > kMaxScopes
 			|| std::any_of(rule.scopes.begin(), rule.scopes.end(), [](auto scope) {
-				return !scope.id;
+				return !scope.id || scope.thread || !ToIosPeerId(scope);
 			})) {
 			problem.reason = "Invalid conversation scope";
 		}
@@ -146,7 +143,6 @@ Result Engine::evaluate(
 	} else if (text.size() > kMaxTextUnits) {
 		return { .limited = true };
 	}
-	const auto deadline = std::chrono::steady_clock::now() + kTotalTimeLimit;
 	const auto input = ToUnicode(text);
 	auto normalized = icu::UnicodeString();
 	auto normalizationStatus = U_ZERO_ERROR;
@@ -164,8 +160,6 @@ Result Engine::evaluate(
 		}
 		if (!compiled.rule.enabled || !AppliesTo(compiled.rule, peer)) {
 			continue;
-		} else if (std::chrono::steady_clock::now() >= deadline) {
-			return { .limited = true };
 		}
 		const auto match = MatchPattern(*compiled.pattern,
 			compiled.rule.regex ? input : normalized);
@@ -173,19 +167,21 @@ Result Engine::evaluate(
 			return { .limited = (match == Match::Limited) };
 		}
 	}
+	auto timeouts = 0;
 	for (const auto &compiled : _state->rules) {
 		if (compiled.rule.exception) {
 			continue;
 		}
 		if (!compiled.rule.enabled || !AppliesTo(compiled.rule, peer)) {
 			continue;
-		} else if (std::chrono::steady_clock::now() >= deadline) {
-			result.limited = true;
-			break;
+		}
+		if (compiled.rule.regex && timeouts >= 4) {
+			continue;
 		}
 		const auto match = MatchPattern(*compiled.pattern,
 			compiled.rule.regex ? input : normalized);
 		if (match == Match::Limited) {
+			++timeouts;
 			result.limited = true;
 		} else if (match == Match::Found) {
 			result.hidden = true;

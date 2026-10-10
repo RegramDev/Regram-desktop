@@ -40,7 +40,7 @@ void Legacy() {
 		"negative packed iOS id remains exact");
 	Check(!imported.rules[2].enabled && !imported.rules[2].unresolvedScopes.empty(),
 		"secret conversation retained as disabled pending scope");
-	const auto roundtrip = ImportRules(ExportRules(imported.rules));
+	const auto roundtrip = ImportStoredRules(ExportStoredRules(imported.rules));
 	Check(roundtrip.error.isEmpty() && roundtrip.rules.size() == 4,
 		"versioned export reimported");
 	for (auto i = size_t(); i < imported.rules.size(); ++i) {
@@ -80,7 +80,7 @@ void Exchange() {
 		.pattern = u"你好\n👩‍💻 رسالة",
 		.scopes = { { PeerKind::Channel, 9007199254740993ULL, 27 } },
 	};
-	const auto restored = ImportRules(ExportRules({ one }));
+	const auto restored = ImportStoredRules(ExportStoredRules({ one }));
 	Check(restored.error.isEmpty() && SameRule(one, restored.rules[0]),
 		"Unicode and large string ids roundtrip");
 	auto other = one;
@@ -94,7 +94,7 @@ void Exchange() {
 	const auto oversized = MergeRules(std::vector<Rule>(kMaxRules, one), { other });
 	Check(!oversized.error.isEmpty() && oversized.rules.size() == kMaxRules
 		&& oversized.added == 0, "oversized merge leaves current rules intact");
-	auto object = QJsonDocument::fromJson(ExportRules({ one })).object();
+	auto object = QJsonDocument::fromJson(ExportStoredRules({ one })).object();
 	auto entries = object.value(u"rules"_q).toArray();
 	auto entry = entries[0].toObject();
 	entry.insert(u"scopes"_q, QJsonArray{ QJsonObject{
@@ -104,7 +104,7 @@ void Exchange() {
 	} });
 	entries[0] = entry;
 	object.insert(u"rules"_q, entries);
-	const auto futureScope = ImportRules(QJsonDocument(object).toJson());
+	const auto futureScope = ImportStoredRules(QJsonDocument(object).toJson());
 	Check(futureScope.error.isEmpty() && !futureScope.rules[0].enabled
 		&& futureScope.rules[0].scopes.empty()
 		&& !futureScope.rules[0].unresolvedScopes.empty(),
@@ -140,10 +140,15 @@ void IosExchange() {
 	extended.unresolvedScopes.push_back("future:42");
 	Check(!ExportIosRules({ extended }).error.isEmpty(),
 		"iOS export cannot silently drop unresolved scopes");
-	const auto desktop = ImportRules(ExportRules(imported.rules));
+	Check(!ImportRules(ExportStoredRules(imported.rules)).error.isEmpty(),
+		"public import rejects retired Desktop backup format");
+	Check(ImportStoredRules(ExportStoredRules({ extended })).rules[0].enabled == false,
+		"retired topic rules remain disabled and do not broaden on upgrade");
+
+	const auto desktop = ImportStoredRules(ExportStoredRules(imported.rules));
 	Check(desktop.error.isEmpty() && desktop.rules[1].exception,
 		"desktop v2 backup preserves keep rules");
-	const auto old = ImportRules(R"({"format":"regram.filters","version":1,"rules":[{"id":"old","pattern":"hello","regex":false,"enabled":false,"scopes":[],"unresolvedScopes":[]}]})");
+	const auto old = ImportStoredRules(R"({"format":"regram.filters","version":1,"rules":[{"id":"old","pattern":"hello","regex":false,"enabled":false,"scopes":[],"unresolvedScopes":[]}]})");
 	Check(old.error.isEmpty() && !old.rules[0].enabled && !old.rules[0].exception,
 		"previous Desktop backups remain readable");
 	auto hide = imported.rules[1];
@@ -152,10 +157,10 @@ void IosExchange() {
 	Check(merged.added == 1 && merged.duplicates == 1,
 		"merge distinguishes hide from keep and deduplicates definitions");
 	Check(IsRulesFileName(u"Regram-message-filter 2.JSON"_q)
-		&& IsRulesFileName(u"regram-filters.json"_q)
+		&& !IsRulesFileName(u"regram-filters.json"_q)
 		&& !IsRulesFileName(u"notes.json"_q)
 		&& !IsRulesFileName(u"regram-message-filter.json.exe"_q),
-		"chat import recognizes both generations and numbered copies");
+		"chat import recognizes only iOS names and numbered copies");
 }
 
 void ResultCache() {
@@ -189,15 +194,15 @@ void ResultCache() {
 
 int main(int argc, char *argv[]) {
 	const auto scoped = Regram::Filters::ParseScopes(
-		u"user:9007199254740993\nchannel:123:456,USER:9007199254740993"_q);
+		u"user:9007199254740993\nchannel:123,USER:9007199254740993"_q);
 	Check(scoped.error.isEmpty() && scoped.scopes.size() == 2,
 		"scope entry precision, case and deduplication");
 	const auto scopeCopy = Regram::Filters::ParseScopes(
 		Regram::Filters::FormatScopes(scoped.scopes));
 	Check(scopeCopy.error.isEmpty() && scopeCopy.scopes == scoped.scopes,
-		"scope editor format preserves peer and topic IDs");
+		"scope editor format preserves exact conversation IDs");
 	for (const auto invalid : { u"user:0", u"secret:123", u"user:123:456",
-		u"channel:123:0", u"user:1e5", u"group:-100123", u"user:123,secret:456" }) {
+		u"channel:123:0", u"channel:123:456", u"user:1e5", u"group:-100123", u"user:123,secret:456" }) {
 		const auto result = Regram::Filters::ParseScopes(QString::fromUtf16(invalid));
 		Check(!result.error.isEmpty() && result.scopes.empty(),
 			"invalid scope edits are rejected atomically");

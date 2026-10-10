@@ -3,7 +3,6 @@
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/view/history_view_element.h"
-#include "regram/nagram/filters/hidden_messages.h"
 #include "regram/nagram/filters/view.h"
 #include "regram/nagram/services/context_model.h"
 
@@ -29,8 +28,7 @@ QStringList CollectTranslationContext(not_null<HistoryItem*> item) {
 					.text = other->originalText().text,
 					.topic = other->topicRootId().bare,
 					.regular = other->isRegular() && !other->isService(),
-					.hidden = Filters::Hidden(other)
-						|| Filters::MessageHidden(other),
+					.hidden = Filters::Hidden(other),
 					.restricted = other->forbidsForward(),
 				});
 			}

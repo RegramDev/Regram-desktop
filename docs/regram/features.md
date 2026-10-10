@@ -9,7 +9,7 @@
 | 入口 | 内容 |
 | --- | --- |
 | 设置 → Regram 设置 | 界面、分组、资料、动态、翻译、媒体、消息菜单、加载优化；支持搜索设置项 |
-| 设置 → Regram Pro | 过滤器、隐藏用户、输入增强、防删除、幽灵模式、通知、图标与数据清除 |
+| 设置 → Regram 设置 | 消息过滤、隐藏用户、防删除、幽灵模式、通知与高级工具合并于同一页 |
 | 用户／群组／频道资料页 | 会话过滤开关、会话防撤回、隐藏发送者及扩展资料信息 |
 | 消息长按菜单／选中文字菜单 | 复读、转发、收藏、规则快捷添加与导入等 |
 | Telegram 原有设置页 | 代理 DNS、自动锁定、浏览器、存储和设备会话等补充选项 |
@@ -18,23 +18,9 @@
 
 **1. 消息过滤与隐藏用户**
 
-| 已加入功能 | 当前行为 |
-| --- | --- |
-| 普通关键词过滤 | 按不区分大小写的子串匹配隐藏收到的消息 |
-| 正则表达式过滤 | 使用 ICU 正则；添加时校验，无法编译的规则不执行 |
-| 规则管理 | 添加、编辑、删除，以及普通文本／正则类型切换 |
-| 规则适用范围 | 每条规则可应用于所有对话或限定到指定对话 |
-| 会话过滤开关 | 资料页可关闭当前会话的关键词／正则过滤 |
-| 快捷添加规则 | 从消息或选中文字菜单添加过滤内容，支持复制并添加 |
-| 导入与导出 | JSON 规则文件；导入合并并去重，保留原有规则；聊天中的规则文件也有快捷导入入口 |
-| 隐藏指定发送者 | 在本机隐藏指定用户或机器人的消息，覆盖其出现的不同对话 |
-| 已屏蔽用户管理 | 查看列表、打开资料、左滑解除隐藏 |
-| 对话列表预览联动 | 隐藏内容不会继续充当列表预览，回查可见消息；规则变更会刷新相关界面 |
-| 过滤性能处理 | 编译后的正则和消息判定有缓存，消息编辑与规则变更会使相关结果失效 |
+桌面端现已收敛至 Regram iOS 的规则模型，使用说明见 [消息过滤](message-filters.md)。保留关键词、正则、保留规则、指定聊天、隐藏用户、会话开关、临时恢复和可选通知过滤；导入／导出统一为 iOS JSON 数组。共享规则、替换／遮盖、反向匹配、全局／话题继承和单条隐藏均已移除，旧系统不再执行。
 
-会话过滤开关只影响关键词／正则规则；按发送者隐藏仍生效。这些功能是本机显示处理，不能据此认定系统推送也已按同一套规则过滤。
-
-依据：[规则模型](https://github.com/RegramDev/Regram-ios/blob/61c8a38bd6012faa2f00ddb1bedfc70007f390c7/Regram/RGSimpleSettings/Sources/MessageFilter.swift)、[管理界面](https://github.com/RegramDev/Regram-ios/blob/61c8a38bd6012faa2f00ddb1bedfc70007f390c7/Regram/RGProUI/Sources/MessageFilterController.swift)、[统一过滤判定](https://github.com/RegramDev/Regram-ios/blob/61c8a38bd6012faa2f00ddb1bedfc70007f390c7/submodules/AccountContext/Sources/RGContentFilter.swift)、[列表预览](https://github.com/RegramDev/Regram-ios/blob/61c8a38bd6012faa2f00ddb1bedfc70007f390c7/submodules/ChatListUI/Sources/Node/RGChatListPreviewFilter.swift)、[隐藏用户列表](https://github.com/RegramDev/Regram-ios/blob/61c8a38bd6012faa2f00ddb1bedfc70007f390c7/Regram/RGProUI/Sources/RGHiddenUsersController.swift)。
+源码行为及自动检查记录见 [iOS 对齐记录](ios-parity.md)。对话列表目前抑制隐藏内容的预览；与 iOS 相同的可见消息回查、排序和未读处理尚未完成全面验收，不能由规则单元测试推定。
 
 **2. 防删除、内容保存与幽灵模式**
 

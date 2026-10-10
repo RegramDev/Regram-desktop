@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/history_widget.h"
+#include "regram/filters/runtime.h"
 
 #include "api/api_compose_with_ai.h"
 #include "api/api_editing.h"
@@ -230,7 +231,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
-#include "regram/ayu/features/filters/filters_cache_controller.h"
 #include "regram/ayu/utils/telegram_helpers.h"
 #include "regram/ayu/features/message_shot/message_shot.h"
 #include "regram/ayu/features/forward/ayu_forward.h"
@@ -837,7 +837,7 @@ HistoryWidget::HistoryWidget(
 		session().changes().peerUpdates(
 			Data::PeerUpdate::Flag::IsBlocked
 		) | rpl::to_empty,
-		FiltersCacheController::updates()
+		Regram::Filters::Updates(&session())
 	) | rpl::on_next(
 		[=]
 		{

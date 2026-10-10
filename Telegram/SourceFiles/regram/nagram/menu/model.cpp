@@ -52,7 +52,8 @@ bool ValidateConfig(const QByteArray &raw) {
 	}
 	const auto states = root.value("states").toObject();
 	for (auto it = states.begin(); it != states.end(); ++it) {
-		if (!KnownKey(it.key()) || (version == 1 && it.key() == u"E22")
+		if ((!KnownKey(it.key()) && it.key() != u"E30")
+			|| (version == 1 && it.key() == u"E22")
 			|| !it.value().isString()) {
 			return false;
 		}
@@ -103,6 +104,7 @@ QByteArray WriteVisibility(
 			states.insert(u"E22", oldReading);
 		}
 	}
+	states.remove(u"E30");
 	const auto key = QString::fromLatin1(Key(id));
 	if (visibility == DefaultVisibility(id)) {
 		states.remove(key);

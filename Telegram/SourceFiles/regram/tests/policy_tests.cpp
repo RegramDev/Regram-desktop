@@ -82,6 +82,24 @@ void Exceptions() {
 		"timed-out keep cannot allow a later hide to remove the message");
 }
 
+void TimeoutRecovery() {
+	using namespace Regram::Filters;
+	auto rules = std::vector<Rule>();
+	for (auto index = 0; index != 8; ++index) {
+		rules.push_back({
+			.id = std::to_string(index),
+			.pattern = u"(a+)+$",
+			.regex = true,
+		});
+	}
+	rules.push_back({ .id = "literal", .pattern = u"sale" });
+	auto engine = Engine();
+	Check(engine.setRules(rules), "slow regex set accepted");
+	auto text = std::u16string(100000, u'a') + u"! sale";
+	Check(engine.evaluate(text, std::nullopt).hidden,
+		"iOS timeout budget continues to check literal rules");
+}
+
 void Reveal() {
 	using namespace Regram::Filters;
 	auto first = RevealPolicy();
@@ -107,8 +125,9 @@ void Filters() {
 	auto engine = Engine();
 	const auto peer = PeerAddress{ PeerKind::Channel, 123, 7 };
 	auto rule = Rule{ .id = "rule", .pattern = u"广告", .scopes = { peer } };
-	Check(engine.setRules({ rule }), "scoped rule accepted");
-	Check(engine.evaluate(u"这是广告", peer).hidden, "matching topic hidden");
+	Check(engine.setRules({ rule }), "retired topic rule retained for recovery");
+	Check(!engine.evaluate(u"这是广告", peer).hidden && !engine.problems().empty(),
+		"retired topic scope is inert without expanding to the whole chat");
 	Check(!engine.evaluate(u"广告", PeerAddress{ PeerKind::Channel, 123, 8 }).hidden,
 		"other topic preserved");
 	Check(!engine.evaluate(u"广告", PeerAddress{ PeerKind::User, 123, 7 }).hidden,
@@ -177,6 +196,7 @@ int main() {
 	PeerIds();
 	Filters();
 	Exceptions();
+	TimeoutRecovery();
 	Reveal();
 	std::cout << "Regram policy tests passed\n";
 }

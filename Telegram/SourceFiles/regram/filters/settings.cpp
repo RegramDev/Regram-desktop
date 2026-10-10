@@ -1,16 +1,18 @@
 #include "regram/filters/settings.h"
 
-#include "boxes/peer_list_controllers.h"
 #include "base/timer.h"
+#include "boxes/peer_list_controllers.h"
 #include "core/application.h"
 #include "core/file_utilities.h"
 #include "crl/crl_async.h"
 #include "crl/crl_on_main.h"
-#include "data/data_peer.h"
 #include "data/data_document.h"
 #include "data/data_document_media.h"
 #include "data/data_file_origin.h"
+#include "data/data_peer.h"
+#include "data/data_session.h"
 #include "data/data_thread.h"
+#include "history/history.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "regram/filters/runtime.h"
@@ -21,13 +23,15 @@
 #include "ui/widgets/checkbox.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/widgets/labels.h"
+#include "ui/widgets/popup_menu.h"
 #include "ui/wrap/vertical_layout.h"
+#include "window/window_session_controller.h"
 
 #include <QtCore/QFile>
 #include <QtCore/QSaveFile>
-#include <QtCore/QUuid>
 
 #include "styles/style_layers.h"
+#include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 
 namespace Regram::Filters {
@@ -57,18 +61,28 @@ public:
 		not_null<Main::Session*> session,
 		FnMut<void(not_null<Data::Thread*>)> selected);
 
+	void rowClicked(not_null<PeerListRow*> row) override;
+
 protected:
 	void prepareViewHook() override;
+
+private:
+	FnMut<void(not_null<Data::Thread*>)> _selected;
 
 };
 
 ScopePicker::ScopePicker(
 		not_null<Main::Session*> session,
 		FnMut<void(not_null<Data::Thread*>)> selected)
-: ChooseRecipientBoxController(session, std::move(selected), [](const auto thread) {
+: ChooseRecipientBoxController(session, [](auto) {}, [](const auto thread) {
 	const auto peer = thread->peer();
 	return peer->isUser() || peer->isChat() || peer->isChannel();
-}) {
+})
+, _selected(std::move(selected)) {
+}
+
+void ScopePicker::rowClicked(not_null<PeerListRow*> row) {
+	_selected(row->peer()->owner().history(row->peer()));
 }
 
 void ScopePicker::prepareViewHook() {
@@ -94,11 +108,13 @@ void EditorBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session,
 		StoredRules before,
-		size_t index) {
+		size_t index,
+		QString initialPattern) {
 	BindSession(box, session);
 	box->setTitle(tr::lng_nagram_filter_rules());
 	const auto existing = (index < before.rules.size());
-	const auto rule = existing ? before.rules[index] : Rule();
+	const auto rule = existing ? before.rules[index]
+		: Rule{ .pattern = initialPattern.toStdU16String() };
 	const auto input = box->addRow(object_ptr<Ui::InputField>(
 		box,
 		st::defaultInputField,
@@ -150,7 +166,7 @@ void EditorBox(
 				.kind = peer->isUser() ? PeerKind::User
 					: peer->isChat() ? PeerKind::Group : PeerKind::Channel,
 				.id = peer->id.value & PeerId::kChatTypeMask,
-				.thread = peer->isForum() ? uint64(thread->topicRootId().bare) : 0,
+				.thread = 0,
 			};
 			if (!ranges::contains(parsed.scopes, address)) {
 				if (parsed.scopes.size() == kMaxScopes) {
@@ -188,7 +204,7 @@ void EditorBox(
 	const auto save = crl::guard(session, [=] {
 		auto rules = before.rules;
 		auto changed = rule;
-		changed.pattern = input->getLastText().toStdU16String();
+		changed.pattern = input->getLastText().trimmed().toStdU16String();
 		changed.regex = regex->checked();
 		changed.enabled = enabled->checked();
 		changed.exception = exception->checked();
@@ -212,9 +228,14 @@ void EditorBox(
 		if (existing) {
 			rules[index] = std::move(changed);
 		} else {
-			changed.id = QUuid::createUuid().toString(
-				QUuid::WithoutBraces).toStdString();
-			rules.push_back(std::move(changed));
+			const auto merged = MergeRules(rules, { changed });
+			if (!merged.error.isEmpty() || merged.duplicates) {
+				input->showError();
+				box->showToast(merged.duplicates
+					? tr::lng_polls_add_option_duplicate(tr::now) : merged.error);
+				return;
+			}
+			rules = merged.rules;
 		}
 		if (const auto error = Write(session, before.raw, rules)
 			; !error.isEmpty()) {
@@ -300,16 +321,13 @@ void ImportFile(
 
 void ExportFile(
 		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session,
-		bool ios) {
+		not_null<Main::Session*> session) {
 	const auto current = Read(session);
 	if (!current.error.isEmpty()) {
 		box->showToast(current.error);
 		return;
 	}
-	const auto exported = ios ? ExportIosRules(current.rules) : ExportResult{
-		.data = ExportRules(current.rules),
-	};
+	const auto exported = ExportIosRules(current.rules);
 	if (!exported.error.isEmpty()) {
 		box->showToast(tr::lng_regram_filter_ios_scope_error(tr::now));
 		return;
@@ -319,7 +337,7 @@ void ExportFile(
 		Core::App().getFileDialogParent(),
 		tr::lng_nagram_config_export(tr::now),
 		tr::lng_nagram_config_file_filter(tr::now),
-		ios ? u"regram-message-filter.json"_q : u"regram-filters.json"_q,
+		u"regram-message-filter.json"_q,
 		crl::guard(session, crl::guard(box, [=](QString &&path) {
 			if (path.isEmpty()) {
 				return;
@@ -332,25 +350,6 @@ void ExportFile(
 				box->showToast(tr::lng_nagram_config_exported(tr::now));
 			}
 		})));
-}
-
-void ExportBox(
-		not_null<Ui::GenericBox*> box,
-		not_null<Main::Session*> session) {
-	BindSession(box, session);
-	box->setTitle(tr::lng_nagram_config_export());
-	const auto group = std::make_shared<Ui::RadiobuttonGroup>(1);
-	box->addRow(object_ptr<Ui::Radiobutton>(
-		box, group, 1, tr::lng_regram_filter_export_ios(tr::now),
-		st::settingsSendType), st::settingsSendTypePadding);
-	box->addRow(object_ptr<Ui::Radiobutton>(
-		box, group, 0, tr::lng_regram_filter_export_desktop(tr::now),
-		st::settingsSendType), st::settingsSendTypePadding);
-	AddText(box, tr::lng_regram_filter_export_about(tr::now));
-	box->addButton(tr::lng_nagram_config_export(), [=] {
-		ExportFile(box, session, group->current() == 1);
-	});
-	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
 }
 
 void CheckDocumentImport(
@@ -406,7 +405,7 @@ void FilterTestBox(
 				.kind = peer->isUser() ? PeerKind::User
 					: peer->isChat() ? PeerKind::Group : PeerKind::Channel,
 				.id = peer->id.value & PeerId::kChatTypeMask,
-				.thread = peer->isForum() ? uint64(thread->topicRootId().bare) : 0,
+				.thread = 0,
 			};
 			++state->generation;
 			state->result = peer->name();
@@ -464,6 +463,52 @@ void FilterTestBox(
 	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
 }
 
+void HiddenSendersBox(
+		not_null<Ui::GenericBox*> box,
+		not_null<Main::Session*> session) {
+	BindSession(box, session);
+	box->setTitle(tr::lng_regram_filter_hidden_senders());
+	AddText(box, tr::lng_regram_filter_hidden_senders_about(tr::now));
+	const auto rows = box->addRow(object_ptr<Ui::VerticalLayout>(box));
+	const auto refresh = [=] {
+		rows->clear();
+		auto peers = std::vector<not_null<PeerData*>>();
+		for (const auto id : HiddenSenders(session)) {
+			peers.push_back(session->data().peer(DeserializePeerId(id)));
+		}
+		ranges::sort(peers, [](const auto a, const auto b) {
+			return a->name().compare(b->name(), Qt::CaseInsensitive) < 0;
+		});
+		if (peers.empty()) {
+			rows->add(object_ptr<Ui::FlatLabel>(
+				rows, tr::lng_regram_filter_hidden_senders_empty(), st::boxLabel));
+		}
+		for (const auto peer : peers) {
+			const auto title = peer->name().isEmpty()
+				? QString::number(SerializePeerId(peer->id)) : peer->name();
+			const auto row = rows->add(object_ptr<Ui::SettingsButton>(
+				rows, rpl::single(title), st::settingsButtonNoIcon));
+			row->setClickedCallback([=] {
+				box->uiShow()->showBox(Ui::MakeConfirmBox({
+					.text = title,
+					.confirmed = crl::guard(box, [=](Fn<void()> close) {
+						if (!SetSenderHidden(peer, false)) {
+							box->showToast(tr::lng_nagram_filter_invalid(tr::now));
+						}
+						close();
+					}),
+					.confirmText = tr::lng_nagram_filter_author_show(),
+				}));
+			});
+		}
+	};
+	refresh();
+	Nagram::ForAccount(session).changes()
+		| rpl::filter([](std::string_view key) { return key == kHiddenSenders.key; })
+		| rpl::on_next([=] { crl::on_main(box, refresh); }, box->lifetime());
+	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
+}
+
 } // namespace
 
 void ImportDocumentBox(
@@ -497,6 +542,22 @@ void ImportDocumentBox(
 	start();
 }
 
+void AddRuleAction(
+		not_null<Ui::PopupMenu*> menu,
+		not_null<Window::SessionController*> controller,
+		QString pattern) {
+	if (pattern.trimmed().isEmpty() || pattern.size() > kMaxPatternUnits) {
+		return;
+	}
+	menu->addAction(tr::lng_regram_filter_import_document(tr::now),
+		crl::guard(controller, [=] {
+			const auto session = &controller->session();
+			const auto current = Read(session);
+			controller->show(Box(EditorBox, session,
+				current, current.rules.size(), pattern));
+		}), &st::menuIconTagFilter);
+}
+
 void SettingsBox(
 		not_null<Ui::GenericBox*> box,
 		not_null<Main::Session*> session) {
@@ -504,17 +565,6 @@ void SettingsBox(
 	box->setTitle(tr::lng_regram_ios_filters());
 	box->addRow(object_ptr<Ui::FlatLabel>(
 		box, tr::lng_regram_ios_filters_about(), st::boxLabel));
-	const auto enabled = box->addRow(object_ptr<Ui::Checkbox>(
-		box,
-		tr::lng_nagram_filter_enabled(tr::now),
-		Nagram::ForAccount(session).Get(kEnabled),
-		st::defaultBoxCheckbox));
-	enabled->checkedChanges() | rpl::on_next([=](bool value) {
-		Expects(Nagram::ForAccount(session).Set(kEnabled, value));
-	}, enabled->lifetime());
-	Nagram::ForAccount(session).Value(kEnabled) | rpl::on_next([=](bool value) {
-		enabled->setChecked(value, Ui::Checkbox::NotifyAboutChange::DontNotify);
-	}, enabled->lifetime());
 	const auto notifications = box->addRow(object_ptr<Ui::Checkbox>(
 		box,
 		tr::lng_regram_filter_mute_notifications(tr::now),
@@ -529,6 +579,11 @@ void SettingsBox(
 		notifications->setChecked(enabled, Ui::Checkbox::NotifyAboutChange::DontNotify);
 	},
 		notifications->lifetime());
+	const auto senders = box->addRow(object_ptr<Ui::SettingsButton>(
+		box, tr::lng_regram_filter_hidden_senders(), st::settingsButtonNoIcon));
+	senders->setClickedCallback([=] {
+		box->uiShow()->showBox(Box(HiddenSendersBox, session));
+	});
 	const auto state = box->lifetime().make_state<ViewState>();
 	const auto rows = box->addRow(object_ptr<Ui::VerticalLayout>(box));
 	state->refresh = [=] {
@@ -550,7 +605,7 @@ void SettingsBox(
 						: u" · "_q + tr::lng_nagram_config_off(tr::now))),
 				st::settingsButtonNoIcon));
 			row->setClickedCallback([=] {
-				box->uiShow()->showBox(Box(EditorBox, session, state->current, index));
+				box->uiShow()->showBox(Box(EditorBox, session, state->current, index, QString()));
 			});
 
 		}
@@ -558,7 +613,7 @@ void SettingsBox(
 			rows, tr::lng_nagram_filter_add(), st::settingsButtonNoIcon));
 		add->setClickedCallback([=] {
 			box->uiShow()->showBox(Box(EditorBox, session,
-				state->current, state->current.rules.size()));
+				state->current, state->current.rules.size(), QString()));
 		});
 	};
 	state->refresh();
@@ -570,7 +625,7 @@ void SettingsBox(
 	}, box->lifetime());
 	box->addButton(tr::lng_nagram_config_import(), [=] { ImportFile(box, session); });
 	box->addButton(tr::lng_nagram_config_export(), [=] {
-		box->uiShow()->showBox(Box(ExportBox, session));
+		ExportFile(box, session);
 	});
 	box->addButton(tr::lng_regram_filter_test(), [=] {
 		box->uiShow()->showBox(Box(FilterTestBox, session));

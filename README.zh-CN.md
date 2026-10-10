@@ -54,3 +54,5 @@ Liquid Glass 和独立 AppKit 界面已移除，使用 Telegram Desktop 原版 Q
 ## 许可证与致谢
 
 项目保留上游 [GPLv3 许可证及 OpenSSL 例外](LICENSE) 和 [第三方法律声明](LEGAL)，并保留 Telegram Desktop、Nagram-Qt、AyuGram Desktop 及其贡献者的代码署名。Regram 是独立客户端，并非 Telegram 官方产品。完整第三方库及许可证链接见 [英文 README](README.md#third-party)。
+
+消息过滤仅保留 Regram iOS 的规则模型和 JSON 格式，参见[使用与兼容说明](docs/regram/message-filters.md)。旧桌面专有过滤规则不再执行。

@@ -1,11 +1,7 @@
 #include "regram/nagram/settings/rules.h"
-#include "regram/ayu/ui/settings/settings_filters.h"
 
 #include "regram/nagram/settings/home.h"
-#include "regram/nagram/filters/settings.h"
 #include "regram/filters/settings.h"
-#include "regram/nagram/filters/hidden_messages.h"
-#include "regram/nagram/filters/model.h"
 #include "regram/nagram/notifications/settings.h"
 #include "regram/nagram/links/options.h"
 #include "regram/nagram/links/inline_rules.h"
@@ -146,15 +142,6 @@ const auto kMeta = BuildHelper({
 		.keywords = { u"iOS"_q, u"filter"_q, u"regex"_q },
 	});
 	builder.addButton({
-		.id = u"regram/nagram/rules/messages"_q,
-		.title = tr::lng_regram_content_rules(),
-		.st = &st::settingsButtonNoIcon,
-		.onClick = [=] {
-			controller->show(Box(Filters::SettingsBox, &controller->session()));
-		},
-		.keywords = { u"filter"_q, u"regex"_q },
-	});
-	builder.addButton({
 		.id = u"regram/nagram/rules/links"_q,
 		.title = tr::lng_nagram_link_rules(),
 		.st = &st::settingsButtonNoIcon,
@@ -164,46 +151,6 @@ const auto kMeta = BuildHelper({
 		.keywords = { u"link"_q, u"URL"_q },
 	});
 	const auto session = builder.session();
-	builder.addButton({
-		.id = u"regram/nagram/rules/hidden-messages"_q,
-		.title = tr::lng_nagram_hidden_messages(),
-		.st = &st::settingsButtonNoIcon,
-		.label = ForAccount(session).Value(Filters::kHiddenMessages)
-			| rpl::map([=](const QString &) {
-				return QString::number(Filters::HiddenMessagesCount(session));
-			}),
-		.onClick = [=] {
-			if (!Filters::HiddenMessagesCount(session)) {
-				return;
-			}
-			controller->show(Ui::MakeConfirmBox({
-				.text = tr::lng_nagram_hidden_messages_clear(),
-				.confirmed = [=](Fn<void()> &&close) {
-					Filters::ClearHiddenMessages(session);
-					close();
-				},
-			}));
-		},
-		.keywords = { u"hide"_q, u"message"_q },
-	});
-	builder.addButton({
-		.id = u"regram/nagram/rules/filters-global"_q,
-		.title = tr::lng_nagram_filter_global(),
-		.st = &st::settingsButtonNoIcon,
-		.onClick = [=] {
-			controller->show(Box(Filters::GlobalSettingsBox, session));
-		},
-		.keywords = { u"filter"_q, u"regex"_q, u"global"_q },
-	});
-	builder.addButton({
-		.id = u"regram/nagram/rules/filter-scopes"_q,
-		.title = tr::lng_nagram_filter_scopes(),
-		.st = &st::settingsButtonNoIcon,
-		.onClick = [=] {
-			controller->show(Box(Filters::ScopesSettingsBox, session));
-		},
-		.keywords = { u"filter"_q, u"chat"_q, u"topic"_q },
-	});
 	builder.addButton({
 		.id = u"regram/nagram/rules/keyword-alerts"_q,
 		.title = tr::lng_nagram_keyword_alerts(),
@@ -322,12 +269,7 @@ const auto kMeta = BuildHelper({
 		.keywords = { u"web app"_q, u"mini app"_q, u"browser"_q, u"regex"_q },
 	});
 	builder.addDividerText(tr::lng_nagram_webview_external_about());
-	builder.addSectionButton({
-		.title = tr::lng_regram_legacy_filters(),
-		.targetSection = ::Settings::AyuFiltersId(),
-		.icon = { &st::menuIconTagFilter },
-		.keywords = { u"regex"_q, u"exclusion"_q, u"blocked"_q },
-	});
+
 });
 
 const SectionBuildMethod RulesSection::kBuild = kMeta.build;
