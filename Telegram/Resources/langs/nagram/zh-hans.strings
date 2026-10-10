@@ -894,3 +894,19 @@
 "lng_regram_filter_hidden_senders_about" = "这些用户的消息会在所有聊天中隐藏，不受聊天关键词过滤开关影响。点击用户可恢复显示；此操作不会在 Telegram 上拉黑用户。";
 
 "lng_regram_filter_hidden_senders_empty" = "尚无隐藏用户。可从用户资料或消息右键菜单隐藏用户。";
+
+"lng_regram_ios_filters" = "消息过滤";
+
+"lng_regram_filter_regex" = "正则表达式";
+
+"lng_regram_filter_scopes#one" = "适用于 {count} 个聊天范围。编辑关键词时会保留这些范围。";
+
+"lng_regram_filter_scopes#other" = "适用于 {count} 个聊天范围。编辑关键词时会保留这些范围。";
+
+"lng_regram_filter_import_preview#one" = "添加 {count} 条规则？将跳过 {amount} 条重复规则，{limit} 条无效规则将保持停用。";
+
+"lng_regram_filter_import_preview#other" = "添加 {count} 条规则？将跳过 {amount} 条重复规则，{limit} 条无效规则将保持停用。";
+
+"lng_regram_filter_mute_notifications" = "不通知被过滤的消息";
+
+"lng_regram_filter_all_chats" = "适用于所有聊天";
