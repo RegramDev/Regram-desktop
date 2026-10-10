@@ -15,7 +15,7 @@ permissions:
 jobs:
   windows:
     if: inputs.platform == 'all' || inputs.platform == 'windows'
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 360
     defaults:
       run:
@@ -30,6 +30,10 @@ jobs:
           arch: x64
           toolset: '14.44'
           sdk: '10.0.26100.0'
+      - name: Verify ATL toolchain
+        run: |
+          $atlHeader = Join-Path $env:VCToolsInstallDir 'atlmfc/include/atlbase.h'
+          if (!(Test-Path $atlHeader)) { throw "ATL headers are missing from the selected MSVC toolchain" }
       - uses: actions/cache/restore@v6
         id: dependencies
         with:
