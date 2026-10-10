@@ -69,6 +69,8 @@ add_executable(test_regram_typography EXCLUDE_FROM_ALL
     ${src_loc}/regram/tests/typography_tests.cpp
     ${src_loc}/regram/typography/font_data.cpp)
 init_target(test_regram_typography "(tests)")
+set_target_properties(test_regram_typography PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>")
 target_include_directories(test_regram_typography PRIVATE ${src_loc})
 target_link_libraries(test_regram_typography PRIVATE desktop-app::external_qt)
 target_compile_definitions(test_regram_typography PRIVATE
