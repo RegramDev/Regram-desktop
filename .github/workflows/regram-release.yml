@@ -30,12 +30,14 @@ jobs:
           arch: x64
           toolset: '14.44'
           sdk: '10.0.26100.0'
-      - uses: actions/cache@v6
+      - uses: actions/cache/restore@v6
+        id: dependencies
         with:
           path: |
             Libraries
             ThirdParty
           key: regram-release-windows-${{ hashFiles('source/Telegram/build/prepare/**', 'source/Telegram/build/qt_version.py') }}
+          restore-keys: regram-release-windows-
       - name: Prepare Release dependencies
         shell: cmd
         run: source\Telegram\build\prepare\win.bat qt6 silent
@@ -79,6 +81,13 @@ jobs:
           path: source/.local/regram/installers/*
           if-no-files-found: error
           retention-days: 14
+      - uses: actions/cache/save@v6
+        if: always() && steps.dependencies.outputs.cache-hit != 'true'
+        with:
+          path: |
+            Libraries
+            ThirdParty
+          key: ${{ steps.dependencies.outputs.cache-primary-key }}
 
   macos-intel:
     if: inputs.platform == 'all' || inputs.platform == 'macos-intel'
@@ -96,12 +105,14 @@ jobs:
           path: source
       - name: Install tools
         run: brew install autoconf automake boost cmake libtool meson nasm ninja pkg-config
-      - uses: actions/cache@v6
+      - uses: actions/cache/restore@v6
+        id: dependencies
         with:
           path: |
             Libraries
             ThirdParty
           key: regram-release-macos-intel-${{ hashFiles('source/Telegram/build/prepare/**', 'source/Telegram/build/qt_version.py') }}
+          restore-keys: regram-release-macos-intel-
       - name: Prepare Release dependencies
         run: source/Telegram/build/prepare/mac.sh silent
       - name: Configure private API
@@ -131,6 +142,13 @@ jobs:
           path: source/.local/regram/installers/*
           if-no-files-found: error
           retention-days: 14
+      - uses: actions/cache/save@v6
+        if: always() && steps.dependencies.outputs.cache-hit != 'true'
+        with:
+          path: |
+            Libraries
+            ThirdParty
+          key: ${{ steps.dependencies.outputs.cache-primary-key }}
 
   linux:
     if: inputs.platform == 'all' || inputs.platform == 'linux'

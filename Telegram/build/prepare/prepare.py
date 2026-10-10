@@ -1056,12 +1056,21 @@ release:
     cmake --build . --config Release
     cmake --install . --config Release
 mac:
-    cmake . \\
-        -D CMAKE_OSX_ARCHITECTURES="x86_64;arm64" \\
-        -D CMAKE_INSTALL_PREFIX:STRING=$USED_PREFIX \\
-        ${cmake_defines}
-    cmake --build . --config MinSizeRel
-    cmake --install . --config MinSizeRel
+    for jxl_arch in arm64 x86_64; do
+        cmake -S . -B build.$jxl_arch \\
+            -D CMAKE_BUILD_TYPE=Release \\
+            -D CMAKE_OSX_ARCHITECTURES=$jxl_arch \\
+            -D CMAKE_INSTALL_PREFIX:STRING=$USED_PREFIX \\
+            ${cmake_defines}
+        cmake --build build.$jxl_arch
+        cmake --install build.$jxl_arch --prefix $PWD/install.$jxl_arch
+    done
+    for jxl_archive in libjxl.a libjxl_cms.a libjxl_threads.a libhwy.a; do
+        lipo -create install.arm64/lib/$jxl_archive \\
+            install.x86_64/lib/$jxl_archive \\
+            -output install.x86_64/lib/$jxl_archive
+    done
+    cp -a install.x86_64/. $USED_PREFIX/
 """)
 
 stage('libvpx', """
