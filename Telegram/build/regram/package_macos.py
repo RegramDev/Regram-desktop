@@ -122,7 +122,11 @@ def main():
         "notarized": bool(args.notary_profile), "sha256": checksum,
         "bytes": dmg.stat().st_size,
         "source_commit": run(["git", "-C", root, "rev-parse", "HEAD"], capture=True).strip(),
-        "working_tree_dirty": bool(run(["git", "-C", root, "status", "--porcelain"], capture=True)),
+        "working_tree_dirty": bool(run([
+            "git", "-C", root, "status", "--porcelain", "--ignore-submodules=dirty",
+        ], capture=True)),
+        "submodule_patches": json.loads(
+            (root / "Telegram/build/regram/patches/manifest.json").read_text()),
     }
     (output / f"{stem}.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, indent=2))
