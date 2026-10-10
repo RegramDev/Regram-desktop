@@ -201,7 +201,7 @@ jobs:
           sudo apt-get install -y xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 libegl1 libopengl0 libgtk-3-0 libpulse0
           mkdir -p "$RUNNER_TEMP/regram-payload" "$RUNNER_TEMP/regram-install-home"
           tar -xJf .local/regram/installers/Regram-*-Linux-x64.tar.xz -C "$RUNNER_TEMP/regram-payload"
-          HOME="$RUNNER_TEMP/regram-install-home" XDG_DATA_HOME="$RUNNER_TEMP/regram-install-home/.local/share" "$RUNNER_TEMP/regram-payload/Regram/install.sh"
+          REGRAM_INSTALL_HOME="$RUNNER_TEMP/regram-install-home" XDG_DATA_HOME="$RUNNER_TEMP/regram-install-home/.local/share" "$RUNNER_TEMP/regram-payload/Regram/install.sh"
           xvfb-run -a python3 Telegram/build/regram/smoke_launch.py --executable "$RUNNER_TEMP/regram-install-home/.local/share/regram/Regram"
       - uses: actions/upload-artifact@v7
         with:

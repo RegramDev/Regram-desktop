@@ -81,13 +81,14 @@ def main():
             (staging / "install.sh").write_text(
                 '#!/bin/sh\nset -eu\n'
                 'source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
-                'data_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}\n'
+                'install_home=${REGRAM_INSTALL_HOME:-"$HOME"}\n'
+                'data_dir=${XDG_DATA_HOME:-"$install_home/.local/share"}\n'
                 'target_dir="$data_dir/regram"\n'
-                'mkdir -p "$target_dir" "$HOME/.local/bin" "$data_dir/applications" '
+                'mkdir -p "$target_dir" "$install_home/.local/bin" "$data_dir/applications" '
                 '"$data_dir/icons/hicolor/256x256/apps"\n'
                 'install -m 755 "$source_dir/Regram" "$target_dir/Regram"\n'
                 'install -m 644 "$source_dir/LICENSE" "$source_dir/LEGAL" "$target_dir/"\n'
-                'ln -sfn "$target_dir/Regram" "$HOME/.local/bin/Regram"\n'
+                'ln -sfn "$target_dir/Regram" "$install_home/.local/bin/Regram"\n'
                 "escaped_dir=$(printf '%s' \"$target_dir\" | sed 's/[\\\\&|]/\\\\&/g')\n"
                 'sed "s|^Exec=Regram -- %U$|Exec=\\\"$escaped_dir/Regram\\\" -- %U|; '
                 's|^Exec=Regram -quit$|Exec=\\\"$escaped_dir/Regram\\\" -quit|; '
