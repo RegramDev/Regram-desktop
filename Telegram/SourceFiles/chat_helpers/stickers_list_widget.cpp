@@ -327,16 +327,18 @@ StickersListWidget::StickersListWidget(
 		TabbedSelector::Action::Update
 	) | rpl::start_to_stream(_choosingUpdated, lifetime());
 
-	if (_isEffects) {
+	Regram::Premium::ForLocalFeaturesValue(&session())
+	| rpl::on_next([=] {
 		refreshStickers();
-	} else {
-		rpl::merge(
-			Regram::Premium::ForLocalFeaturesValue(&session()) | rpl::to_empty,
-			session().api().premium().cloudSetUpdated()
-		) | rpl::on_next([=] {
+	}, lifetime());
+	if (!_isEffects) {
+		session().api().premium().cloudSetUpdated()
+		| rpl::on_next([=] {
 			refreshStickers();
 		}, lifetime());
 	}
+	AyuSettings::getInstance().unlimitedRecentStickersChanges()
+	| rpl::on_next([=] { refreshRecent(); }, lifetime());
 }
 
 rpl::producer<FileChosen> StickersListWidget::chosen() const {

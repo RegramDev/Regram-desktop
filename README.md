@@ -28,6 +28,8 @@ Builds currently use ad-hoc signing on macOS and are unsigned on Windows. They a
 - Additional appearance, media, notification, screenshot, and context-menu settings.
 - Regram settings, settings search, and portable preference backups.
 
+The next version consolidates Regram settings and adds iOS filter backups, quick translation, local Premium display fixes, per-chat input preferences, and the iOS font catalog. See the [iOS parity record](docs/regram/ios-parity.md) for implementation and verification status; these changes are not part of the existing 7.3.1 packages.
+
 Liquid Glass and the separate AppKit interface have been removed. Regram retains Telegram Desktop's Qt layout and uses independent application and data identifiers. Upstream automatic updates and crash uploads are disabled; update through Regram Releases.
 
 Porting is ongoing. This list does **not** mean every Nagram/AyuGram feature or every M0–M8 item has passed acceptance testing. See the [feature checks](docs/regram/feature-checks.md), [feature matrix](docs/regram/regram-desktop-feature-matrix.md), and [development record](docs/regram/progress.md) for implemented paths, known differences, and test coverage.

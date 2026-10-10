@@ -1862,10 +1862,9 @@ Section DetailsFiller::makeInfo() {
 		}
 
 		{
-			const auto dataCenter = getPeerDC(_peer);
-			const auto idLabel = dataCenter.isEmpty() ? u"ID"_q : dataCenter;
+			const auto idLabel = tr::lng_nagram_profile_id(tr::now);
 
-			auto idDrawableText = IDValue(
+			auto idDrawableText = Nagram::Privacy::ProfileIdValue(
 				user
 			) | rpl::map([](TextWithEntities &&text)
 			{
@@ -1978,10 +1977,9 @@ Section DetailsFiller::makeInfo() {
 		}
 
 		if (!_topic) {
-			const auto dataCenter = getPeerDC(_peer);
-			const auto idLabel = dataCenter.isEmpty() ? u"ID"_q : dataCenter;
+			const auto idLabel = tr::lng_nagram_profile_id(tr::now);
 
-			auto idDrawableText = IDValue(
+			auto idDrawableText = Nagram::Privacy::ProfileIdValue(
 				_peer
 			) | rpl::map([](TextWithEntities &&text)
 			{
@@ -2030,8 +2028,6 @@ Section DetailsFiller::makeInfo() {
 		}
 	}
 	if (!_topic) {
-		addInfoOneLine(tr::lng_nagram_profile_id(),
-			Nagram::Privacy::ProfileIdValue(_peer), QString());
 		addInfoOneLine(tr::lng_nagram_profile_dc(),
 			Nagram::Privacy::ProfileDcValue(_peer), QString());
 		addInfoOneLine(Nagram::Privacy::ProfileRegistrationLabel(_peer),

@@ -194,15 +194,36 @@ std::vector<AppIconChoice> AppIconChoices() {
 	for (const auto id : kAppIconIds) {
 		result.push_back({ QString::fromUtf16(id), Title(id) });
 	}
+	const auto presets = std::array{
+		AyuAssets::ALT_ICON, AyuAssets::DISCORD_ICON, AyuAssets::SPOTIFY_ICON,
+		AyuAssets::EXTERA_ICON, AyuAssets::NOTHING_ICON, AyuAssets::BARD_ICON,
+		AyuAssets::YAPLUS_ICON, AyuAssets::WIN95_ICON, AyuAssets::CHIBI_ICON,
+		AyuAssets::CHIBI2_ICON, AyuAssets::EXTERA2_ICON,
+	};
+	for (auto index = 0; index != int(presets.size()); ++index) {
+		result.push_back({
+			u"preset:"_q + presets[index],
+			tr::lng_regram_icon_preset(tr::now, lt_index, QString::number(index + 1)),
+		});
+	}
 	return result;
 }
 
 QString AppIconTitle(const QString &id) {
+	if (id.startsWith(u"preset:"_q)) {
+		for (const auto &choice : AppIconChoices()) {
+			if (choice.id == id) {
+				return choice.title;
+			}
+		}
+	}
 	return Title(id);
 }
 
 QImage AppIconPreview(const QString &id) {
-	return Load(id, false);
+	return id.startsWith(u"preset:"_q)
+		? AyuAssets::loadPreview(id.mid(7))
+		: Load(id, false);
 }
 
 const QImage *CustomLogo() {
@@ -239,6 +260,8 @@ void StartAppIcon(rpl::lifetime &lifetime) {
 	if (const auto icon = CustomAppIcon(); !icon.isNull()) {
 		Platform::SetApplicationIcon(icon);
 	}
+	AyuSettings::getInstance().appIconChanges()
+	| rpl::on_next([] { Refresh(); }, lifetime);
 	ForDevice().changes(
 	) | rpl::filter([](auto key) {
 		return key == kAppIcon.key;

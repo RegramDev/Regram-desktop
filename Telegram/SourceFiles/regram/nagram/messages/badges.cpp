@@ -2,6 +2,7 @@
 
 #include "regram/nagram/core/options.h"
 #include "regram/nagram/messages/options.h"
+#include "regram/ayu/ayu_settings.h"
 #include "ui/rp_widget.h"
 
 namespace Nagram::Messages {
@@ -35,6 +36,8 @@ void AttachPremiumRefresh(not_null<Ui::RpWidget*> widget) {
 	}) | rpl::on_next([widget](std::string_view) {
 		widget->update();
 	}, widget->lifetime());
+	AyuSettings::getInstance().localPremiumChanges()
+	| rpl::on_next([widget] { widget->update(); }, widget->lifetime());
 }
 
 } // namespace Nagram::Messages

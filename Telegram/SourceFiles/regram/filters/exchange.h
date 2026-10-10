@@ -20,8 +20,17 @@ struct MergeResult {
 	QString error;
 };
 
+struct ExportResult {
+	QByteArray data;
+	QString error;
+};
+
+inline constexpr auto kMaxImportBytes = 8 * 1024 * 1024;
+
 [[nodiscard]] ImportResult ImportRules(const QByteArray &data);
 [[nodiscard]] QByteArray ExportRules(const std::vector<Rule> &rules);
+[[nodiscard]] ExportResult ExportIosRules(const std::vector<Rule> &rules);
+[[nodiscard]] bool IsRulesFileName(const QString &name);
 [[nodiscard]] MergeResult MergeRules(
 	const std::vector<Rule> &existing,
 	const std::vector<Rule> &imported);

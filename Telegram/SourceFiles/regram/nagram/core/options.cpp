@@ -129,6 +129,8 @@ const Registry &RegisteredOptions() {
 		Filters::RegisterOptions(result);
 		Expects(result.Add(Regram::Filters::kPortableRules));
 		Expects(result.Add(Regram::Filters::kSuppressNotifications));
+		Expects(result.Add(Regram::Filters::kEnabled));
+		Expects(result.Add(Regram::Filters::kDisabledChats));
 		Links::RegisterOptions(result);
 		Links::RegisterBehaviorOptions(result);
 		Links::RegisterInlineOptions(result);

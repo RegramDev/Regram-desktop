@@ -1,6 +1,7 @@
 #include "regram/nagram/interface/roundness.h"
 
 #include "regram/nagram/interface/options.h"
+#include "regram/ayu/ui/ayu_userpic.h"
 #include "data/data_peer.h"
 #include "media/streaming/media_streaming_instance.h"
 #include "ui/image/image_prepare.h"
@@ -12,15 +13,11 @@ namespace Nagram::Interface {
 namespace {
 
 int BubbleRoundness = 0;
-int AvatarRoundness = 0;
-bool UniformAvatarShapes = false;
 
 } // namespace
 
 void StartRoundness() {
 	BubbleRoundness = ForDevice().Get(kBubbleRoundness);
-	AvatarRoundness = ForDevice().Get(kAvatarRoundness);
-	UniformAvatarShapes = ForDevice().Get(kUniformAvatarShapes);
 }
 
 int BubblePercent() {
@@ -34,13 +31,9 @@ int AdjustBubbleRadius(int radius) {
 }
 
 std::optional<int> AvatarRadius(int size, Ui::PeerUserpicShape shape) {
-	if (!AvatarRoundness
-		|| (!UniformAvatarShapes
-			&& (shape == Ui::PeerUserpicShape::Forum
-				|| shape == Ui::PeerUserpicShape::Monoforum))) {
-		return std::nullopt;
-	}
-	return std::max(1, size * AvatarRoundness / 200);
+	return AyuUserpic::ShouldOverrideShape(shape)
+		? std::optional(AyuUserpic::ComputeRadius(size))
+		: std::nullopt;
 }
 
 Ui::PeerUserpicShape ResolvedAvatarShape(

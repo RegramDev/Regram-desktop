@@ -10,5 +10,6 @@ namespace Nagram {
 
 [[nodiscard]] Settings::Type HomeId();
 void AddSettingsEntry(Settings::Builder::SectionBuilder &builder);
+void AddCategoryEntries(Settings::Builder::SectionBuilder &builder);
 
 } // namespace Nagram

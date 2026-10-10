@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "core/application.h"
+#include "regram/typography/fonts.h"
 #include "regram/nagram/interface/app_icon.h"
 #include "regram/nagram/interface/roundness.h"
 #include "regram/nagram/interface/text.h"
@@ -339,6 +340,7 @@ void Application::run() {
 	Nagram::Interface::StartUiText();
 	Nagram::Interface::StartAppIcon(_lifetime);
 
+	Regram::Typography::Start();
 	style::SetCustomFont(settings().customFontFamily());
 	style::internal::StartFonts();
 

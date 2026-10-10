@@ -1,8 +1,11 @@
 #include "regram/nagram/settings/services.h"
+#include "regram/ayu/ayu_settings.h"
 #include "regram/nagram/settings/home.h"
 
 #include "core/application.h"
 #include "core/file_utilities.h"
+#include "core/core_settings.h"
+#include "boxes/translate_box.h"
 #include "lang/lang_keys.h"
 #include "regram/nagram/services/auto_translate.h"
 #include "regram/nagram/services/send_translation.h"
@@ -72,13 +75,31 @@ bool Current(not_null<Ui::GenericBox*> box, const QJsonObject &expected) {
 	return false;
 }
 
+QString DefaultTranslationId() {
+	switch (AyuSettings::getInstance().translationProvider()) {
+	case TranslationProvider::Telegram: return u":telegram"_q;
+	case TranslationProvider::Google: return u":google"_q;
+	case TranslationProvider::Yandex: return u":yandex"_q;
+	case TranslationProvider::Native: return u":system"_q;
+	}
+	Unexpected("Translation provider");
+}
+
+QString DefaultTranslationName() {
+	const auto id = DefaultTranslationId();
+	return (id == u":google"_q) ? u"Google"_q
+		: (id == u":yandex"_q) ? u"Yandex"_q
+		: (id == u":system"_q) ? tr::lng_nagram_service_system(tr::now)
+		: u"Telegram"_q;
+}
+
 QString TranslationSelectionName(const std::optional<QJsonObject> &config) {
 	if (!config) {
 		return tr::lng_nagram_service_invalid(tr::now);
 	}
 	const auto id = config->value(u"translation"_q).toString();
 	if (id.isEmpty()) {
-		return tr::lng_nagram_inherit(tr::now);
+		return DefaultTranslationName();
 	} else if (id == u"telegram"_q) {
 		return u"Telegram"_q;
 	} else if (id == u"system"_q) {
@@ -98,10 +119,11 @@ void TranslationSourceBox(not_null<Ui::GenericBox*> box) {
 			box, tr::lng_nagram_service_invalid(), st::boxLabel));
 		return;
 	}
-	auto ids = QStringList{ QString(), u"telegram"_q, u"system"_q };
+	auto ids = QStringList{ u":telegram"_q, u":google"_q, u":yandex"_q, u":system"_q };
 	auto titles = QStringList{
-		tr::lng_nagram_inherit(tr::now),
 		u"Telegram"_q,
+		u"Google"_q,
+		u"Yandex"_q,
 		tr::lng_nagram_service_system(tr::now),
 	};
 	for (const auto &value : current->value(u"instances"_q).toArray()) {
@@ -111,14 +133,16 @@ void TranslationSourceBox(not_null<Ui::GenericBox*> box) {
 			titles.push_back(service->name);
 		}
 	}
-	const auto selected = std::max<qsizetype>(0, ids.indexOf(
-		current->value(u"translation"_q).toString()));
+	const auto id = current->value(u"translation"_q).toString();
+	const auto selectedId = id.isEmpty() ? DefaultTranslationId()
+		: (id == u"telegram"_q || id == u"system"_q) ? u":"_q + id : id;
+	const auto selected = std::max<qsizetype>(0, ids.indexOf(selectedId));
 	const auto group = std::make_shared<Ui::RadiobuttonGroup>(selected);
 	for (auto index = 0; index != ids.size(); ++index) {
 		const auto row = box->addRow(object_ptr<Ui::Radiobutton>(
 			box, group, index, titles[index], st::settingsSendType),
 			st::settingsSendTypePadding);
-		if (index == 2 && !Platform::IsTranslateProviderAvailable()) {
+		if (index == 3 && !Platform::IsTranslateProviderAvailable()) {
 			row->setDisabled(true);
 		}
 	}
@@ -131,10 +155,20 @@ void TranslationSourceBox(not_null<Ui::GenericBox*> box) {
 			return;
 		}
 		auto updated = *current;
-		updated.insert(u"translation"_q, ids[value]);
+		const auto builtin = (value < 4);
+		updated.insert(u"translation"_q, builtin ? QString() : ids[value]);
 		if (!SetServices(updated)) {
 			box->showToast(tr::lng_nagram_service_invalid(tr::now));
 			return;
+		}
+		if (builtin) {
+			const auto providers = std::array{
+				TranslationProvider::Telegram,
+				TranslationProvider::Google,
+				TranslationProvider::Yandex,
+				TranslationProvider::Native,
+			};
+			AyuSettings::getInstance().setTranslationProvider(providers[value]);
 		}
 		Core::App().saveSettingsDelayed();
 		box->closeBox();
@@ -676,14 +710,36 @@ const auto kMeta = BuildHelper({
 	.icon = &st::menuIconTranslate,
 }, [](SectionBuilder &builder) {
 	const auto controller = builder.controller();
+	const auto quickTranslate = builder.addButton({
+		.id = u"regram/services/quick-translate"_q,
+		.title = tr::lng_regram_quick_translate(),
+		.st = &st::settingsButtonNoIcon,
+		.toggled = ForDevice().Value(kQuickTranslateButton),
+		.keywords = { u"translate"_q, u"quick"_q, u"iOS"_q },
+	});
+	if (quickTranslate) {
+		quickTranslate->toggledChanges() | rpl::on_next([](bool enabled) {
+			Expects(ForDevice().Set(kQuickTranslateButton, enabled));
+		}, quickTranslate->lifetime());
+	}
+	builder.addDividerText(tr::lng_regram_quick_translate_about());
+	builder.addButton({
+		.id = u"regram/services/skip-languages"_q,
+		.title = tr::lng_translate_settings_choose(),
+		.st = &st::settingsButtonNoIcon,
+		.onClick = [=] { controller->show(Ui::EditSkipTranslationLanguages()); },
+		.keywords = { u"translate"_q, u"skip"_q, u"language"_q },
+	});
 	builder.addButton({
 		.id = u"regram/nagram/services/translation"_q,
 		.title = tr::lng_nagram_service_translation(),
 		.st = &st::settingsButtonNoIcon,
-		.label = ForDevice().Value(kServicesConfig)
-			| rpl::map([](const QByteArray &) {
-				return TranslationSelectionName(Services());
-			}),
+		.label = rpl::combine(
+			ForDevice().Value(kServicesConfig),
+			AyuSettings::getInstance().translationProviderValue()
+		) | rpl::map([] {
+			return TranslationSelectionName(Services());
+		}),
 		.onClick = [=] { controller->show(Box(TranslationSourceBox)); },
 		.keywords = { u"translation"_q, u"system"_q },
 	});

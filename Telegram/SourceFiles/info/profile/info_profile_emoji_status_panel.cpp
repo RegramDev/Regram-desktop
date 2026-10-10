@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_emoji_status_panel.h"
+#include "regram/core/local_premium.h"
 
 #include "api/api_peer_photo.h"
 #include "apiwrap.h"
@@ -321,7 +322,7 @@ bool EmojiStatusPanel::filter(
 		EmojiStatusId chosenId) const {
 	if (_chooseFilter) {
 		return _chooseFilter(chosenId);
-	} else if (chosenId && !controller->session().premium()) {
+	} else if (chosenId && !Regram::Premium::ForLocalFeatures(controller->session())) {
 		ShowPremiumPreviewBox(controller, PremiumFeature::EmojiStatus);
 		return false;
 	}

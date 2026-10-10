@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_values.h"
+#include "regram/core/local_premium.h"
 #include "regram/nagram/privacy/alias.h"
 
 #include "api/api_chat_participants.h"
@@ -723,7 +724,7 @@ rpl::producer<BadgeType> BadgeValueFromFlags(Peer peer) {
 		Data::PeerFlagsValue(
 			peer,
 			Flag::Verified | Flag::Scam | Flag::Fake),
-		Data::PeerPremiumValue(peer)
+		Regram::Premium::ForPeerBadgeValue(peer)
 	) | rpl::map([=](base::flags<Flag> value, bool premium) {
 		return (value & Flag::Scam)
 			? BadgeType::Scam

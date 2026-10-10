@@ -1,4 +1,5 @@
 #include "regram/nagram/settings/rules.h"
+#include "regram/ayu/ui/settings/settings_filters.h"
 
 #include "regram/nagram/settings/home.h"
 #include "regram/nagram/filters/settings.h"
@@ -146,7 +147,7 @@ const auto kMeta = BuildHelper({
 	});
 	builder.addButton({
 		.id = u"regram/nagram/rules/messages"_q,
-		.title = tr::lng_nagram_filters(),
+		.title = tr::lng_regram_content_rules(),
 		.st = &st::settingsButtonNoIcon,
 		.onClick = [=] {
 			controller->show(Box(Filters::SettingsBox, &controller->session()));
@@ -321,6 +322,12 @@ const auto kMeta = BuildHelper({
 		.keywords = { u"web app"_q, u"mini app"_q, u"browser"_q, u"regex"_q },
 	});
 	builder.addDividerText(tr::lng_nagram_webview_external_about());
+	builder.addSectionButton({
+		.title = tr::lng_regram_legacy_filters(),
+		.targetSection = ::Settings::AyuFiltersId(),
+		.icon = { &st::menuIconTagFilter },
+		.keywords = { u"regex"_q, u"exclusion"_q, u"blocked"_q },
+	});
 });
 
 const SectionBuildMethod RulesSection::kBuild = kMeta.build;

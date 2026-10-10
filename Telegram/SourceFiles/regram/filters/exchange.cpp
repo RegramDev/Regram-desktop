@@ -15,8 +15,6 @@
 namespace Regram::Filters {
 namespace {
 
-constexpr auto kMaxImportBytes = 8 * 1024 * 1024;
-
 QString NewId() {
 	return QUuid::createUuid().toString(QUuid::WithoutBraces);
 }
@@ -149,11 +147,12 @@ bool ReadScopes(const QJsonArray &scopes, Rule &rule) {
 	return true;
 }
 
-bool ReadRule(const QJsonValue &value, bool legacy, Rule &rule) {
+bool ReadRule(const QJsonValue &value, int version, Rule &rule) {
 	if (!value.isObject()) {
 		return false;
 	}
 	const auto object = value.toObject();
+	const auto legacy = (version == 0);
 	const auto id = object.value(u"id"_q);
 	const auto pattern = object.value(u"pattern"_q);
 	const auto regex = object.value(legacy ? u"isRegex"_q : u"regex"_q);
@@ -171,15 +170,29 @@ bool ReadRule(const QJsonValue &value, bool legacy, Rule &rule) {
 	rule.pattern = pattern.toString().toStdU16String();
 	rule.regex = regex.toBool();
 	if (legacy) {
-		return object.size() == 4 && ReadLegacyScopes(scopes.toArray(), rule);
+		const auto enabled = object.value(u"isEnabled"_q);
+		const auto exception = object.value(u"isException"_q);
+		if ((!enabled.isUndefined() && !enabled.isNull() && !enabled.isBool())
+			|| (!exception.isUndefined() && !exception.isNull() && !exception.isBool())
+			|| object.size() != 4 + object.contains(u"isEnabled"_q)
+				+ object.contains(u"isException"_q)) {
+			return false;
+		}
+		rule.enabled = enabled.toBool(true);
+		rule.exception = exception.toBool(false);
+		return ReadLegacyScopes(scopes.toArray(), rule);
 	}
 	const auto enabled = object.value(u"enabled"_q);
+	const auto exception = object.value(u"exception"_q);
 	const auto unresolved = object.value(u"unresolvedScopes"_q);
-	if (!enabled.isBool() || !unresolved.isArray() || object.size() != 6
+	if (!enabled.isBool() || !unresolved.isArray()
+		|| object.size() != (version == 1 ? 6 : 7)
+		|| (version == 2 && !exception.isBool())
 		|| unresolved.toArray().size() > kMaxScopes) {
 		return false;
 	}
 	rule.enabled = enabled.toBool();
+	rule.exception = exception.toBool(false);
 	for (const auto &entry : unresolved.toArray()) {
 		if (!entry.isString() || entry.toString().size() > 256) {
 			return false;
@@ -203,9 +216,10 @@ ImportResult ImportRules(const QByteArray &data) {
 	}
 	const auto legacy = document.isArray();
 	const auto object = document.object();
+	const auto version = legacy ? 0 : object.value(u"version"_q).toInt();
 	if (!legacy && (!document.isObject() || object.size() != 3
 		|| object.value(u"format"_q) != u"regram.filters"_q
-		|| object.value(u"version"_q) != 1
+		|| (version != 1 && version != 2)
 		|| !object.value(u"rules"_q).isArray())) {
 		return { .error = u"Unsupported rule file format or version"_q };
 	}
@@ -218,7 +232,7 @@ ImportResult ImportRules(const QByteArray &data) {
 	auto scopeCount = size_t();
 	for (const auto &entry : entries) {
 		auto rule = Rule();
-		if (!ReadRule(entry, legacy, rule)
+		if (!ReadRule(entry, version, rule)
 			|| ids.contains(QString::fromStdString(rule.id))) {
 			return { .error = u"Invalid rule fields, duplicate IDs or inexact legacy peer IDs"_q };
 		}
@@ -271,15 +285,54 @@ QByteArray ExportRules(const std::vector<Rule> &rules) {
 			{ u"pattern"_q, QString::fromStdU16String(rule.pattern) },
 			{ u"regex"_q, rule.regex },
 			{ u"enabled"_q, rule.enabled },
+			{ u"exception"_q, rule.exception },
 			{ u"scopes"_q, scopes },
 			{ u"unresolvedScopes"_q, unresolved },
 		});
 	}
 	return QJsonDocument(QJsonObject{
 		{ u"format"_q, u"regram.filters"_q },
-		{ u"version"_q, 1 },
+		{ u"version"_q, 2 },
 		{ u"rules"_q, entries },
 	}).toJson(QJsonDocument::Indented);
+}
+
+ExportResult ExportIosRules(const std::vector<Rule> &rules) {
+	auto entries = QJsonArray();
+	for (const auto &rule : rules) {
+		if (!rule.unresolvedScopes.empty()) {
+			return { .error = u"Unresolved scopes require a Desktop backup"_q };
+		}
+		auto scopes = QJsonArray();
+		for (const auto &peer : rule.scopes) {
+			const auto packed = ToIosPeerId(peer);
+			if (!packed) {
+				return { .error = u"Topic scopes or unsupported peer IDs require a Desktop backup"_q };
+			}
+			scopes.append(qint64(*packed));
+		}
+		entries.append(QJsonObject{
+			{ u"id"_q, QString::fromStdString(rule.id) },
+			{ u"pattern"_q, QString::fromStdU16String(rule.pattern) },
+			{ u"isRegex"_q, rule.regex },
+			{ u"isEnabled"_q, rule.enabled },
+			{ u"isException"_q, rule.exception },
+			{ u"peerIds"_q, scopes },
+		});
+	}
+	const auto data = QJsonDocument(entries).toJson(QJsonDocument::Indented);
+	const auto checked = ImportRules(data);
+	if (!checked.error.isEmpty()) {
+		return { .error = checked.error };
+	}
+	return { .data = data };
+}
+
+bool IsRulesFileName(const QString &name) {
+	const auto lower = name.toLower();
+	return lower.endsWith(u".json"_q)
+		&& (lower.startsWith(u"regram-message-filter"_q)
+			|| lower.startsWith(u"regram-filters"_q));
 }
 
 MergeResult MergeRules(

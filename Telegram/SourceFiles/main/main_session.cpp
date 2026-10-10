@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "main/main_session.h"
+#include "regram/core/local_premium.h"
 #include "regram/nagram/display/view_refresher.h"
 #include "regram/nagram/core/diagnostics.h"
 #include "regram/nagram/messages/badges.h"
@@ -233,6 +234,7 @@ Session::Session(
 , _fastButtonsBots(std::make_unique<Support::FastButtonsBots>(this))
 , _saveSettingsTimer([=] { saveSettings(); }) {
 	Expects(_settings != nullptr);
+	Regram::Premium::RegisterAccount(this);
 	Nagram::ViewRefresher::Attach(this);
 	Nagram::Media::StickerExport::Attach(this);
 	Nagram::Privacy::AttachSensitive(this);

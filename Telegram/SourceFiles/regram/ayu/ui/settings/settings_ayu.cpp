@@ -675,12 +675,7 @@ void BuildOther(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 		.setter = &AyuSettings::setLocalPremium,
 	});
 	builder.addDividerText(tr::lng_regram_local_premium_about());
-	ayu.addSettingToggle({
-		.id = u"regram/ayu/disableAds"_q,
-		.title = tr::ayu_DisableAds(),
-		.getter = &AyuSettings::disableAds,
-		.setter = &AyuSettings::setDisableAds,
-	});
+
 }
 
 const auto kMeta = BuildHelper({

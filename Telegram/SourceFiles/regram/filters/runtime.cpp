@@ -12,6 +12,8 @@
 #include "storage/storage_account.h"
 
 #include <QtCore/QCache>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonArray>
 
 #include <algorithm>
 #include <map>
@@ -121,6 +123,11 @@ QString Write(
 }
 
 bool Hidden(not_null<HistoryItem*> item) {
+	if (item->out() || !item->isRegular()
+		|| !Nagram::ForAccount(&item->history()->session()).Get(kEnabled)
+		|| !EnabledForPeer(item->history()->peer)) {
+		return false;
+	}
 	auto &state = StateFor(&item->history()->session());
 	if (!state.stored.error.isEmpty() || state.stored.rules.empty()) {
 		return false;
@@ -146,9 +153,59 @@ bool Hidden(not_null<HistoryItem*> item) {
 	return result.hidden;
 }
 
+bool ValidDisabledChats(const QByteArray &raw) {
+	if (raw.isEmpty()) {
+		return true;
+	} else if (raw.size() > kMaxScopes * 24) {
+		return false;
+	}
+	const auto document = QJsonDocument::fromJson(raw);
+	if (!document.isArray() || document.array().size() > kMaxScopes) {
+		return false;
+	}
+	return ranges::all_of(document.array(), [](const auto &entry) {
+		return entry.isString() && ParseServerId(entry.toString().toStdString()).has_value();
+	});
+}
+
+bool EnabledForPeer(not_null<PeerData*> peer) {
+	const auto raw = Nagram::ForAccount(&peer->session()).Get(kDisabledChats);
+	if (raw.isEmpty()) {
+		return true;
+	}
+	static auto cached = QByteArray();
+	static auto entries = QJsonArray();
+	if (cached != raw) {
+		cached = raw;
+		entries = QJsonDocument::fromJson(raw).array();
+	}
+	return !entries.contains(QString::number(SerializePeerId(peer->id)));
+}
+
+bool SetEnabledForPeer(not_null<PeerData*> peer, bool enabled) {
+	const auto session = &peer->session();
+	const auto raw = Nagram::ForAccount(session).Get(kDisabledChats);
+	if (!ValidDisabledChats(raw)) {
+		return false;
+	}
+	auto entries = QJsonDocument::fromJson(raw).array();
+	const auto id = QString::number(SerializePeerId(peer->id));
+	const auto index = entries.toVariantList().indexOf(id);
+	if (enabled && index >= 0) {
+		entries.removeAt(index);
+	} else if (!enabled && index < 0) {
+		if (entries.size() == kMaxScopes) {
+			return false;
+		}
+		entries.push_back(id);
+	}
+	return Nagram::ForAccount(session).Set(kDisabledChats,
+		QJsonDocument(entries).toJson(QJsonDocument::Compact));
+}
+
 bool SuppressNotification(not_null<HistoryItem*> item) {
 	return Nagram::ForAccount(&item->history()->session()).Get(kSuppressNotifications)
-		&& (Nagram::Filters::Hidden(item) || FiltersController::filtered(item));
+		&& (Nagram::Filters::HiddenForNotification(item) || FiltersController::filtered(item, false));
 }
 
 } // namespace Regram::Filters

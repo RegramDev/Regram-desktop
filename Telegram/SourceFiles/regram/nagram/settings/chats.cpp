@@ -1,4 +1,5 @@
 #include "regram/nagram/settings/chats.h"
+#include "regram/ayu/ui/settings/settings_chats.h"
 
 #include "regram/nagram/chats/options.h"
 #include "regram/nagram/chats/cleanup.h"
@@ -385,6 +386,7 @@ const auto kMeta = BuildHelper({
 		.shown = Chats::LocalPinsCountValue(session)
 			| rpl::map([](int count) { return count > 0; }),
 	});
+	::Settings::BuildExtraChats(builder);
 });
 
 const SectionBuildMethod ChatsSection::kBuild = kMeta.build;

@@ -13,13 +13,43 @@
 #include "data/data_session.h"
 #include "history/history.h"
 #include "history/history_item.h"
+#include "base/weak_ptr.h"
+#include "regram/filters/result_cache.h"
+#include "main/main_session.h"
 #include "rpl/event_stream.h"
+
+#include <QtCore/QCache>
 
 #include <memory>
 #include <mutex>
 #include <unordered_set>
 
 namespace FiltersCacheController {
+
+namespace {
+
+using MessageKey = Regram::Filters::MessageKey;
+
+struct DialogKey {
+	uint64 account = 0;
+	uint64 peer = 0;
+	friend bool operator==(const DialogKey &, const DialogKey &) = default;
+};
+
+size_t qHash(const DialogKey &key, size_t seed = 0) {
+	return qHashMulti(seed, key.account, key.peer);
+}
+
+MessageKey Key(not_null<HistoryItem*> item) {
+	return { item->history()->session().uniqueId(),
+		item->history()->peer->id.value, item->id.bare };
+}
+
+DialogKey Key(not_null<PeerData*> peer) {
+	return { peer->session().uniqueId(), peer->id.value };
+}
+
+} // namespace
 
 std::mutex rebuildMutex;
 std::mutex cacheMutex;
@@ -37,8 +67,8 @@ rpl::producer<> updates() {
 
 std::shared_ptr<const Cache> cache;
 
-std::unordered_map<long long, std::unordered_map<int64, bool>> filteredMessages;
-std::unordered_set<BareId> dialogsWithHiddenBlockedMessages; // purely for show / hide filtered messages
+Regram::Filters::ResultCache filteredMessages;
+QCache<DialogKey, base::weak_ptr<Main::Session>> dialogsWithHiddenBlockedMessages(1000);
 
 std::shared_ptr<const Cache> buildCache() {
 	const auto filters = AyuDatabase::getAllRegexFilters();
@@ -143,40 +173,23 @@ std::shared_ptr<const Cache> snapshot() {
 
 std::optional<bool> isFiltered(not_null<HistoryItem*> item) {
 	std::lock_guard lock(filteredMessagesMutex);
-	auto dialogIt = filteredMessages.find(item->history()->peer->id.value);
-
-	if (dialogIt == filteredMessages.end()) {
-		return std::nullopt;
-	}
-
-	const auto it = dialogIt->second.find(item->id.bare);
-	if (it == dialogIt->second.end()) {
-		return std::nullopt;
-	}
-
-	return it->second;
+	return filteredMessages.get(Key(item), &item->history()->session(), item->originalText().text);
 }
 
 bool hasFilteredMessages(not_null<PeerData*> peer) {
 	std::lock_guard lock(filteredMessagesMutex);
-	if (dialogsWithHiddenBlockedMessages.contains(peer->id.value)) {
+	const auto key = Key(peer);
+	const auto blocked = dialogsWithHiddenBlockedMessages.object(key);
+	if (blocked && blocked->get() == &peer->session()) {
 		return true;
 	}
-	const auto dialogIt = filteredMessages.find(peer->id.value);
-	if (dialogIt == filteredMessages.end()) {
-		return false;
-	}
-	for (const auto &entry : dialogIt->second) {
-		if (entry.second) {
-			return true;
-		}
-	}
-	return false;
+	return filteredMessages.hasHidden(key.account, key.peer, &peer->session());
 }
 
 void putHiddenBlockedMessage(not_null<HistoryItem*> item) {
 	std::lock_guard lock(filteredMessagesMutex);
-	dialogsWithHiddenBlockedMessages.insert(item->history()->peer->id.value);
+	dialogsWithHiddenBlockedMessages.insert(Key(item->history()->peer),
+		new base::weak_ptr<Main::Session>(base::make_weak(&item->history()->session())));
 }
 
 void putFiltered(
@@ -190,27 +203,19 @@ void putFiltered(
 	}
 
 	std::lock_guard filteredLock(filteredMessagesMutex);
-	filteredMessages[item->history()->peer->id.value][item->id.bare] = res;
+	const auto put = [](not_null<HistoryItem*> item, bool res) {
+		filteredMessages.put(Key(item), &item->history()->session(), item->originalText().text, res);
+	};
+	put(item, res);
 	if (group && res) {
 		for (const auto& groupItem : group->items) {
-			filteredMessages[item->history()->peer->id.value][groupItem->id.bare] = true;
+			put(groupItem, true);
 		}
 	}
 }
 
 void invalidateSingle(not_null<HistoryItem*> item) {
-	const auto dialogIt = filteredMessages.find(item->history()->peer->id.value);
-
-	if (dialogIt == filteredMessages.end()) {
-		return;
-	}
-
-	const auto it = dialogIt->second.find(item->id.bare);
-	if (it == dialogIt->second.end()) {
-		return;
-	}
-
-	dialogIt->second.erase(it);
+	filteredMessages.remove(Key(item));
 }
 
 void invalidate(not_null<HistoryItem*> item) {

@@ -6,6 +6,7 @@
 // Copyright @Radolyn, 2026
 #include "regram/ayu/ui/settings/settings_main.h"
 
+#include "regram/nagram/settings/home.h"
 #include "settings/sections/settings_main.h"
 #include "lang_auto.h"
 #include "regram/ayu/ayu_settings.h"
@@ -45,18 +46,26 @@ void BuildLogo(SectionBuilder &builder) {
 			QSize(st::settingsCloudPasswordIconSize,
 				st::settingsCloudPasswordIconSize));
 		logoRaw->setNaturalWidth(st::settingsCloudPasswordIconSize);
+		struct State {
+			QImage scaled;
+			qint64 key = 0;
+			qreal ratio = 0.;
+		};
+		const auto state = logoRaw->lifetime().make_state<State>();
 		logoRaw->paintRequest(
 		) | rpl::on_next([=] {
 			auto p = QPainter(logoRaw);
 			const auto image = AyuAssets::currentAppLogoPad();
 			if (!image.isNull()) {
 				const auto size = st::settingsCloudPasswordIconSize;
-				const auto scaled = image.scaled(
-					size * style::DevicePixelRatio(),
-					size * style::DevicePixelRatio(),
-					Qt::KeepAspectRatio,
-					Qt::SmoothTransformation);
-				p.drawImage(QRect(0, 0, size, size), scaled);
+				const auto ratio = style::DevicePixelRatio();
+				if (state->key != image.cacheKey() || state->ratio != ratio) {
+					state->key = image.cacheKey();
+					state->ratio = ratio;
+					state->scaled = image.scaled(size * ratio, size * ratio,
+						Qt::KeepAspectRatio, Qt::SmoothTransformation);
+				}
+				p.drawImage(QRect(0, 0, size, size), state->scaled);
 			}
 		}, logoRaw->lifetime());
 		return { .widget = std::move(logo), .align = style::al_top };
@@ -104,28 +113,9 @@ void BuildCategories(SectionBuilder &builder) {
 		.targetSection = AyuGhost::Id(),
 		.icon = { &st::menuIconGroupReactions },
 	});
+	Nagram::AddCategoryEntries(builder);
 	builder.addSectionButton({
-		.title = tr::ayu_CategoryFilters(),
-		.targetSection = AyuFilters::Id(),
-		.icon = { &st::menuIconTagFilter },
-	});
-	builder.addSectionButton({
-		.title = tr::ayu_CategoryGeneral(),
-		.targetSection = AyuGeneral::Id(),
-		.icon = { &st::menuIconShowAll },
-	});
-	builder.addSectionButton({
-		.title = tr::ayu_CategoryAppearance(),
-		.targetSection = AyuAppearance::Id(),
-		.icon = { &st::menuIconPalette },
-	});
-	builder.addSectionButton({
-		.title = tr::ayu_CategoryChats(),
-		.targetSection = AyuChats::Id(),
-		.icon = { &st::menuIconChatBubble },
-	});
-	builder.addSectionButton({
-		.title = tr::ayu_CategoryOther(),
+		.title = tr::lng_regram_advanced_tools(),
 		.targetSection = AyuOther::Id(),
 		.icon = { &st::menuIconFave },
 	});
@@ -164,7 +154,7 @@ const auto kMeta = BuildHelper({
 } // namespace
 
 rpl::producer<QString> AyuMain::title() {
-	return rpl::single(QString(""));
+	return tr::ayu_AyuPreferences();
 }
 
 AyuMain::AyuMain(

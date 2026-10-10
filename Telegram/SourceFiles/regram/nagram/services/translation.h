@@ -8,11 +8,15 @@ class Session;
 } // namespace Main
 
 class PeerData;
+class HistoryItem;
 
 namespace Nagram {
 
 struct ServiceDefinition;
 
+[[nodiscard]] ClickHandlerPtr QuickTranslateClickHandler(
+	not_null<HistoryItem*> item);
+[[nodiscard]] bool CanQuickTranslate(not_null<HistoryItem*> item);
 [[nodiscard]] std::unique_ptr<Ui::TranslateProvider> CreateServiceTranslateProvider(
 	const ServiceDefinition &service,
 	Fn<void(QString)> error);

@@ -177,6 +177,10 @@ SuggestionsWidget::SuggestionsWidget(
 		_oneWidth + _padding.left() + _padding.right(),
 		_oneWidth + _padding.top() + _padding.bottom());
 	setMouseTracking(true);
+	Regram::Premium::ForLocalFeaturesValue(_session)
+	| rpl::skip(1) | rpl::on_next([=] {
+		showWithQuery(_query, true);
+	}, lifetime());
 }
 
 SuggestionsWidget::~SuggestionsWidget() = default;

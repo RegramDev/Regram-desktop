@@ -1,4 +1,6 @@
 #include "regram/nagram/settings/media.h"
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/ui/settings/settings_chats.h"
 
 #include "regram/nagram/media/options.h"
 #include "regram/nagram/media/backend_options.h"
@@ -110,15 +112,28 @@ void PanelScaleBox(
 void RecentLimitBox(not_null<Ui::GenericBox*> box) {
 	box->setTitle(tr::lng_nagram_recent_sticker_limit());
 	const auto current = ForDevice().Get(Media::kRecentStickerLimit);
+	const auto unlimited = box->addRow(object_ptr<Ui::Checkbox>(
+		box,
+		tr::lng_regram_stickers_unlimited(tr::now),
+		AyuSettings::getInstance().unlimitedRecentStickers(),
+		st::defaultBoxCheckbox));
 	const auto field = box->addRow(object_ptr<Ui::InputField>(
 		box,
 		st::defaultInputField,
 		tr::lng_nagram_recent_sticker_hint(),
 		current ? QString::number(current) : QString()));
 	field->setInputMethodHints(Qt::ImhDigitsOnly);
+	unlimited->checkedValue() | rpl::on_next([=](bool checked) {
+		field->setDisabled(checked);
+	}, field->lifetime());
 	box->setFocusCallback([=] { field->setFocusFast(); });
 	const auto submit = [=] {
 		const auto text = field->getLastText().trimmed();
+		if (unlimited->checked()) {
+			AyuSettings::getInstance().setUnlimitedRecentStickers(true);
+			box->closeBox();
+			return;
+		}
 		auto valid = false;
 		const auto value = text.isEmpty() ? 0 : text.toInt(&valid);
 		if (!text.isEmpty() && (!valid || value < 1 || value > 200)) {
@@ -126,6 +141,7 @@ void RecentLimitBox(not_null<Ui::GenericBox*> box) {
 			return;
 		}
 		Expects(ForDevice().Set(Media::kRecentStickerLimit, value));
+		AyuSettings::getInstance().setUnlimitedRecentStickers(false);
 		box->closeBox();
 	};
 	field->submits(
@@ -296,11 +312,14 @@ const auto kMeta = BuildHelper({
 		.id = u"regram/nagram/media/recent-sticker-limit"_q,
 		.title = tr::lng_nagram_recent_sticker_limit(),
 		.st = &st::settingsButtonNoIcon,
-		.label = ForDevice().Value(Media::kRecentStickerLimit)
-			| rpl::map([](int value) {
-				return value ? QString::number(value)
-					: tr::lng_nagram_preview_follow(tr::now);
-			}),
+		.label = rpl::combine(
+			ForDevice().Value(Media::kRecentStickerLimit),
+			AyuSettings::getInstance().unlimitedRecentStickersValue()
+		) | rpl::map([](int value, bool unlimited) {
+			return unlimited ? tr::lng_regram_stickers_unlimited(tr::now)
+				: value ? QString::number(value)
+				: tr::lng_nagram_preview_follow(tr::now);
+		}),
 		.onClick = [=] { controller->show(Box(RecentLimitBox)); },
 		.keywords = { u"recent"_q, u"sticker"_q, u"limit"_q },
 	});
@@ -514,6 +533,7 @@ const auto kMeta = BuildHelper({
 		rpl::single(u"{artist}"_q),
 		lt_title,
 		rpl::single(u"{title}"_q)));
+	::Settings::BuildExtraMedia(builder);
 });
 
 const SectionBuildMethod MediaSection::kBuild = kMeta.build;

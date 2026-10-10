@@ -13,6 +13,7 @@
 #include "regram/ayu/ui/boxes/import_filters_box.h"
 #include "regram/ayu/ui/settings/ayu_builder.h"
 #include "regram/ayu/ui/settings/settings_main.h"
+#include "regram/nagram/settings/rules.h"
 #include "regram/ayu/utils/telegram_helpers.h"
 #include "boxes/abstract_box.h"
 #include "boxes/peer_list_box.h"
@@ -174,8 +175,8 @@ void BuildPerDialog(SectionBuilder &builder) {
 
 const auto kMeta = BuildHelper({
 	.id = AyuFilters::Id(),
-	.parentId = AyuMain::Id(),
-	.title = &tr::ayu_CategoryFilters,
+	.parentId = Nagram::RulesId(),
+	.title = &tr::lng_regram_legacy_filters,
 	.icon = &st::menuIconTagFilter,
 }, [](SectionBuilder &builder) {
 	BuildFiltersSettings(builder);
@@ -187,7 +188,7 @@ const auto kMeta = BuildHelper({
 } // namespace
 
 rpl::producer<QString> AyuFilters::title() {
-	return tr::ayu_CategoryFilters();
+	return tr::lng_regram_legacy_filters();
 }
 
 void AyuFilters::fillTopBarMenu(const Ui::Menu::MenuCallback &addAction) {

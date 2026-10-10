@@ -1,4 +1,23 @@
 <RCC>
+  <qresource prefix="/regram/fonts">
+    <file alias="catalog.json">../regram/fonts/catalog.json</file>
+    <file alias="licenses/GoogleSans-OFL.txt">../regram/fonts/licenses/GoogleSans-OFL.txt</file>
+    <file alias="licenses/GoogleSans-TRADEMARKS.txt">../regram/fonts/licenses/GoogleSans-TRADEMARKS.txt</file>
+    <file alias="licenses/GoogleSansCode-OFL.txt">../regram/fonts/licenses/GoogleSansCode-OFL.txt</file>
+    <file alias="licenses/GoogleSansFlex-OFL.txt">../regram/fonts/licenses/GoogleSansFlex-OFL.txt</file>
+    <file alias="licenses/GoogleSansFlex-TRADEMARKS.txt">../regram/fonts/licenses/GoogleSansFlex-TRADEMARKS.txt</file>
+    <file alias="licenses/IBMPlexMono-OFL.txt">../regram/fonts/licenses/IBMPlexMono-OFL.txt</file>
+    <file alias="licenses/IBMPlexSans-OFL.txt">../regram/fonts/licenses/IBMPlexSans-OFL.txt</file>
+    <file alias="licenses/IBMPlexSansSC-OFL.txt">../regram/fonts/licenses/IBMPlexSansSC-OFL.txt</file>
+    <file alias="licenses/IBMPlexSerif-OFL.txt">../regram/fonts/licenses/IBMPlexSerif-OFL.txt</file>
+    <file alias="licenses/Inter-OFL.txt">../regram/fonts/licenses/Inter-OFL.txt</file>
+    <file alias="licenses/JetBrainsMono-OFL.txt">../regram/fonts/licenses/JetBrainsMono-OFL.txt</file>
+    <file alias="licenses/Lora-OFL.txt">../regram/fonts/licenses/Lora-OFL.txt</file>
+    <file alias="licenses/NotoSerifSC-OFL.txt">../regram/fonts/licenses/NotoSerifSC-OFL.txt</file>
+    <file alias="licenses/Poppins-OFL.txt">../regram/fonts/licenses/Poppins-OFL.txt</file>
+    <file alias="licenses/SourceSans3-OFL.txt">../regram/fonts/licenses/SourceSans3-OFL.txt</file>
+    <file alias="licenses/SourceSerif4-OFL.txt">../regram/fonts/licenses/SourceSerif4-OFL.txt</file>
+  </qresource>
   <qresource prefix="/langs/nagram">
     <file alias="zh-hans.strings">../langs/nagram/zh-hans.strings</file>
     <file alias="zh-hant.strings">../langs/nagram/zh-hant.strings</file>

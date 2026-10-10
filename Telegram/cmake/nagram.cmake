@@ -272,6 +272,8 @@ if (DESKTOP_APP_TEST_APPS)
         regram/nagram/tests/test_sync.cpp
         regram/nagram/tests/test_export.cpp
         regram/nagram/compose/spacing.cpp
+        regram/nagram/compose/default_format.cpp
+        regram/nagram/compose/chat_preferences.cpp
         regram/nagram/core/exchange.cpp
         regram/nagram/core/regex.cpp
         regram/nagram/export/range_model.cpp

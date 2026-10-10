@@ -60,6 +60,13 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           cmake --build out --config Release --target Telegram --parallel 4
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Verify Windows font catalog
+        working-directory: source
+        run: |
+          cmake --build out --config Release --target test_regram_typography --parallel 2
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python Telegram/build/regram/verify_fonts.py --executable out/Release/test_regram_typography.exe --fixtures "$env:RUNNER_TEMP/regram-font-fixtures"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Package and test Windows installer
         working-directory: source
         run: |
@@ -124,6 +131,13 @@ jobs:
           TDESKTOP_API_ID: ${{ secrets.TDESKTOP_API_ID }}
           TDESKTOP_API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
         run: python3 source/Telegram/build/regram/write_api_config.py
+      - uses: actions/cache/save@v6
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        with:
+          path: |
+            Libraries
+            ThirdParty
+          key: ${{ steps.dependencies.outputs.cache-primary-key }}
       - name: Build macOS Intel Release
         working-directory: source
         env:
@@ -134,7 +148,12 @@ jobs:
             -DDESKTOP_APP_MAC_ARCH=x86_64 -DCMAKE_OSX_ARCHITECTURES=x86_64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DDESKTOP_APP_TEST_APPS=OFF \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
-          cmake --build out --config Release --target Telegram --parallel 4 -- -arch x86_64
+          cmake --build out --config Release --target Telegram --parallel 2 -- -arch x86_64
+      - name: Verify macOS Intel font catalog
+        working-directory: source
+        run: |
+          cmake --build out --config Release --target test_regram_typography --parallel 2 -- -arch x86_64
+          python3 Telegram/build/regram/verify_fonts.py --executable out/Release/test_regram_typography --fixtures "$RUNNER_TEMP/regram-font-fixtures"
       - name: Package macOS Intel
         working-directory: source
         run: |
@@ -146,13 +165,6 @@ jobs:
           path: source/.local/regram/installers/*
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/cache/save@v6
-        if: always() && steps.dependencies.outputs.cache-hit != 'true'
-        with:
-          path: |
-            Libraries
-            ThirdParty
-          key: ${{ steps.dependencies.outputs.cache-primary-key }}
 
   linux:
     if: inputs.platform == 'all' || inputs.platform == 'linux'
@@ -195,6 +207,7 @@ jobs:
               set -euo pipefail
               cmake -S . -B out -G "Ninja Multi-Config" -C .local/regram/api.cmake -DDESKTOP_APP_TEST_APPS=OFF
               cmake --build out --config Release --target Telegram --parallel 4
+              cmake --build out --config Release --target test_regram_typography --parallel 2
               ldd out/Release/Regram > .local/regram/linux-runtime-libraries.txt
               if grep -q "not found" .local/regram/linux-runtime-libraries.txt; then exit 1; fi
               python3 Telegram/build/regram/package_desktop.py --platform linux
@@ -206,6 +219,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/regram-payload" "$RUNNER_TEMP/regram-install-home"
           tar -xJf .local/regram/installers/Regram-*-Linux-x64.tar.xz -C "$RUNNER_TEMP/regram-payload"
           REGRAM_INSTALL_HOME="$RUNNER_TEMP/regram-install-home" XDG_DATA_HOME="$RUNNER_TEMP/regram-install-home/.local/share" "$RUNNER_TEMP/regram-payload/Regram/install.sh"
+          xvfb-run -a python3 Telegram/build/regram/verify_fonts.py --executable out/Release/test_regram_typography --fixtures "$RUNNER_TEMP/regram-font-fixtures"
           xvfb-run -a python3 Telegram/build/regram/smoke_launch.py --executable "$RUNNER_TEMP/regram-install-home/.local/share/regram/Regram"
       - uses: actions/upload-artifact@v7
         with:

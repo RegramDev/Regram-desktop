@@ -26,6 +26,10 @@ void TranslateBox(
 	bool hasCopyRestriction);
 
 [[nodiscard]] bool SkipTranslate(TextWithEntities textWithEntities);
+[[nodiscard]] bool SkipTranslationLanguage(const TextWithEntities &text);
+[[nodiscard]] bool SkipTranslationLanguage(
+	const TextWithEntities &text,
+	const std::vector<LanguageId> &skip);
 
 [[nodiscard]] object_ptr<BoxContent> EditSkipTranslationLanguages();
 [[nodiscard]] object_ptr<BoxContent> ChooseTranslateToBox(

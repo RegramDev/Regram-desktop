@@ -662,7 +662,7 @@ bool EphemeralMessages::trySend(const Api::MessageToSend &message) {
 		TextUtilities::ConvertTextTagsToEntities(message.textWithTags.tags),
 	};
 	TextUtilities::Trim(text);
-	text = Nagram::Compose::PrepareText(text, false);
+	text = Nagram::Compose::PrepareText(text, false, history);
 	if (text.text.isEmpty()) {
 		return false;
 	}

@@ -95,6 +95,11 @@ void TestMode() {
 
 	auto registry = Registry();
 	RegisterServiceOptions(registry);
+	const auto quick = registry.Find(kQuickTranslateButton.key);
+	Require(quick && quick->scope == Scope::Device
+		&& quick->fallbackRaw == "0"
+		&& (quick->flags & static_cast<unsigned>(Flag::RefreshMessageView)),
+		"quick translation registered with a message layout refresh");
 	const auto info = registry.Find(kChatTranslationUseService.key);
 	Require(info && info->scope == Scope::Device
 		&& info->fallbackRaw == "0"

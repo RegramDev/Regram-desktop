@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_peer.h"
+#include "regram/core/local_premium.h"
 #include "regram/nagram/interface/roundness.h"
 #include "regram/nagram/privacy/alias.h"
 #include "regram/nagram/privacy/protection.h"
@@ -1527,6 +1528,9 @@ void PeerData::setEmojiStatus(EmojiStatusId emojiStatusId, TimeId until) {
 }
 
 EmojiStatusId PeerData::emojiStatusId() const {
+	if (const auto status = Regram::Premium::LocalEmojiStatus(this)) {
+		return *status;
+	}
 	return _emojiStatusId;
 }
 

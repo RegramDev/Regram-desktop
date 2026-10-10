@@ -1,4 +1,6 @@
 #include "regram/nagram/settings/interface.h"
+#include "regram/typography/fonts.h"
+#include "regram/ayu/ui/settings/settings_appearance.h"
 #include "regram/nagram/notifications/settings.h"
 
 #include "regram/nagram/interface/app_icon.h"
@@ -120,6 +122,7 @@ void AddRoundness(
 		QString id,
 		QStringList keywords) {
 	const auto controller = builder.controller();
+
 	builder.addButton({
 		.id = std::move(id),
 		.title = std::move(title),
@@ -167,7 +170,9 @@ void TextWidthBox(not_null<Ui::GenericBox*> box) {
 }
 
 QString DelayLabel(int milliseconds) {
-	return milliseconds
+	return milliseconds == -1
+		? tr::ayu_DisableNotificationsDelay(tr::now)
+		: milliseconds
 		? QString::number(milliseconds / 1000.0)
 			+ tr::lng_nagram_seconds_suffix(tr::now)
 		: tr::lng_nagram_preview_follow(tr::now);
@@ -180,7 +185,7 @@ void DelayBox(
 	box->setTitle(std::move(title));
 	const auto group = std::make_shared<Ui::RadiobuttonGroup>(
 		ForDevice().Get(option));
-	for (const auto &value : { 0, 500, 1000, 2000, 5000, 10000, 30000, 60000 }) {
+	for (const auto &value : { 0, -1, 500, 1000, 2000, 5000, 10000, 30000, 60000 }) {
 		box->addRow(object_ptr<Ui::Radiobutton>(
 			box, group, value, DelayLabel(value), st::settingsSendType),
 			st::settingsSendTypePadding);
@@ -216,7 +221,11 @@ void AddDelay(
 void AppIconBox(not_null<Ui::GenericBox*> box) {
 	box->setTitle(tr::lng_nagram_app_icon());
 	const auto choices = Interface::AppIconChoices();
-	const auto current = ForDevice().Get(Interface::kAppIcon);
+	const auto selectedIcon = ForDevice().Get(Interface::kAppIcon);
+	const auto preset = AyuSettings::getInstance().appIcon();
+	const auto current = selectedIcon.isEmpty() && preset != AyuAssets::DEFAULT_ICON
+		? u"preset:"_q + preset
+		: selectedIcon;
 	const auto shown = box->lifetime().make_state<QString>(current);
 	const auto size = st::nagramAppIconPreview;
 	const auto preview = box->addRow(
@@ -248,8 +257,10 @@ void AppIconBox(not_null<Ui::GenericBox*> box) {
 	}
 	group->setChangedCallback([=](int value) {
 		*shown = choices[value].id;
-		AyuSettings::getInstance().setAppIcon(AyuAssets::DEFAULT_ICON);
-		Expects(ForDevice().Set(Interface::kAppIcon, *shown));
+		const auto preset = shown->startsWith(u"preset:"_q);
+		Expects(ForDevice().Set(Interface::kAppIcon, preset ? QString() : *shown));
+		AyuSettings::getInstance().setAppIcon(
+			preset ? shown->mid(7) : AyuAssets::DEFAULT_ICON);
 		preview->update();
 	});
 	box->addRow(
@@ -302,28 +313,14 @@ const auto kMeta = BuildHelper({
 		tr::lng_nagram_bubble_roundness(),
 		u"regram/nagram/interface/bubble-roundness"_q,
 		{ u"bubble"_q, u"roundness"_q });
-	AddRoundness(builder, Interface::kAvatarRoundness,
-		tr::lng_nagram_avatar_roundness(),
-		u"regram/nagram/interface/avatar-roundness"_q,
-		{ u"avatar"_q, u"roundness"_q });
 	const auto controller = builder.controller();
-	const auto button = builder.addButton({
-		.id = u"regram/nagram/interface/uniform-avatars"_q,
-		.title = tr::lng_nagram_uniform_avatar_shapes(),
+	builder.addButton({
+		.id = u"regram/interface/fonts"_q,
+		.title = tr::lng_regram_fonts(),
 		.st = &st::settingsButtonNoIcon,
-		.label = rpl::single(tr::lng_nagram_restart_required(tr::now)),
-		.toggled = ForDevice().Value(Interface::kUniformAvatarShapes),
-		.keywords = { u"forum"_q, u"channel"_q, u"avatar"_q },
-		.shown = ForDevice().Value(Interface::kAvatarRoundness)
-			| rpl::map([](int value) { return value != 0; }),
+		.onClick = [=] { controller->show(Box(Regram::Typography::SettingsBox, controller)); },
+		.keywords = { u"font"_q, u"iOS"_q, u"JetBrains"_q, u"Anthropic"_q, u"Google Sans"_q },
 	});
-	if (button) {
-		button->toggledChanges(
-		) | rpl::on_next([=](bool value) {
-			Expects(ForDevice().Set(Interface::kUniformAvatarShapes, value));
-			ShowRestartPrompt(controller);
-		}, button->lifetime());
-	}
 	builder.addSubsectionTitle({
 		.id = u"regram/nagram/interface/message-style"_q,
 		.title = tr::lng_nagram_message_style(),
@@ -394,8 +391,13 @@ const auto kMeta = BuildHelper({
 		.id = u"regram/nagram/interface/app-icon"_q,
 		.title = tr::lng_nagram_app_icon(),
 		.st = &st::settingsButtonNoIcon,
-		.label = ForDevice().Value(Interface::kAppIcon)
-			| rpl::map(Interface::AppIconTitle),
+		.label = rpl::combine(
+			ForDevice().Value(Interface::kAppIcon),
+			AyuSettings::getInstance().appIconValue()
+		) | rpl::map([](const QString &icon, const QString &preset) {
+			return Interface::AppIconTitle(icon.isEmpty() && preset != AyuAssets::DEFAULT_ICON
+				? u"preset:"_q + preset : icon);
+		}),
 		.onClick = [=] { controller->show(Box(AppIconBox)); },
 		.keywords = { u"icon"_q, u"dock"_q, u"taskbar"_q },
 	});
@@ -432,6 +434,7 @@ const auto kMeta = BuildHelper({
 		tr::lng_nagram_halfwidth_ui_punctuation(),
 		u"regram/nagram/interface/halfwidth-ui-punctuation"_q,
 		{ u"text"_q, u"punctuation"_q });
+	::Settings::BuildExtraAppearance(builder);
 });
 
 const SectionBuildMethod InterfaceSection::kBuild = kMeta.build;

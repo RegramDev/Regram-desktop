@@ -1,4 +1,7 @@
 #include "regram/nagram/filters/menu.h"
+#include "regram/filters/runtime.h"
+#include "regram/filters/reveal.h"
+#include "regram/ayu/ayu_settings.h"
 
 #include "regram/nagram/filters/model.h"
 #include "regram/nagram/filters/settings.h"
@@ -82,6 +85,30 @@ void AddScopeAction(
 		return;
 	}
 	const auto session = &controller->session();
+	if (!ForAccount(session).Get(Regram::Filters::kPortableRules).isEmpty()
+		|| !ForAccount(session).Get(kRules).isEmpty()
+		|| !ForDevice().Get(kGlobalRules).isEmpty()
+		|| AyuSettings::getInstance().filtersEnabled()
+		|| Regram::Filters::TemporarilyRevealed(peer)) {
+		const auto revealed = Regram::Filters::TemporarilyRevealed(peer);
+		addAction(revealed ? tr::lng_regram_filter_reveal_end(tr::now)
+			: tr::lng_regram_filter_reveal(tr::now), crl::guard(controller, [=] {
+			if (!Regram::Filters::ToggleTemporaryReveal(peer)) {
+				controller->showToast(tr::lng_regram_filter_scope_limit(tr::now));
+			}
+		}), revealed ? &st::menuIconCaptionHide : &st::menuIconCaptionShow);
+	}
+	if (!ForAccount(session).Get(Regram::Filters::kPortableRules).isEmpty()) {
+		const auto enabled = Regram::Filters::EnabledForPeer(peer);
+		addAction(enabled
+			? tr::lng_regram_filter_disable_chat(tr::now)
+			: tr::lng_regram_filter_enable_chat(tr::now),
+			crl::guard(controller, [=] {
+				if (!Regram::Filters::SetEnabledForPeer(peer, !enabled)) {
+					controller->showToast(tr::lng_nagram_filter_invalid(tr::now));
+				}
+			}), &st::menuIconTagFilter);
+	}
 	const auto account = ForAccount(session).Get(kRules);
 	const auto scopes = ForAccount(session).Get(kScopes);
 	const auto peerId = QString::number(SerializePeerId(peer->id));

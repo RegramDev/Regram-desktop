@@ -1,9 +1,14 @@
 #include "regram/nagram/interface/options.h"
+#include "ayu/ayu_ui_settings.h"
+#include "ui/style/style_core_font.h"
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QXmlStreamReader>
+#include <QtGui/QFontDatabase>
+#include <QtGui/QFontInfo>
+#include <QtGui/QGuiApplication>
 
 #include <cstdlib>
 #include <fstream>
@@ -210,6 +215,24 @@ void CheckTranslation(
 
 int main() {
 	try {
+		if (const auto path = std::getenv("REGRAM_TEST_CODE_FONT")) {
+			auto argc = 1;
+			auto name = QByteArray("RegramFontTest");
+			auto argv = std::array{ name.data(), static_cast<char*>(nullptr) };
+			auto app = QGuiApplication(argc, argv.data());
+			const auto id = QFontDatabase::addApplicationFont(QString::fromLocal8Bit(path));
+			if (id < 0) {
+				throw std::runtime_error("Code font fixture could not be loaded");
+			}
+			const auto family = QFontDatabase::applicationFontFamilies(id).front();
+			AyuUiSettings::setMonoFont(family);
+			const auto font = style::internal::Font(16, style::FontFlag::Monospace, QString());
+			if (QFontInfo(font->f).family().compare(family, Qt::CaseInsensitive) != 0) {
+				throw std::runtime_error("Explicit code font was replaced by the system font");
+			}
+			std::cout << "PASS: explicit code font override " << family.toStdString() << std::endl;
+			return 0;
+		}
 		if (std::getenv("REGRAM_BENCHMARK")) {
 			BenchmarkFilters();
 			return 0;

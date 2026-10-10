@@ -10,6 +10,7 @@
 #include "regram/ayu/ayu_settings.h"
 #include "regram/ayu/ui/settings/ayu_builder.h"
 #include "regram/ayu/ui/settings/settings_main.h"
+#include "regram/ayu/ui/settings/settings_general.h"
 #include "core/application.h"
 #include "lang/lang_text_entity.h"
 #include "settings/settings_builder.h"
@@ -80,12 +81,13 @@ void BuildOtherThings(SectionBuilder &builder) {
 const auto kMeta = BuildHelper({
 	.id = AyuOther::Id(),
 	.parentId = AyuMain::Id(),
-	.title = &tr::ayu_CategoryOther,
+	.title = &tr::lng_regram_advanced_tools,
 	.icon = &st::menuIconFave,
 }, [](SectionBuilder &builder) {
 	auto ayu = AyuSectionBuilder(builder);
 
 	builder.addSkip();
+	BuildExtraGeneral(builder);
 	BuildCrashReporting(builder, ayu);
 	BuildOtherThings(builder);
 });
@@ -93,7 +95,7 @@ const auto kMeta = BuildHelper({
 } // namespace
 
 rpl::producer<QString> AyuOther::title() {
-	return tr::ayu_CategoryOther();
+	return tr::lng_regram_advanced_tools();
 }
 
 AyuOther::AyuOther(

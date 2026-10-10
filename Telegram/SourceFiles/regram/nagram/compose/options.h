@@ -1,6 +1,7 @@
 #pragma once
 
 #include "regram/nagram/core/options.h"
+#include "regram/nagram/compose/chat_preferences.h"
 
 #include <QtCore/QJsonArray>
 
@@ -8,6 +9,20 @@ namespace Nagram::Compose {
 
 inline constexpr auto kRefreshButtons = static_cast<unsigned>(
 	Flag::RefreshComposeButtons);
+
+inline constexpr auto kDefaultFormatting = Option<int>{
+	"nagram.regramDefaultFormatting", Scope::Device, 0,
+	Category::Compose, "lng_regram_default_formatting", 0,
+	[](const int &value) { return value >= 0 && value <= 5; } };
+
+inline constexpr auto kAccountFormatting = Option<int>{
+	"nagram.regramAccountFormatting", Scope::Account, -1,
+	Category::Compose, "lng_regram_account_formatting", 0,
+	[](const int &value) { return value >= -1 && value <= 5; } };
+
+inline const auto kChatPreferences = Option<QByteArray>{
+	"nagram.regramChatPreferences", Scope::Account, QByteArray(),
+	Category::Compose, "lng_regram_chat_preferences", 0, ValidChatPreferences };
 
 inline constexpr auto kHideAttachButton = Option<bool>{
 	"nagram.hideAttachButton", Scope::Device, false,
@@ -135,6 +150,9 @@ inline constexpr auto kForwardBeforeComment = Option<bool>{
 	Category::Compose, "lng_nagram_forward_before_comment" };
 
 inline void RegisterOptions(Registry &registry) {
+	Expects(registry.Add(kDefaultFormatting));
+	Expects(registry.Add(kAccountFormatting));
+	Expects(registry.Add(kChatPreferences));
 	Expects(registry.Add(kHideAttachButton));
 	Expects(registry.Add(kHideEmojiButton));
 	Expects(registry.Add(kHideRecordingButton));

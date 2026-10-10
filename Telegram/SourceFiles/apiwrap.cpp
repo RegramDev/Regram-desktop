@@ -4889,7 +4889,7 @@ void ApiWrap::sendMessage(
 		textWithTags.text,
 		TextUtilities::ConvertTextTagsToEntities(textWithTags.tags)
 	};
-	left = Nagram::Compose::PrepareText(left, false);
+	left = Nagram::Compose::PrepareText(left, false, history);
 	auto prepareFlags = Ui::ItemTextOptions(
 		history,
 		_session->user()).flags;

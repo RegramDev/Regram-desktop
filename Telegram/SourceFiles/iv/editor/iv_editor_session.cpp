@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "iv/editor/iv_editor_session.h"
+#include "regram/core/local_premium.h"
 
 #include <QtCore/QFileInfo>
 #include <QtCore/QPointer>
@@ -4955,11 +4956,11 @@ bool CanAuthorRichMessages(not_null<Main::Session*> session) {
 }
 
 bool SessionPremium(not_null<Main::Session*> session) {
-	return session->premium();
+	return Regram::Premium::ForLocalFeatures(*session);
 }
 
 rpl::producer<bool> AmPremiumValue(not_null<Main::Session*> session) {
-	return ::Data::AmPremiumValue(session);
+	return Regram::Premium::ForLocalFeaturesValue(session);
 }
 
 rpl::producer<int> StarsPerMessageValue(

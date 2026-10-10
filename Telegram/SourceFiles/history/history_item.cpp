@@ -3772,6 +3772,16 @@ void HistoryItem::translationToggle(
 	}
 }
 
+void HistoryItem::translationSetManual(bool enabled) {
+	if (const auto translation = Get<HistoryMessageTranslation>()) {
+		if (translation->manual != enabled) {
+			translation->manual = enabled;
+			_history->owner().requestItemTextRefresh(this);
+			_history->owner().updateDependentMessages(this);
+		}
+	}
+}
+
 void HistoryItem::translationDone(LanguageId to, TextWithEntities result) {
 	translationDone(to, std::move(result), nullptr);
 }
@@ -4198,7 +4208,7 @@ const TextWithEntities &HistoryItem::translatedText() const {
 	} else if (const auto translation = this->translation()
 		; translation
 		&& translation->used
-		&& (translation->to == history()->translatedTo())) {
+		&& (translation->manual || translation->to == history()->translatedTo())) {
 		return translation->text;
 	} else {
 		return originalText();
@@ -4239,7 +4249,7 @@ auto HistoryItem::translatedRichPage() const
 		; translation
 		&& translation->used
 		&& translation->richPage
-		&& (translation->to == history()->translatedTo())) {
+		&& (translation->manual || translation->to == history()->translatedTo())) {
 		return translation->richPage;
 	}
 	return original;

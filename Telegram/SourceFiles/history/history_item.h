@@ -523,6 +523,7 @@ public:
 	void nagramToggleOriginalShown();
 	[[nodiscard]] bool translationShowRequiresCheck(LanguageId to) const;
 	bool translationShowRequiresRequest(LanguageId to);
+	void translationSetManual(bool enabled);
 	void translationDone(LanguageId to, TextWithEntities result);
 	void translationDone(
 		LanguageId to,

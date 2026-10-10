@@ -476,6 +476,15 @@ private:
 
 	[[nodiscard]] bool displayFastShare() const;
 	[[nodiscard]] bool displayGoToOriginal() const;
+	[[nodiscard]] bool displayQuickTranslate() const;
+	[[nodiscard]] std::optional<QSize> mainRightActionSize() const;
+	void drawQuickTranslateAction(
+		Painter &p,
+		const PaintContext &context,
+		int left,
+		int top,
+		int outerWidth) const;
+	void toggleQuickTranslateRipple(bool pressed);
 	[[nodiscard]] ClickHandlerPtr fastReplyLink() const;
 	[[nodiscard]] ClickHandlerPtr prepareRightActionLink() const;
 

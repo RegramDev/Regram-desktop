@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_context_menu.h"
+#include "regram/filters/settings.h"
+#include "regram/filters/exchange.h"
 #include "regram/nagram/menu/actions.h"
 #include "regram/nagram/menu/selection.h"
 #include "regram/nagram/messages/reactions.h"
@@ -448,6 +450,16 @@ void AddDocumentActions(
 		not_null<DocumentData*> document,
 		HistoryItem *item,
 		not_null<ListWidget*> list) {
+	if (item && !item->isSending() && !list->hasCopyMediaRestriction(item)
+		&& Regram::Filters::IsRulesFileName(document->filename())) {
+		const auto controller = list->controller();
+		const auto contextId = item->fullId();
+		menu->addAction(tr::lng_regram_filter_import_document(tr::now),
+			crl::guard(controller, [=] {
+				controller->show(Box(Regram::Filters::ImportDocumentBox,
+					document, contextId));
+			}), &st::menuIconTagFilter);
+	}
 	if (document->loading()) {
 		menu->addAction(tr::lng_context_cancel_download(tr::now), [=] {
 			document->cancel();

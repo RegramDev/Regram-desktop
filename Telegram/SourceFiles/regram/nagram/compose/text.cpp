@@ -1,6 +1,10 @@
 #include "regram/nagram/compose/text.h"
 
 #include "regram/nagram/compose/options.h"
+#include "regram/nagram/compose/default_format.h"
+#include "history/history.h"
+#include "data/data_peer.h"
+#include "main/main_session.h"
 #include "regram/nagram/compose/spacing.h"
 #include "regram/nagram/messages/reading.h"
 #include "ui/text/text_utilities.h"
@@ -36,6 +40,7 @@ bool Protected(EntityType type) {
 	case EntityType::BankCard:
 	case EntityType::Code:
 	case EntityType::Pre:
+	case EntityType::Blockquote:
 	case EntityType::FormattedDate:
 		return true;
 	default:
@@ -110,8 +115,13 @@ TextWithEntities AddChineseLatinSpacing(const TextWithEntities &text) {
 	return result;
 }
 
-TextWithEntities PrepareText(const TextWithEntities &text, bool editing) {
-	const auto enabled = ForDevice().Get(editing ? kSpaceOnEdit : kSpaceOnSend);
+TextWithEntities PrepareText(const TextWithEntities &text, bool editing, History *history) {
+	const auto prefs = history ? PreferencesForChat(
+		ForAccount(&history->session()).Get(kChatPreferences),
+		history->session().userId().bare,
+		SerializePeerId(history->peer->id)) : ChatPreferences();
+	const auto enabled = !editing && prefs.spacing >= 0 ? (prefs.spacing == 1)
+		: ForDevice().Get(editing ? kSpaceOnEdit : kSpaceOnSend);
 	auto converted = text;
 	if (const auto chinese = ForDevice().Get(kInputChinese)) {
 		if (auto result = Messages::ConvertChinese(text, chinese == 2)) {
@@ -129,6 +139,14 @@ TextWithEntities PrepareText(const TextWithEntities &text, bool editing) {
 					entity.length(), language);
 			}
 		}
+	}
+	if (!editing) {
+		const auto account = history
+			? ForAccount(&history->session()).Get(kAccountFormatting)
+			: -1;
+		const auto format = prefs.formatting >= 0 ? prefs.formatting
+			: account >= 0 ? account : ForDevice().Get(kDefaultFormatting);
+		result = ApplyDefaultFormat(std::move(result), DefaultFormat(format));
 	}
 	return result;
 }

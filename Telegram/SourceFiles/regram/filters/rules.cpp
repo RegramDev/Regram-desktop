@@ -1,4 +1,5 @@
 #include "regram/filters/rules.h"
+#include "regram/filters/matcher.h"
 
 #include <unicode/normalizer2.h>
 #include <unicode/regex.h>
@@ -10,8 +11,6 @@
 namespace Regram::Filters {
 namespace {
 
-constexpr auto kMatchTimeLimit = 10;
-constexpr auto kStackLimit = 1024 * 1024;
 constexpr auto kTotalTimeLimit = std::chrono::milliseconds(20);
 
 struct CompiledRule {
@@ -61,6 +60,7 @@ struct Engine::State {
 bool SameRule(const Rule &a, const Rule &b) {
 	return a.pattern == b.pattern
 		&& a.regex == b.regex
+		&& a.exception == b.exception
 		&& NormalizeUnresolved(a.unresolvedScopes)
 			== NormalizeUnresolved(b.unresolvedScopes)
 		&& NormalizeScopes(a.scopes) == NormalizeScopes(b.scopes);
@@ -159,27 +159,35 @@ Result Engine::evaluate(
 	}
 	auto result = Result();
 	for (const auto &compiled : _state->rules) {
+		if (!compiled.rule.exception) {
+			continue;
+		}
+		if (!compiled.rule.enabled || !AppliesTo(compiled.rule, peer)) {
+			continue;
+		} else if (std::chrono::steady_clock::now() >= deadline) {
+			return { .limited = true };
+		}
+		const auto match = MatchPattern(*compiled.pattern,
+			compiled.rule.regex ? input : normalized);
+		if (match != Match::None) {
+			return { .limited = (match == Match::Limited) };
+		}
+	}
+	for (const auto &compiled : _state->rules) {
+		if (compiled.rule.exception) {
+			continue;
+		}
 		if (!compiled.rule.enabled || !AppliesTo(compiled.rule, peer)) {
 			continue;
 		} else if (std::chrono::steady_clock::now() >= deadline) {
 			result.limited = true;
 			break;
 		}
-		auto status = U_ZERO_ERROR;
-		auto matcher = std::unique_ptr<icu::RegexMatcher>(
-			compiled.pattern->matcher(
-				compiled.rule.regex ? input : normalized,
-				status));
-		if (U_FAILURE(status) || !matcher) {
+		const auto match = MatchPattern(*compiled.pattern,
+			compiled.rule.regex ? input : normalized);
+		if (match == Match::Limited) {
 			result.limited = true;
-			continue;
-		}
-		matcher->setTimeLimit(kMatchTimeLimit, status);
-		matcher->setStackLimit(kStackLimit, status);
-		const auto found = matcher->find(status);
-		if (U_FAILURE(status)) {
-			result.limited = true;
-		} else if (found) {
+		} else if (match == Match::Found) {
 			result.hidden = true;
 			result.ruleId = compiled.rule.id;
 			break;

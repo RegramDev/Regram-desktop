@@ -2,3 +2,5 @@ using "ui/basic.style";
 
 nagramAppIconPreview: 96px;
 nagramAppIconPreviewMargin: margins(0px, 4px, 0px, 12px);
+nagramFontPreviewHeight: 100px;
+nagramFontPreviewPadding: 16px;

@@ -18,6 +18,17 @@ std::optional<PeerAddress> FromIosPeerId(std::int64_t value) {
 	};
 }
 
+std::optional<std::int64_t> ToIosPeerId(PeerAddress peer) {
+	if (!peer.id || peer.id >= (1ULL << 61) || peer.thread
+		|| static_cast<unsigned>(peer.kind) > 2) {
+		return std::nullopt;
+	}
+	const auto bits = (peer.id & 0xFFFFFFFFULL)
+		| (std::uint64_t(peer.kind) << 32)
+		| ((peer.id >> 32) << 35);
+	return std::bit_cast<std::int64_t>(bits);
+}
+
 std::optional<std::uint64_t> ParseServerId(
 		std::string_view value,
 		bool allowZero) {

@@ -6,6 +6,8 @@
 // Copyright @Radolyn, 2026
 
 #include "regram/ayu/features/filters/filters_controller.h"
+#include "regram/filters/matcher.h"
+#include "regram/filters/reveal.h"
 
 #include "regram/ayu/ayu_settings.h"
 #include "regram/ayu/features/filters/filters_cache_controller.h"
@@ -21,11 +23,10 @@
 #include "unicode/regex.h"
 
 #include <memory>
+#include <chrono>
 #include <unordered_set>
 
 namespace FiltersController {
-
-std::unordered_set<long long> showingFilteredMessages;
 
 bool filterBlocked(const not_null<HistoryItem*> item) {
 	if (item->from() != item->history()->peer) {
@@ -50,21 +51,22 @@ std::optional<bool> isFiltered(
 	}
 
 	const auto icuStr = icu::UnicodeString(reinterpret_cast<const UChar*>(str.constData()), str.length());
+	constexpr auto kTotalTimeLimit = std::chrono::milliseconds(20);
+	const auto deadline = std::chrono::steady_clock::now() + kTotalTimeLimit;
 
 	const auto matches = [&](const ReversiblePattern &pattern)
 	{
-		UErrorCode status = U_ZERO_ERROR;
-
-		const auto matcher = std::unique_ptr<icu::RegexMatcher>(pattern.pattern->matcher(icuStr, status));
-		if (U_FAILURE(status) || !matcher) {
-			LOG(("FILTER FAILED: %1").arg(u_errorName(status)));
+		if (std::chrono::steady_clock::now() >= deadline) {
 			return false;
 		}
-
-		const auto match = matcher->find();
+		const auto match = Regram::Filters::MatchPattern(*pattern.pattern, icuStr);
+		if (match == Regram::Filters::Match::Limited) {
+			return false;
+		}
 		const auto reversed = pattern.reversed;
 
-		if ((!reversed && match) || (reversed && !match)) {
+		if ((!reversed && match == Regram::Filters::Match::Found)
+			|| (reversed && match == Regram::Filters::Match::None)) {
 			return true;
 		}
 		return false;
@@ -149,8 +151,8 @@ bool isBlocked(const not_null<PeerData*> peer) {
 	);
 }
 
-bool filtered(const not_null<HistoryItem*> item) {
-	if (showingFilteredMessages.contains(item->history()->peer->id.value)) {
+bool filtered(const not_null<HistoryItem*> item, bool displayOverrides) {
+	if (displayOverrides && Regram::Filters::TemporarilyRevealed(item->history()->peer)) {
 		return false;
 	}
 
@@ -192,20 +194,16 @@ bool filtered(const not_null<HistoryItem*> item) {
 }
 
 std::optional<bool> filteredMessagesShown(not_null<PeerData*> peer) {
-	if (!showingFilteredMessages.contains(peer->id.value)
+	if (!Regram::Filters::TemporarilyRevealed(peer)
 		&& !FiltersCacheController::hasFilteredMessages(peer)) {
 		return std::nullopt;
 	}
-	return showingFilteredMessages.contains(peer->id.value);
+	return Regram::Filters::TemporarilyRevealed(peer);
 }
 
 void toggleFilteredMessagesShown(not_null<PeerData*> peer) {
-	if (showingFilteredMessages.contains(peer->id.value)) {
-		showingFilteredMessages.erase(peer->id.value);
-	} else {
-		showingFilteredMessages.insert(peer->id.value);
-	}
-	FiltersCacheController::fireUpdate();
+	const auto toggled = Regram::Filters::ToggleTemporaryReveal(peer);
+	Assert(toggled);
 }
 
 void invalidate(not_null<HistoryItem*> item) {

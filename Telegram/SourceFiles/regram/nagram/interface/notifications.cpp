@@ -13,7 +13,9 @@ crl::time NotificationDelay(
 	const auto override = ForDevice().Get(otherDeviceActive
 		? kOtherDeviceNotificationDelay
 		: kNotificationDelay);
-	return std::max(override ? crl::time(override) : upstream, minimum);
+	return override == -1
+		? minimum
+		: std::max(override ? crl::time(override) : upstream, minimum);
 }
 
 int AppIconBadge(int unread) {

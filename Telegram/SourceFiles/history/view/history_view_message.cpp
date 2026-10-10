@@ -9,6 +9,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "regram/nagram/interface/options.h"
 #include "regram/nagram/messages/reactions.h"
 #include "regram/nagram/messages/content.h"
+#include "regram/nagram/services/model.h"
+#include "regram/nagram/services/translation.h"
 
 #include "api/api_suggest_post.h"
 #include "api/api_transcribes.h"
@@ -67,6 +69,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_session_controller.h"
 #include "apiwrap.h"
 #include "api/api_rich_tasks.h"
+#include "styles/style_menu_icons.h"
 #include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_chat_style.h"
@@ -580,6 +583,8 @@ struct Message::RightAction {
 	ClickHandlerPtr link;
 	QPoint lastPoint;
 	std::unique_ptr<SecondRightAction> second;
+	std::unique_ptr<Ui::RippleAnimation> translateRipple;
+	ClickHandlerPtr translateLink;
 };
 
 struct Message::LinkRipple {
@@ -3444,6 +3449,8 @@ void Message::clickHandlerPressedChanged(
 		return;
 	} else if (_rightAction && (handler == _rightAction->link)) {
 		toggleRightActionRipple(pressed);
+	} else if (_rightAction && (handler == _rightAction->translateLink)) {
+		toggleQuickTranslateRipple(pressed);
 	} else if (_rightAction
 		&& _rightAction->second
 		&& (handler == _rightAction->second->link)) {
@@ -3592,7 +3599,7 @@ void Message::toggleCommentsButtonRipple(bool pressed) {
 void Message::toggleRightActionRipple(bool pressed) {
 	Expects(_rightAction != nullptr);
 
-	const auto rightSize = rightActionSize();
+	const auto rightSize = mainRightActionSize();
 	Assert(rightSize != std::nullopt);
 
 	if (pressed) {
@@ -3609,6 +3616,27 @@ void Message::toggleRightActionRipple(bool pressed) {
 		_rightAction->ripple->add(_rightAction->lastPoint);
 	} else if (_rightAction->ripple) {
 		_rightAction->ripple->lastStop();
+	}
+}
+
+void Message::toggleQuickTranslateRipple(bool pressed) {
+	if (pressed) {
+		if (!_rightAction->translateRipple) {
+			const auto size = QSize(st::historyFastShareSize, st::historyFastShareSize);
+			_rightAction->translateRipple = std::make_unique<Ui::RippleAnimation>(
+				st::defaultRippleAnimation,
+				Ui::RippleAnimation::EllipseMask(size),
+				[=] { repaint(); });
+		}
+		const auto main = mainRightActionSize();
+		const auto size = rightActionSize();
+		const auto offset = QPoint(
+			main ? main->width() + st::historyFastShareBottom : 0,
+			(size->height() - st::historyFastShareSize) / 2);
+		_rightAction->translateRipple->add(
+			_rightAction->lastPoint - offset);
+	} else if (_rightAction->translateRipple) {
+		_rightAction->translateRipple->lastStop();
 	}
 }
 
@@ -6086,6 +6114,28 @@ bool Message::displayRightActionComments() const {
 }
 
 std::optional<QSize> Message::rightActionSize() const {
+	const auto main = mainRightActionSize();
+	if (!displayQuickTranslate()) {
+		return main;
+	}
+	const auto usual = st::historyFastShareSize;
+	return QSize(
+		main ? main->width() + st::historyFastShareBottom + usual : usual,
+		main ? std::max(main->height(), usual) : usual);
+}
+
+bool Message::displayQuickTranslate() const {
+	return Nagram::ForDevice().Get(Nagram::kQuickTranslateButton)
+		&& (context() == Context::History || context() == Context::Replies)
+		&& data()->isRegular()
+		&& !hasOutLayout()
+		&& !data()->isSponsored()
+		&& !data()->originalText().empty()
+		&& !AyuFeatures::MessageShot::isTakingShot()
+		&& Nagram::CanQuickTranslate(data());
+}
+
+std::optional<QSize> Message::mainRightActionSize() const {
 	if (AyuFeatures::MessageShot::isTakingShot()) {
 		return {};
 	}
@@ -6166,7 +6216,13 @@ void Message::drawRightAction(
 		int outerWidth) const {
 	ensureRightAction();
 
-	const auto size = rightActionSize();
+	if (displayQuickTranslate()) {
+		drawQuickTranslateAction(p, context, left, top, outerWidth);
+	}
+	const auto size = mainRightActionSize();
+	if (!size) {
+		return;
+	}
 	const auto st = context.st;
 
 	if (_rightAction->ripple) {
@@ -6251,17 +6307,57 @@ void Message::drawRightAction(
 	}
 }
 
+void Message::drawQuickTranslateAction(
+		Painter &p,
+		const PaintContext &context,
+		int left,
+		int top,
+		int outerWidth) const {
+	const auto main = mainRightActionSize();
+	const auto size = rightActionSize();
+	const auto usual = st::historyFastShareSize;
+	const auto x = left + (main ? main->width() + st::historyFastShareBottom : 0);
+	const auto y = top + (size->height() - usual) / 2;
+	const auto rect = style::rtlrect(x, y, usual, usual, outerWidth);
+	p.setPen(Qt::NoPen);
+	p.setBrush(context.st->msgServiceBg());
+	{
+		const auto hq = PainterHighQualityEnabler(p);
+		p.drawEllipse(rect);
+	}
+	if (_rightAction->translateRipple) {
+		const auto color = context.messageStyle()->msgWaveformInactive->c;
+		_rightAction->translateRipple->paint(p, x, y, outerWidth, &color);
+		if (_rightAction->translateRipple->empty()) {
+			_rightAction->translateRipple.reset();
+		}
+	}
+	st::menuIconTranslate.paintInCenter(p, rect, context.st->msgServiceFg()->c);
+}
+
 ClickHandlerPtr Message::rightActionLink(
 		std::optional<QPoint> pressPoint) const {
 	if (delegate()->elementInSelectionMode(this).progress > 0) {
 		return nullptr;
 	}
 	ensureRightAction();
-	if (!_rightAction->link) {
-		_rightAction->link = prepareRightActionLink();
-	}
 	if (pressPoint) {
 		_rightAction->lastPoint = *pressPoint;
+	}
+	const auto main = mainRightActionSize();
+	if (displayQuickTranslate()
+		&& (!main || _rightAction->lastPoint.x()
+			>= main->width() + st::historyFastShareBottom)) {
+		if (!_rightAction->translateLink) {
+			_rightAction->translateLink = Nagram::QuickTranslateClickHandler(data());
+		}
+		return _rightAction->translateLink;
+	}
+	if (!main) {
+		return nullptr;
+	}
+	if (!_rightAction->link) {
+		_rightAction->link = prepareRightActionLink();
 	}
 	if (_rightAction->second
 		&& (_rightAction->lastPoint.y() > st::historyFastCloseSize)) {

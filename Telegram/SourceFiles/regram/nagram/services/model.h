@@ -27,6 +27,10 @@ inline constexpr auto kPreferSystemAi = Option<bool>{
 inline constexpr auto kTranslationContext = Option<bool>{
 	"nagram.translationContext", Scope::Device, false,
 	Category::Services, "lng_nagram_service_use_context" };
+inline constexpr auto kQuickTranslateButton = Option<bool>{
+	"nagram.regramQuickTranslateButton", Scope::Device, false,
+	Category::Services, "lng_regram_quick_translate",
+	static_cast<unsigned>(Flag::RefreshMessageView) };
 inline constexpr auto kChatTranslationUseService = Option<bool>{
 	"nagram.chatTranslationUseService", Scope::Device, false,
 	Category::Services, "lng_nagram_chat_translation_service" };
@@ -35,6 +39,7 @@ inline void RegisterServiceOptions(Registry &registry) {
 	Expects(registry.Add(kServicesConfig));
 	Expects(registry.Add(kPreferSystemAi));
 	Expects(registry.Add(kTranslationContext));
+	Expects(registry.Add(kQuickTranslateButton));
 	Expects(registry.Add(kChatTranslationUseService));
 }
 

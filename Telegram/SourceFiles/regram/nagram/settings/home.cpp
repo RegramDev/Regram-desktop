@@ -1,68 +1,38 @@
 #include "regram/nagram/settings/home.h"
+
 #include "regram/ayu/ui/settings/settings_main.h"
-#include "regram/nagram/settings/interface.h"
-#include "regram/nagram/settings/messages.h"
-#include "regram/nagram/settings/menu.h"
 #include "regram/nagram/settings/chats.h"
 #include "regram/nagram/settings/compose.h"
 #include "regram/nagram/settings/config.h"
+#include "regram/nagram/settings/interface.h"
 #include "regram/nagram/settings/media.h"
-#include "regram/nagram/settings/privacy.h"
-#include "regram/nagram/settings/services.h"
-#include "regram/nagram/settings/rules.h"
+#include "regram/nagram/settings/menu.h"
+#include "regram/nagram/settings/messages.h"
 #include "regram/nagram/settings/network.h"
-
-#include "boxes/about_box.h"
-#include "core/click_handler_types.h"
+#include "regram/nagram/settings/privacy.h"
+#include "regram/nagram/settings/rules.h"
+#include "regram/nagram/settings/services.h"
 #include "lang/lang_keys.h"
-#include "settings/sections/settings_main.h"
 #include "settings/settings_builder.h"
-#include "settings/settings_common_session.h"
-#include "ui/vertical_list.h"
-#include "window/window_session_controller.h"
+
 #include "styles/style_menu_icons.h"
 
 namespace Nagram {
-namespace {
 
-using namespace ::Settings;
-using namespace ::Settings::Builder;
+Settings::Type HomeId() {
+	return ::Settings::AyuMainId();
+}
 
-class Home final : public Section<Home> {
-public:
-	Home(QWidget *parent, not_null<Window::SessionController*> controller)
-	: Section(parent, controller) {
-		const auto content = Ui::CreateChild<Ui::VerticalLayout>(this);
-		build(content, kBuild);
-		Ui::ResizeFitChild(this, content);
-	}
-
-	[[nodiscard]] rpl::producer<QString> title() override {
-		return tr::lng_nagram_settings();
-	}
-
-	static const SectionBuildMethod kBuild;
-};
-
-const auto kMeta = BuildHelper({
-	.id = Home::Id(),
-	.parentId = MainId(),
-	.title = &tr::lng_nagram_settings,
-	.icon = &st::menuIconNagram,
-}, [](SectionBuilder &builder) {
-	builder.addButton({
+void AddSettingsEntry(::Settings::Builder::SectionBuilder &builder) {
+	builder.addSectionButton({
 		.title = tr::lng_nagram_settings(),
+		.targetSection = HomeId(),
 		.icon = { &st::menuIconNagram },
-		.label = rpl::single(tr::lng_settings_current_version(
-			tr::now, lt_version, currentVersionShortText())),
+		.keywords = { u"Regram"_q, u"desktop"_q },
 	});
-	builder.addButton({
-		.title = tr::lng_nagram_source_code(),
-		.icon = { &st::menuIconLink },
-		.onClick = [] {
-			UrlClickHandler::Open(u"https://github.com/RegramDev/Regram-desktop"_q);
-		},
-	});
+}
+
+void AddCategoryEntries(::Settings::Builder::SectionBuilder &builder) {
 	builder.addSectionButton({
 		.title = tr::lng_nagram_interface(),
 		.targetSection = InterfaceId(),
@@ -128,30 +98,6 @@ const auto kMeta = BuildHelper({
 		.targetSection = ConfigId(),
 		.icon = { &st::menuIconStorage },
 		.keywords = { u"backup"_q, u"import"_q, u"export"_q },
-	});
-    builder.addSectionButton({
-        .title = tr::ayu_AyuPreferences(),
-        .targetSection = ::Settings::AyuMainId(),
-        .icon = { &st::menuIconLock },
-        .keywords = { u"ghost"_q, u"history"_q, u"streamer"_q, u"privacy"_q },
-    });
-	builder.addDividerText(tr::lng_nagram_settings_note());
-});
-
-const SectionBuildMethod Home::kBuild = kMeta.build;
-
-} // namespace
-
-Settings::Type HomeId() {
-	return Home::Id();
-}
-
-void AddSettingsEntry(SectionBuilder &builder) {
-	builder.addSectionButton({
-		.title = tr::lng_nagram_settings(),
-		.targetSection = Home::Id(),
-		.icon = { &st::menuIconNagram },
-		.keywords = { u"Regram"_q, u"desktop"_q },
 	});
 }
 

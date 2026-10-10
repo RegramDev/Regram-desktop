@@ -22,6 +22,7 @@ struct PeerAddress {
 };
 
 [[nodiscard]] std::optional<PeerAddress> FromIosPeerId(std::int64_t value);
+[[nodiscard]] std::optional<std::int64_t> ToIosPeerId(PeerAddress peer);
 [[nodiscard]] std::optional<std::uint64_t> ParseServerId(
 	std::string_view value,
 	bool allowZero = false);

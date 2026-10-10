@@ -606,7 +606,6 @@ QSize Service::performCountCurrentSize(int newWidth) {
 	if (contentWidth < st::msgServicePadding.left() + st::msgServicePadding.right() + 1) {
 		contentWidth = st::msgServicePadding.left() + st::msgServicePadding.right() + 1;
 	}
-	const auto nwidth = qMax(contentWidth - st::msgServicePadding.left() - st::msgServicePadding.right(), 0);
 	validateTextSkipBlock(
 		!timeText.isEmpty(),
 		timeMetrics.additionalWidth,

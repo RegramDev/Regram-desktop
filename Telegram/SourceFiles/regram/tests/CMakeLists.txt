@@ -7,6 +7,8 @@ enable_testing()
 add_executable(regram_policy_tests
     ../core/peer_address.cpp
     ../filters/rules.cpp
+    ../filters/matcher.cpp
+    ../filters/reveal_policy.cpp
     policy_tests.cpp
 )
 target_compile_features(regram_policy_tests PRIVATE cxx_std_20)
@@ -20,8 +22,10 @@ if (REGRAM_TEST_JSON)
     add_executable(regram_exchange_tests
         ../core/peer_address.cpp
         ../filters/rules.cpp
+        ../filters/matcher.cpp
         ../filters/exchange.cpp
         ../filters/scopes.cpp
+        ../filters/result_cache.cpp
         exchange_tests.cpp
     )
     target_compile_features(regram_exchange_tests PRIVATE cxx_std_20)
@@ -72,4 +76,22 @@ if (REGRAM_TEST_DEBUG_GRAPHICS)
     if (TARGET Qt6::QCocoaIntegrationPlugin)
         qt_import_plugins(regram_debug_graphics_probe INCLUDE Qt6::QCocoaIntegrationPlugin)
     endif()
+endif()
+
+option(REGRAM_TEST_FONTS "Build native font compatibility tests" OFF)
+if (REGRAM_TEST_FONTS)
+    find_package(Qt6 REQUIRED COMPONENTS Core Gui)
+    add_executable(regram_typography_tests typography_tests.cpp ../typography/font_data.cpp)
+    target_include_directories(regram_typography_tests PRIVATE ../..)
+    if (WIN32)
+        target_link_libraries(regram_typography_tests PRIVATE dwrite)
+    endif()
+    target_compile_features(regram_typography_tests PRIVATE cxx_std_20)
+    target_link_libraries(regram_typography_tests PRIVATE Qt6::Core Qt6::Gui)
+    target_compile_definitions(regram_typography_tests PRIVATE
+        REGRAM_FONT_CATALOG="${CMAKE_CURRENT_SOURCE_DIR}/../../../Resources/regram/fonts/catalog.json")
+    if (TARGET Qt6::QCocoaIntegrationPlugin)
+        qt_import_plugins(regram_typography_tests INCLUDE Qt6::QCocoaIntegrationPlugin)
+    endif()
+    add_test(NAME regram_typography_tests COMMAND regram_typography_tests)
 endif()

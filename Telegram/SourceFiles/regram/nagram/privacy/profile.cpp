@@ -53,7 +53,7 @@ rpl::producer<TextWithEntities> ProfileIdValue(not_null<PeerData*> peer) {
 			if (peer->isChat()) {
 				result.prepend('-');
 			} else if (peer->isChannel()) {
-				result.prepend(u"-100"_q);
+				result = QString::number(-1000000000000LL - qint64(raw));
 			}
 		}
 		return TextWithEntities{ result };

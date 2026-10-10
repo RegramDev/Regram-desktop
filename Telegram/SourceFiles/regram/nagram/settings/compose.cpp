@@ -1,4 +1,5 @@
 #include "regram/nagram/settings/compose.h"
+#include "regram/ayu/ui/settings/settings_chats.h"
 
 #include "regram/nagram/compose/options.h"
 #include "regram/nagram/compose/text.h"
@@ -14,6 +15,8 @@
 #include "ui/widgets/fields/input_field.h"
 #include "ui/wrap/vertical_layout.h"
 #include "window/window_session_controller.h"
+#include "data/data_peer.h"
+#include "main/main_session.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 #include "styles/style_layers.h"
@@ -132,6 +135,100 @@ void PlaceholderBox(not_null<Ui::GenericBox*> box) {
 	});
 }
 
+QString FormattingLabel(int value) {
+	switch (value) {
+	case -1: return tr::lng_nagram_inherit(tr::now);
+	case 1: return tr::lng_menu_formatting_bold(tr::now);
+	case 2: return tr::lng_menu_formatting_italic(tr::now);
+	case 3: return tr::lng_menu_formatting_underline(tr::now);
+	case 4: return tr::lng_menu_formatting_strike_out(tr::now);
+	case 5: return tr::lng_menu_formatting_spoiler(tr::now);
+	default: return tr::lng_nagram_config_off(tr::now);
+	}
+}
+
+void ChatPreferencesBox(
+		not_null<Ui::GenericBox*> box,
+		not_null<Window::SessionController*> controller,
+		not_null<PeerData*> peer) {
+	const auto session = &controller->session();
+	session->lifetime().add([weak = QPointer<Ui::GenericBox>(box)] {
+		if (weak) {
+			weak->closeBox();
+		}
+	});
+	box->setTitle(tr::lng_regram_chat_preferences());
+	const auto before = ForAccount(session).Get(Compose::kChatPreferences);
+	const auto parsed = Compose::ParseChatPreferences(before);
+	if (!parsed) {
+		box->addRow(object_ptr<Ui::FlatLabel>(box,
+			tr::lng_nagram_config_invalid(), st::boxLabel));
+		return;
+	}
+	const auto prefs = parsed->user == session->userId().bare ? *parsed
+		: Compose::ChatPreferenceSet{ .user = session->userId().bare };
+	const auto id = SerializePeerId(peer->id);
+	const auto current = Compose::PreferencesForChat(before, session->userId().bare, id);
+	box->addRow(object_ptr<Ui::FlatLabel>(box, peer->name(), st::boxLabel));
+	box->addRow(object_ptr<Ui::FlatLabel>(box, tr::lng_regram_default_formatting(), st::boxLabel));
+	const auto format = std::make_shared<Ui::RadiobuttonGroup>(current.formatting);
+	for (auto value = -1; value != 6; ++value) {
+		box->addRow(object_ptr<Ui::Radiobutton>(
+			box, format, value, FormattingLabel(value), st::settingsSendType),
+			st::settingsSendTypePadding);
+	}
+	box->addRow(object_ptr<Ui::FlatLabel>(box, tr::lng_nagram_space_on_send(), st::boxLabel));
+	const auto spacing = std::make_shared<Ui::RadiobuttonGroup>(current.spacing);
+	for (auto value = -1; value != 2; ++value) {
+		const auto label = value < 0 ? tr::lng_nagram_inherit(tr::now)
+			: value ? tr::lng_nagram_config_on(tr::now) : tr::lng_nagram_config_off(tr::now);
+		box->addRow(object_ptr<Ui::Radiobutton>(
+			box, spacing, value, label, st::settingsSendType), st::settingsSendTypePadding);
+	}
+	box->addButton(tr::lng_settings_save(), [=] {
+		if (ForAccount(session).Get(Compose::kChatPreferences) != before) {
+			box->showToast(tr::lng_nagram_config_changed_error(tr::now));
+			return;
+		}
+		auto updated = prefs;
+		if (format->current() < 0 && spacing->current() < 0) {
+			updated.chats.erase(id);
+		} else {
+			updated.chats[id] = { format->current(), spacing->current() };
+		}
+		if (!ForAccount(session).Set(Compose::kChatPreferences,
+				Compose::EncodeChatPreferences(updated))) {
+			box->showToast(tr::lng_nagram_config_invalid(tr::now));
+			return;
+		}
+		box->closeBox();
+	});
+	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
+}
+
+void FormattingBox(
+		not_null<Ui::GenericBox*> box,
+		not_null<Main::Session*> session,
+		bool account) {
+	box->setTitle(account ? tr::lng_regram_account_formatting() : tr::lng_regram_default_formatting());
+	const auto group = std::make_shared<Ui::RadiobuttonGroup>(account
+		? ForAccount(session).Get(Compose::kAccountFormatting)
+		: ForDevice().Get(Compose::kDefaultFormatting));
+	for (auto value = account ? -1 : 0; value != 6; ++value) {
+		box->addRow(object_ptr<Ui::Radiobutton>(
+			box, group, value, FormattingLabel(value), st::settingsSendType),
+			st::settingsSendTypePadding);
+	}
+	group->setChangedCallback([=](int value) {
+		const auto saved = account
+			? ForAccount(session).Set(Compose::kAccountFormatting, value)
+			: ForDevice().Set(Compose::kDefaultFormatting, value);
+		Expects(saved);
+		box->closeBox();
+	});
+	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
+}
+
 void CodeLanguageBox(not_null<Ui::GenericBox*> box) {
 	box->setTitle(tr::lng_nagram_default_code_language());
 	const auto current = ForDevice().Get(Compose::kDefaultCodeLanguage);
@@ -184,6 +281,22 @@ const auto kMeta = BuildHelper({
 	.title = &tr::lng_nagram_compose,
 	.icon = &st::menuIconChatBubble,
 }, [](SectionBuilder &builder) {
+	const auto controller = builder.controller();
+	const auto session = builder.session();
+	const auto formatting = [&](bool account) {
+		builder.addButton({
+			.id = account ? u"regram/compose/account-formatting"_q : u"regram/compose/default-formatting"_q,
+			.title = account ? tr::lng_regram_account_formatting() : tr::lng_regram_default_formatting(),
+			.st = &st::settingsButtonNoIcon,
+			.label = (account ? ForAccount(session).Value(Compose::kAccountFormatting)
+				: ForDevice().Value(Compose::kDefaultFormatting)) | rpl::map(FormattingLabel),
+			.onClick = [=] { controller->show(Box(FormattingBox, session, account)); },
+			.keywords = { u"format"_q, u"bold"_q, u"iOS"_q },
+		});
+	};
+	formatting(false);
+	formatting(true);
+	builder.addDividerText(tr::lng_regram_default_formatting_about());
 	builder.addSubsectionTitle({
 		.id = u"regram/nagram/compose/buttons"_q,
 		.title = tr::lng_nagram_compose_buttons(),
@@ -243,7 +356,6 @@ const auto kMeta = BuildHelper({
 		tr::lng_nagram_bot_commands_to_draft(),
 		u"regram/nagram/compose/bot-commands-to-draft"_q,
 		{ u"bot"_q, u"command"_q, u"draft"_q });
-	const auto controller = builder.controller();
 	builder.addButton({
 		.id = u"regram/nagram/compose/input-placeholder"_q,
 		.title = tr::lng_nagram_input_placeholder(),
@@ -360,6 +472,7 @@ const auto kMeta = BuildHelper({
 		tr::lng_nagram_forward_before_comment(),
 		u"regram/nagram/compose/forward-before-comment"_q,
 		{ u"forward"_q, u"comment"_q, u"order"_q });
+	::Settings::BuildExtraCompose(builder);
 });
 
 const SectionBuildMethod ComposeSection::kBuild = kMeta.build;
@@ -368,6 +481,15 @@ const SectionBuildMethod ComposeSection::kBuild = kMeta.build;
 
 Settings::Type ComposeId() {
 	return ComposeSection::Id();
+}
+
+void AddComposePeerMenu(
+		const Ui::Menu::MenuCallback &addAction,
+		not_null<Window::SessionController*> controller,
+		not_null<PeerData*> peer) {
+	addAction(tr::lng_regram_chat_preferences(tr::now), crl::guard(controller, [=] {
+		controller->show(Box(ChatPreferencesBox, controller, peer));
+	}), &st::menuIconFont);
 }
 
 } // namespace Nagram

@@ -93,7 +93,7 @@ inline constexpr auto kHideAppIconBadge = Option<bool>{
 inline constexpr auto kNotificationDelay = Option<int>{
 	"nagram.notificationDelay", Scope::Device, 0,
 	Category::Interface, "lng_nagram_notification_delay", 0,
-	[](const int &value) { return value == 0 || value == 500
+	[](const int &value) { return value == -1 || value == 0 || value == 500
 		|| value == 1000 || value == 2000 || value == 5000
 		|| value == 10000 || value == 30000 || value == 60000; } };
 inline constexpr auto kOtherDeviceNotificationDelay = Option<int>{

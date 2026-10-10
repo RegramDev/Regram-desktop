@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_peer_menu.h"
+#include "regram/nagram/settings/compose.h"
 #include "regram/nagram/privacy/options.h"
 #include "regram/nagram/privacy/alias.h"
 #include "regram/nagram/privacy/admin_shortcuts.h"
@@ -1994,6 +1995,7 @@ void Filler::fillHistoryActions() {
 	addTranslate();
 	Nagram::AutoTranslate::AddPeerMenu(_addAction, _controller, _peer);
 	Nagram::SendTranslation::AddPeerMenu(_addAction, _controller, _peer);
+	Nagram::AddComposePeerMenu(_addAction, _controller, _peer);
 	Nagram::Filters::AddScopeAction(_addAction, _controller, _peer, nullptr);
 	addReport();
 	addClearHistory();

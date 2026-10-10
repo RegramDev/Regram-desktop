@@ -1,4 +1,5 @@
 #include "regram/nagram/settings/messages.h"
+#include "regram/ayu/ui/settings/settings_chats.h"
 
 #include "regram/nagram/core/options.h"
 #include "regram/nagram/messages/options.h"
@@ -343,6 +344,7 @@ const auto kMeta = BuildHelper({
 		chinese->setDisabled(true);
 	}
 	builder.addDividerText(tr::lng_nagram_reading_chinese_note());
+	::Settings::BuildExtraMessages(builder);
 });
 
 const SectionBuildMethod MessagesSection::kBuild = kMeta.build;

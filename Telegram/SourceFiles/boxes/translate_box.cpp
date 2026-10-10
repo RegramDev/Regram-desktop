@@ -499,11 +499,20 @@ void TranslateBox(
 }
 
 bool SkipTranslate(TextWithEntities textWithEntities) {
+	return !Core::App().settings().translateButtonEnabled()
+		|| SkipTranslationLanguage(textWithEntities);
+}
+
+bool SkipTranslationLanguage(const TextWithEntities &textWithEntities) {
+	return SkipTranslationLanguage(textWithEntities,
+		Core::App().settings().skipTranslationLanguages());
+}
+
+bool SkipTranslationLanguage(
+		const TextWithEntities &textWithEntities,
+		const std::vector<LanguageId> &skip) {
 	const auto &text = textWithEntities.text;
 	if (text.isEmpty()) {
-		return true;
-	}
-	if (!Core::App().settings().translateButtonEnabled()) {
 		return true;
 	}
 	constexpr auto kFirstChunk = size_t(100);
@@ -519,10 +528,12 @@ bool SkipTranslate(TextWithEntities textWithEntities) {
 	}
 	if (!hasLetters) {
 		return true;
+	} else if (skip.empty()) {
+		return false;
 	}
 #ifndef TDESKTOP_DISABLE_SPELLCHECK
-	const auto result = Platform::Language::Recognize(text);
-	const auto skip = Core::App().settings().skipTranslationLanguages();
+	constexpr auto kLanguageSampleLength = 1000;
+	const auto result = Platform::Language::Recognize(QStringView(text).left(kLanguageSampleLength));
 	return result.known() && ranges::contains(skip, result);
 #else
 	return false;

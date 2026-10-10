@@ -8,13 +8,16 @@ namespace Ui {
 class InputField;
 } // namespace Ui
 
+class History;
+
 namespace Nagram::Compose {
 
 [[nodiscard]] TextWithEntities AddChineseLatinSpacing(
 	const TextWithEntities &text);
 [[nodiscard]] TextWithEntities PrepareText(
 	const TextWithEntities &text,
-	bool editing);
+	bool editing,
+	History *history = nullptr);
 [[nodiscard]] QStringList QuickReplies();
 [[nodiscard]] bool SetQuickReplies(const QStringList &replies);
 void InstallQuickReplies(not_null<Ui::InputField*> field);

@@ -50,37 +50,6 @@ bool HasDrawerBots(not_null<Window::SessionController*> controller) {
 	return false;
 }
 
-void BuildAppIcon(SectionBuilder &builder, AyuSectionBuilder &ayu) {
-	builder.addSubsectionTitle({
-		.id = u"regram/ayu/appIcon"_q,
-		.title = tr::ayu_AppIconHeader(),
-	});
-
-	builder.add([](const WidgetContext &ctx) -> SectionBuilder::WidgetToAdd {
-		return {
-			.widget = object_ptr<IconPicker>(ctx.container),
-			.margin = st::settingsButtonNoIcon.padding,
-		};
-	});
-
-#if defined Q_OS_WIN || defined Q_OS_MAC
-	builder.addDivider();
-	builder.addSkip();
-	ayu.addSettingToggle({
-		.id = u"regram/ayu/hideNotificationBadge"_q,
-		.title = tr::ayu_HideNotificationBadge(),
-		.getter = &AyuSettings::hideNotificationBadge,
-		.setter = &AyuSettings::setHideNotificationBadge,
-	});
-	builder.addSkip();
-	builder.addDividerText(tr::ayu_HideNotificationBadgeDescription());
-	builder.addSkip();
-#else
-    builder.addDivider();
-    builder.addSkip();
-#endif
-}
-
 void BuildAvatarCorners(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 	auto *settings = &AyuSettings::getInstance();
 	const auto controller = builder.controller();
@@ -211,44 +180,6 @@ void BuildAppearance(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 		.setter = &AyuSettings::setHidePremiumStatuses,
 	});
 
-	const auto controller = builder.controller();
-	builder.addButton({
-		.id = u"regram/ayu/monoFont"_q,
-		.title = tr::ayu_MonospaceFont(),
-		.st = &st::settingsButtonNoIcon,
-		.label = rpl::single(
-			settings->monoFont().isEmpty()
-				? tr::ayu_FontDefault(tr::now)
-				: settings->monoFont()),
-		.onClick = [=] {
-			AyuUi::FontSelectorBox::Show(
-				controller,
-				[=](const QString &font) {
-					AyuSettings::getInstance().setMonoFont(font);
-				});
-		},
-	});
-
-	ayu.addSectionDivider();
-}
-
-void BuildChatFolders(SectionBuilder &builder, AyuSectionBuilder &ayu) {
-	builder.addSubsectionTitle(tr::ayu_ChatFoldersHeader());
-
-	ayu.addSettingToggle({
-		.id = u"regram/ayu/hideNotificationCounters"_q,
-		.altIds = { u"regram/ayu/tabCounter"_q },
-		.title = tr::ayu_HideNotificationCounters(),
-		.getter = &AyuSettings::hideNotificationCounters,
-		.setter = &AyuSettings::setHideNotificationCounters,
-	});
-	ayu.addSettingToggle({
-		.id = u"regram/ayu/hideAllChatsFolder"_q,
-		.altIds = { u"regram/ayu/hideAllChats"_q },
-		.title = tr::ayu_HideAllChats(),
-		.getter = &AyuSettings::hideAllChatsFolder,
-		.setter = &AyuSettings::setHideAllChatsFolder,
-	});
 
 	ayu.addSectionDivider();
 }
@@ -374,45 +305,18 @@ void BuildDrawerElements(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 	builder.addSkip();
 }
 
-const auto kMeta = BuildHelper({
-	.id = AyuAppearance::Id(),
-	.parentId = AyuMain::Id(),
-	.title = &tr::ayu_CategoryAppearance,
-	.icon = &st::menuIconPalette,
-}, [](SectionBuilder &builder) {
-	auto ayu = AyuSectionBuilder(builder);
-
-	builder.addSkip();
-	BuildAppIcon(builder, ayu);
-	BuildAvatarCorners(builder, ayu);
-	BuildAppearance(builder, ayu);
-	BuildChatFolders(builder, ayu);
-	BuildTrayElements(builder, ayu);
-	BuildDrawerElements(builder, ayu);
-	builder.addSkip();
-});
-
 } // namespace
 
-rpl::producer<QString> AyuAppearance::title() {
-	return tr::ayu_CategoryAppearance();
+void BuildExtraAppearance(SectionBuilder &builder) {
+	auto ayu = AyuSectionBuilder(builder);
+	BuildAvatarCorners(builder, ayu);
+	BuildAppearance(builder, ayu);
 }
 
-AyuAppearance::AyuAppearance(
-	QWidget *parent,
-	not_null<Window::SessionController*> controller)
-: Section(parent, controller) {
-	setupContent();
-}
-
-void AyuAppearance::setupContent() {
-	const auto content = Ui::CreateChild<Ui::VerticalLayout>(this);
-	build(content, kMeta.build);
-	Ui::ResizeFitChild(this, content);
-}
-
-Type AyuAppearanceId() {
-	return AyuAppearance::Id();
+void BuildExtraMenu(SectionBuilder &builder) {
+	auto ayu = AyuSectionBuilder(builder);
+	BuildTrayElements(builder, ayu);
+	BuildDrawerElements(builder, ayu);
 }
 
 } // namespace Settings

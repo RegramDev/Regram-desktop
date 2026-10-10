@@ -285,7 +285,7 @@ index ec3171e..6c646f0 100644
  
  	if (!_specialLayerCache.isNull() && specialLayerOpacity > 0) {
 diff --git a/ui/style/style_core_font.cpp b/ui/style/style_core_font.cpp
-index 46b65c4..771e463 100644
+index 46b65c4..1328060 100644
 --- a/ui/style/style_core_font.cpp
 +++ b/ui/style/style_core_font.cpp
 @@ -21,6 +21,11 @@
@@ -310,6 +310,16 @@ index 46b65c4..771e463 100644
  		u"Cascadia Mono"_q,
  		u"Consolas"_q,
  		u"Liberation Mono"_q,
+@@ -175,7 +182,8 @@ bool LoadCustomFont(const QString &filePath) {
+ 		// Prefer system monospace font.
+ 		const auto metrics = QFontMetrics(QFont(system));
+ 		const auto useSystem = manual.isEmpty()
+-			|| (metrics.horizontalAdvance(QChar('i')) == metrics.horizontalAdvance(QChar('W')));
++			|| (AyuUiSettings::getMonoFont().isEmpty()
++				&& metrics.horizontalAdvance(QChar('i')) == metrics.horizontalAdvance(QChar('W')));
+ #endif // Q_OS_WIN
+ 		return useSystem ? system : manual;
+ 	}();
 diff --git a/ui/text/text.h b/ui/text/text.h
 index 92ce9ec..3570ca4 100644
 --- a/ui/text/text.h

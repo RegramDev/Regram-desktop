@@ -1,5 +1,7 @@
 #include "regram/ayu/features/translator/cache_key.h"
 #include "regram/nagram/services/translation_model.h"
+#include "regram/nagram/compose/default_format.h"
+#include "regram/nagram/compose/chat_preferences.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -15,6 +17,39 @@ void Require(bool condition, const char *message) {
 } // namespace
 
 void TestTranslation() {
+	using namespace Nagram::Compose;
+	const auto source = TextWithEntities{
+		u"plain code quote emoji rest"_q,
+		{
+			EntityInText(EntityType::Code, 6, 4),
+			EntityInText(EntityType::Blockquote, 11, 5),
+			EntityInText(EntityType::CustomEmoji, 17, 5, u"42"_q),
+		},
+	};
+	const auto formatted = ApplyDefaultFormat(source, DefaultFormat::Bold);
+	Require(formatted.text == source.text && formatted.entities.size() == 5,
+		"default formatting changes code, quote or custom emoji");
+	const auto second = ApplyDefaultFormat(formatted, DefaultFormat::Bold);
+	Require(second == formatted, "default formatting applies twice on repeated send preparation");
+	const auto disabled = ApplyDefaultFormat(source, DefaultFormat::None);
+	Require(disabled == source, "disabled default formatting alters entities");
+	const auto manual = TextWithEntities{ u"manual text"_q, { EntityInText(EntityType::Italic, 0, 6) } };
+	const auto mixed = ApplyDefaultFormat(manual, DefaultFormat::Underline);
+	Require(mixed.entities.front() == manual.entities.front()
+		&& mixed.entities.back().offset() == 6, "default formatting replaces manual formatting");
+	const auto prefs = ChatPreferenceSet{
+		.user = 42,
+		.chats = { { 9007199254740993ULL, { 3, 1 } } },
+	};
+	const auto raw = EncodeChatPreferences(prefs);
+	Require(PreferencesForChat(raw, 42, 9007199254740993ULL) == ChatPreferences{ 3, 1 },
+		"per-chat preferences lose exact 64-bit peer IDs");
+	Require(PreferencesForChat(raw, 43, 9007199254740993ULL) == ChatPreferences{},
+		"per-chat preferences cross into another account");
+	Require(PreferencesForChat(raw, 42, 1) == ChatPreferences{},
+		"unconfigured chat does not inherit defaults");
+	Require(!ValidChatPreferences(R"({"version":1,"user":"42","chats":[{"peer":"1","formatting":1.5,"spacing":0}]})"),
+		"per-chat preferences accept non-integer formats");
 	using namespace Nagram;
 	using Ayu::Translator::TranslationCacheKey;
 	auto original = TextWithEntities{ u"Do not pay"_q };

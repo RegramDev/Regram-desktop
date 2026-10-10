@@ -251,7 +251,7 @@ void SendExistingMedia(
 		TextUtilities::ConvertTextTagsToEntities(message.textWithTags.tags)
 	};
 	TextUtilities::Trim(caption);
-	caption = Nagram::Compose::PrepareText(caption, false);
+	caption = Nagram::Compose::PrepareText(caption, false, history);
 	const auto captionNormalized = reverseLocalPremiumEmoji(caption, history);
 	auto sentEntities = EntitiesToMTP(
 		session,
@@ -765,7 +765,7 @@ void SendMusicSelection(
 		TextUtilities::ConvertTextTagsToEntities(message.textWithTags.tags)
 	};
 	TextUtilities::Trim(caption);
-	caption = Nagram::Compose::PrepareText(caption, false);
+	caption = Nagram::Compose::PrepareText(caption, false, message.action.history);
 
 	const auto api = &message.action.history->session().api();
 
@@ -1045,7 +1045,7 @@ struct ConfirmedLocalFile {
 		session->user()).flags;
 	TextUtilities::PrepareForSending(caption, prepareFlags);
 	TextUtilities::Trim(caption);
-	caption = Nagram::Compose::PrepareText(caption, false);
+	caption = Nagram::Compose::PrepareText(caption, false, history);
 	return caption;
 }
 

@@ -28,6 +28,8 @@ Regram 是基于 Telegram Desktop 的独立跨平台 Telegram 客户端。项目
 - 更多外观、媒体、通知、截图和右键菜单设置。
 - Regram 设置、设置搜索及可携带的偏好备份。
 
+新版本正在合并 Regram 设置，并加入 iOS 过滤器备份、快速翻译、本地会员显示修复、聊天独立输入设置和 iOS 字体目录。具体完成与验证情况见 [iOS 功能对齐记录](docs/regram/ios-parity.md)；这些源码改动尚未进入现有 7.3.1 安装包。
+
 Liquid Glass 和独立 AppKit 界面已移除，使用 Telegram Desktop 原版 Qt 布局。Regram 的应用标识和数据目录与官方客户端分离。上游自动更新和崩溃上传已关闭，请通过 Regram Releases 更新。
 
 功能移植仍在进行。上述功能列表**不代表 Nagram／AyuGram 所有功能或 M0～M8 全部条目已经验收**。实现路径、已知差异和运行验证范围见 [功能核对](docs/regram/feature-checks.md)、[功能矩阵](docs/regram/regram-desktop-feature-matrix.md) 和 [开发记录](docs/regram/progress.md)。

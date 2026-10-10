@@ -18,6 +18,7 @@ struct Rule {
 	std::u16string pattern;
 	bool regex = false;
 	bool enabled = true;
+	bool exception = false;
 	std::vector<PeerAddress> scopes;
 	std::vector<std::string> unresolvedScopes;
 };

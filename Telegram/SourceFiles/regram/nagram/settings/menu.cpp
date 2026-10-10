@@ -1,4 +1,6 @@
 #include "regram/nagram/settings/menu.h"
+#include "regram/ayu/ui/settings/settings_chats.h"
+#include "regram/ayu/ui/settings/settings_appearance.h"
 
 #include "regram/nagram/menu/model.h"
 #include "regram/nagram/settings/home.h"
@@ -254,6 +256,8 @@ const auto kMeta = BuildHelper({
 		});
 	}
 	builder.addDividerText(tr::lng_nagram_menu_note());
+	::Settings::BuildExtraMessageMenu(builder);
+	::Settings::BuildExtraMenu(builder);
 });
 
 const SectionBuildMethod MenuSection::kBuild = kMeta.build;

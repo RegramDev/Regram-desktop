@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_emoji_statuses.h"
+#include "regram/core/local_premium.h"
 
 #include "main/main_session.h"
 #include "data/data_channel.h"
@@ -508,6 +509,9 @@ void EmojiStatuses::set(
 		not_null<PeerData*> peer,
 		EmojiStatusId id,
 		TimeId until) {
+	if (Regram::Premium::StoreLocalEmojiStatus(peer, id, until)) {
+		return;
+	}
 	auto &api = _owner->session().api();
 	auto &requestId = _sentRequests[peer];
 	if (requestId) {

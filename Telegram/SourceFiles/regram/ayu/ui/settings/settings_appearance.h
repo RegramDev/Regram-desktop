@@ -15,16 +15,10 @@ class SessionController;
 
 namespace Settings {
 
-class AyuAppearance : public Section<AyuAppearance> {
-public:
-	AyuAppearance(QWidget *parent, not_null<Window::SessionController*> controller);
+namespace Builder {
+class SectionBuilder;
+} // namespace Builder
 
-	[[nodiscard]] rpl::producer<QString> title() override;
-
-private:
-	void setupContent();
-};
-
-[[nodiscard]] Type AyuAppearanceId();
-
+void BuildExtraAppearance(Builder::SectionBuilder &builder);
+void BuildExtraMenu(Builder::SectionBuilder &builder);
 } // namespace Settings

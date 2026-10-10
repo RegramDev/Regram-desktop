@@ -8,8 +8,10 @@ namespace Nagram::Filters {
 
 [[nodiscard]] Result Project(
 	HistoryItem *item,
-	const TextWithEntities &source);
+	const TextWithEntities &source,
+	bool displayOverrides = true);
 [[nodiscard]] bool Hidden(HistoryItem *item);
+[[nodiscard]] bool HiddenForNotification(HistoryItem *item);
 [[nodiscard]] TextWithEntities DisplayText(const Result &result);
 
 } // namespace Nagram::Filters

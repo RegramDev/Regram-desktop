@@ -285,20 +285,6 @@ void AddAyuGramActions(PeerData *peerData,
 					},
 					&st::menuIconAddToFolder);
 			}
-			const auto filteredToggleShown = FiltersController::filteredMessagesShown(peerData);
-			if (filteredToggleShown) {
-				addAction(
-					*filteredToggleShown
-						? tr::ayu_HideFilteredMessagesMenuText(tr::now)
-						: tr::ayu_ShowFilteredMessagesMenuText(tr::now),
-					[=]
-					{
-						FiltersController::toggleFilteredMessagesShown(peerData);
-					},
-					*filteredToggleShown
-						? &st::menuIconCaptionHide
-						: &st::menuIconCaptionShow);
-			}
 			if (saveDeletedMessages) {
 				addAction(
 					tr::ayu_ViewDeletedMenuText(tr::now),
@@ -312,7 +298,7 @@ void AddAyuGramActions(PeerData *peerData,
 						}
 					},
 					&st::menuIconArchive);
-				if (showFilters || filteredToggleShown.value_or(false)) addAction({ .isSeparator = true });
+				addAction({ .isSeparator = true });
 				addAction({
 					.text = tr::ayu_ClearDeletedMenuText(tr::now),
 					.handler = ClearDeletedMessagesHandler(sessionController, peerData, topicId),

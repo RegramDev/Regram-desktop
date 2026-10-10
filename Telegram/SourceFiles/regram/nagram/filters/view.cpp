@@ -1,6 +1,7 @@
 #include "regram/nagram/filters/view.h"
 
 #include "regram/filters/runtime.h"
+#include "regram/filters/reveal.h"
 #include "regram/filters/search_text.h"
 
 #include "regram/nagram/filters/hidden_messages.h"
@@ -100,8 +101,12 @@ Resolved ResolveFor(
 
 } // namespace
 
-Result Project(HistoryItem *item, const TextWithEntities &source) {
-	if (!item || item->isService() || item->nagramOriginalShown()) {
+Result Project(HistoryItem *item, const TextWithEntities &source, bool displayOverrides) {
+	if (!item || item->isService()) {
+		return { .text = source };
+	}
+	if (displayOverrides && (item->nagramOriginalShown()
+		|| Regram::Filters::TemporarilyRevealed(item->history()->peer))) {
 		return { .text = source };
 	}
 	if (MessageHidden(item) || Regram::Filters::Hidden(item)) {
@@ -179,6 +184,10 @@ Result Project(HistoryItem *item, const TextWithEntities &source) {
 bool Hidden(HistoryItem *item) {
 	return item && Project(item,
 		item->translatedTextWithLocalEntities()).hidden;
+}
+
+bool HiddenForNotification(HistoryItem *item) {
+	return item && Project(item, item->originalText(), false).hidden;
 }
 
 TextWithEntities DisplayText(const Result &result) {

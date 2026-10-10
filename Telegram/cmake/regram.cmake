@@ -10,6 +10,14 @@ PRIVATE
     regram/core/local_premium.h
     regram/filters/rules.cpp
     regram/filters/rules.h
+    regram/filters/matcher.cpp
+    regram/filters/matcher.h
+    regram/filters/reveal.cpp
+    regram/filters/reveal.h
+    regram/filters/reveal_policy.cpp
+    regram/filters/reveal_policy.h
+    regram/filters/result_cache.cpp
+    regram/filters/result_cache.h
     regram/filters/exchange.cpp
     regram/filters/exchange.h
     regram/filters/runtime.cpp
@@ -26,6 +34,14 @@ PRIVATE
     regram/settings/advanced_model.h
     regram/settings/shared.cpp
     regram/settings/shared.h
+    regram/typography/font_data.cpp
+    regram/typography/font_data.h
+    regram/typography/fonts.cpp
+    regram/typography/fonts.h
+    regram/nagram/compose/default_format.cpp
+    regram/nagram/compose/default_format.h
+    regram/nagram/compose/chat_preferences.cpp
+    regram/nagram/compose/chat_preferences.h
     test/test_regram_archive.cpp
     test/test_regram_archive.h
     test/test_regram_integration.cpp
@@ -44,3 +60,19 @@ if (APPLE)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/regram_debug_qt.cmake)
+
+if (WIN32)
+    target_link_libraries(Telegram PRIVATE dwrite)
+endif()
+
+add_executable(test_regram_typography EXCLUDE_FROM_ALL
+    ${src_loc}/regram/tests/typography_tests.cpp
+    ${src_loc}/regram/typography/font_data.cpp)
+init_target(test_regram_typography "(tests)")
+target_include_directories(test_regram_typography PRIVATE ${src_loc})
+target_link_libraries(test_regram_typography PRIVATE desktop-app::external_qt)
+target_compile_definitions(test_regram_typography PRIVATE
+    REGRAM_FONT_CATALOG="${res_loc}/regram/fonts/catalog.json")
+if (WIN32)
+    target_link_libraries(test_regram_typography PRIVATE dwrite)
+endif()
