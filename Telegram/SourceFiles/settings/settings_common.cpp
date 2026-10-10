@@ -693,7 +693,11 @@ LottieIcon CreateLottieIcon(
 
 	}, raw->lifetime());
 
-	return { .widget = std::move(object), .animate = std::move(animate) };
+	return {
+		.widget = std::move(object),
+		.animate = std::move(animate),
+		.animating = [=] { return icon->animating(); },
+	};
 }
 
 SliderWithLabel MakeSliderWithLabel(
@@ -795,7 +799,8 @@ void AddPremiumStar(
 			p.scale(kScale, kScale);
 			p.translate(-r.center());
 		}
-		ministars->paint(p);
+		// remove cringe stars animation
+		// ministars->paint(p);
 	}, ministarsContainer->lifetime());
 
 	const auto badge = Ui::CreateChild<Ui::RpWidget>(button.get());

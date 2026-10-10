@@ -48,7 +48,7 @@ class AbstractDedicatedLoader : public base::has_weak_ptr {
 public:
 	AbstractDedicatedLoader(const QString &filepath, int chunkSize);
 
-	static constexpr auto kChunkSize = 128 * 1024;
+	static constexpr auto kChunkSize = 128 * 1024 * 8;
 	static constexpr auto kMaxFileSize = 256 * 1024 * 1024;
 
 	struct Progress {
@@ -144,7 +144,7 @@ private:
 	void gotPart(int offset, const MTPupload_File &result);
 	Fn<void(const Error &)> failHandler();
 
-	static constexpr auto kRequestsCount = 2;
+	static constexpr auto kRequestsCount = 6;
 	static constexpr auto kNextRequestDelay = crl::time(20);
 
 	std::deque<Request> _requests;

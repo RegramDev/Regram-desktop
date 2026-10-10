@@ -25,6 +25,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_window.h"
 #include "platform/platform_specific.h"
 
+#include <QtCore/QBuffer>
 #include <QtGui/QWindow>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMenu>
@@ -35,6 +36,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <CoreFoundation/CFURL.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/hidsystem/ev_keymap.h>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/ui/ayu_logo.h"
+#include "regram/nagram/interface/options.h"
+
 
 using Platform::Q2NSString;
 using Platform::NS2QString;
@@ -104,6 +111,7 @@ void SetupDockMenu() {
 - (void) applicationDidBecomeActive:(NSNotification *)aNotification;
 - (void) applicationDidResignActive:(NSNotification *)aNotification;
 - (void) receiveWakeNote:(NSNotification*)note;
+- (void) receiveSleepNote:(NSNotification*)note;
 
 - (void) ignoreApplicationActivationRightNow;
 
@@ -162,6 +170,7 @@ ApplicationDelegate *_sharedDelegate = nil;
 		return;
 	}
 	Core::Sandbox::Instance().customEnterFromEventLoop([&] {
+		Core::App().notifySystemSleep();
 		Core::App().checkLocalTime();
 
 		LOG(("Audio Info: "
@@ -171,6 +180,15 @@ ApplicationDelegate *_sharedDelegate = nil;
 #if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
 		Core::App().settings().setSystemDarkMode(Platform::IsDarkMode());
 #endif // Qt < 6.5.0
+	});
+}
+
+- (void) receiveSleepNote:(NSNotification*)aNotification {
+	if (!Core::IsAppLaunched()) {
+		return;
+	}
+	Core::Sandbox::Instance().customEnterFromEventLoop([&] {
+		Core::App().notifySystemSleep();
 	});
 }
 
@@ -184,13 +202,29 @@ ApplicationDelegate *_sharedDelegate = nil;
 namespace Platform {
 
 void SetApplicationIcon(const QIcon &icon) {
-	NSImage *image = nil;
-	if (!icon.isNull()) {
-		auto pixmap = icon.pixmap(1024, 1024);
-		pixmap.setDevicePixelRatio(style::DevicePixelRatio());
-		image = Q2NSImage(pixmap.toImage());
+	@autoreleasepool {
+		if (Nagram::ForDevice().Get(Nagram::Interface::kAppIcon).isEmpty()
+			&& AyuSettings::getInstance().appIcon() == AyuAssets::DEFAULT_ICON) {
+			NSApplication.sharedApplication.applicationIconImage = nil;
+			return;
+		}
+		const auto sizes = icon.availableSizes();
+		if (sizes.isEmpty()) {
+			return;
+		}
+		auto bytes = QByteArray();
+		auto buffer = QBuffer(&bytes);
+		if (!buffer.open(QIODevice::WriteOnly)
+			|| !icon.pixmap(sizes.back()).toImage().save(&buffer, "PNG")) {
+			return;
+		}
+		const auto data = [NSData dataWithBytes:bytes.constData() length:bytes.size()];
+		const auto image = [[NSImage alloc] initWithData:data];
+		if (image) {
+			NSApplication.sharedApplication.applicationIconImage = image;
+			[image release];
+		}
 	}
-	[[NSApplication sharedApplication] setApplicationIconImage:image];
 }
 
 } // namespace Platform
@@ -230,6 +264,10 @@ void objc_start() {
 		addObserver: _sharedDelegate
 		selector: @selector(receiveWakeNote:)
 		name: NSWorkspaceDidWakeNotification object: NULL];
+	[[[NSWorkspace sharedWorkspace] notificationCenter]
+		addObserver: _sharedDelegate
+		selector: @selector(receiveSleepNote:)
+		name: NSWorkspaceWillSleepNotification object: NULL];
 
 	crl::on_main([=] { SetupDockMenu(); });
 }

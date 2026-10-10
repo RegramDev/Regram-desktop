@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_contact_status.h"
+#include "regram/nagram/privacy/options.h"
 
 #include "lang/lang_keys.h"
 #include "ui/controls/userpic_button.h"
@@ -858,11 +859,17 @@ void ContactStatus::setupState(not_null<PeerData*> peer, bool showInForum) {
 		PeerCustomStatus(peer),
 		((channel && !showInForum)
 			? Data::PeerFlagValue(channel, ChannelData::Flag::Forum)
-			: (rpl::single(false) | rpl::type_erased))
+			: (rpl::single(false) | rpl::type_erased)),
+		Nagram::ForDevice().Value(Nagram::Privacy::kHideSharePhonePrompt)
 	) | rpl::on_next([=](
 			State state,
 			TextWithEntities status,
-			bool hiddenByForum) {
+			bool hiddenByForum,
+			bool hideSharePhonePrompt) {
+		if (hideSharePhonePrompt
+			&& state.type == State::Type::SharePhoneNumber) {
+			state.type = State::Type::None;
+		}
 		_state = state;
 		_status = status;
 		_hiddenByForum = hiddenByForum;

@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/openssl_help.h"
 #include "base/unixtime.h"
 #include "base/platform/base_platform_info.h"
+#include "regram/nagram/network/runtime.h"
 
 #include <ksandbox.h>
 #include <zlib.h>
@@ -200,7 +201,7 @@ void SessionPrivate::appendTestConnection(
 		const bytes::vector &protocolSecret) {
 	QWriteLocker lock(&_stateMutex);
 
-	const auto priority = (qthelp::is_ipv6(ip) ? (OptionPreferIPv6.value() ? 2 : 0) : 1)
+	const auto priority = (qthelp::is_ipv6(ip) ? (Nagram::Network::PreferIPv6(OptionPreferIPv6.value()) ? 2 : 0) : 1)
 		+ (protocol == DcOptions::Variants::Tcp ? 1 : 0)
 		+ (protocolSecret.empty() ? 0 : 1);
 	_testConnections.push_back({

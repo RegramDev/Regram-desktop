@@ -15,6 +15,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "platform/win/windows_app_user_model_id.h"
 #include "platform/win/windows_taskbar_buttons.h"
 #include "platform/win/tray_win.h"
+#include "platform/win/wallet_protection_win.h"
 #include "platform/platform_integration.h"
 #include "platform/platform_specific.h"
 #include "mainwindow.h"
@@ -29,8 +30,23 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <propkey.h>
 
 namespace Platform {
+namespace {
+
+constexpr auto kPowerBroadcastDebounce = crl::time(1000);
+
+} // namespace
 
 void WindowsIntegration::init() {
+	RegisterWalletProtectionProvider();
+	_powerBroadcastTimer.setCallback([=] {
+		if (_powerState == PowerState::SuspendNotified) {
+			_powerState = PowerState::SuspendSettled;
+		} else if (_powerState == PowerState::AutomaticResumeNotified) {
+			_powerState = PowerState::AutomaticResumeSettled;
+		} else if (_powerState == PowerState::UserResumeNotified) {
+			_powerState = PowerState::Awake;
+		}
+	});
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
 	using namespace QNativeInterface::Private;
 	const auto native = qApp->nativeInterface<QWindowsApplication>();
@@ -75,6 +91,40 @@ void WindowsIntegration::createCustomJumpList() {
 	}
 }
 
+void AddJumpListItem(IObjectCollection* collection, const QString& title, const QString& args, const QString& icon) {
+	auto shellLink = base::WinRT::TryCreateInstance<IShellLink>(CLSID_ShellLink);
+	if (!shellLink) {
+		return;
+	}
+
+	const auto exe = QDir::toNativeSeparators(cExeDir() + cExeName());
+	const auto dir = QDir::toNativeSeparators(QDir(cWorkingDir()).absolutePath());
+	shellLink->SetArguments(args.toStdWString().c_str());
+	shellLink->SetPath(exe.toStdWString().c_str());
+	shellLink->SetWorkingDirectory(dir.toStdWString().c_str());
+	shellLink->SetIconLocation(icon.toStdWString().c_str(), 0);
+
+	if (const auto propertyStore = shellLink.try_as<IPropertyStore>()) {
+		auto appIdPropVar = PROPVARIANT();
+		HRESULT hr = InitPropVariantFromString(AppUserModelId::Id().c_str(), &appIdPropVar);
+		if (SUCCEEDED(hr)) {
+			hr = propertyStore->SetValue(AppUserModelId::Key(), appIdPropVar);
+			PropVariantClear(&appIdPropVar);
+		}
+		auto titlePropVar = PROPVARIANT();
+		hr = InitPropVariantFromString(
+			tr::lng_nagram_quit_from_tray(tr::now).toStdWString().c_str(),
+			&titlePropVar);
+		if (SUCCEEDED(hr)) {
+			hr = propertyStore->SetValue(PKEY_Title, titlePropVar);
+			PropVariantClear(&titlePropVar);
+		}
+		propertyStore->Commit();
+	}
+
+	collection->AddObject(shellLink.get());
+}
+
 void WindowsIntegration::refreshCustomJumpList() {
 	auto added = false;
 	auto maxSlots = UINT();
@@ -91,49 +141,17 @@ void WindowsIntegration::refreshCustomJumpList() {
 		}
 	});
 
-	auto shellLink = base::WinRT::TryCreateInstance<IShellLink>(
-		CLSID_ShellLink);
-	if (!shellLink) {
-		return;
-	}
-
-	// Set the path to your application and the command-line argument for quitting
-	const auto exe = QDir::toNativeSeparators(cExeDir() + cExeName());
-	const auto dir = QDir::toNativeSeparators(QDir(cWorkingDir()).absolutePath());
-	const auto icon = Tray::QuitJumpListIconPath();
-	shellLink->SetArguments(L"-quit");
-	shellLink->SetPath(exe.toStdWString().c_str());
-	shellLink->SetWorkingDirectory(dir.toStdWString().c_str());
-	shellLink->SetIconLocation(icon.toStdWString().c_str(), 0);
-
-	if (const auto propertyStore = shellLink.try_as<IPropertyStore>()) {
-		auto appIdPropVar = PROPVARIANT();
-		hr = InitPropVariantFromString(
-			AppUserModelId::Id().c_str(),
-			&appIdPropVar);
-		if (SUCCEEDED(hr)) {
-			hr = propertyStore->SetValue(
-				AppUserModelId::Key(),
-				appIdPropVar);
-			PropVariantClear(&appIdPropVar);
-		}
-		auto titlePropVar = PROPVARIANT();
-		hr = InitPropVariantFromString(
-			tr::lng_quit_from_tray(tr::now).toStdWString().c_str(),
-			&titlePropVar);
-		if (SUCCEEDED(hr)) {
-			hr = propertyStore->SetValue(PKEY_Title, titlePropVar);
-			PropVariantClear(&titlePropVar);
-		}
-		propertyStore->Commit();
-	}
-
 	auto collection = base::WinRT::TryCreateInstance<IObjectCollection>(
 		CLSID_EnumerableObjectCollection);
 	if (!collection) {
 		return;
 	}
-	collection->AddObject(shellLink.get());
+
+	// add "Enter with Ghost" item
+	AddJumpListItem(collection.get(), tr::ayu_GhostModeShortcut(tr::now), "-ghost", Tray::GhostJumpListIconPath());
+
+	// add "Quit" item
+	AddJumpListItem(collection.get(), tr::lng_quit_from_tray(tr::now), "-quit", Tray::QuitJumpListIconPath());
 
 	_jumpList->AddUserTasks(collection.get());
 	added = true;
@@ -196,6 +214,30 @@ bool WindowsIntegration::processEvent(
 		} else if (wParam == WTS_SESSION_LOGON
 			|| wParam == WTS_SESSION_UNLOCK) {
 			Core::App().setScreenIsLocked(false);
+		}
+		break;
+
+	case WM_POWERBROADCAST:
+		if (wParam == PBT_APMSUSPEND) {
+			if (_powerState != PowerState::SuspendNotified) {
+				Core::App().notifySystemSleep();
+			}
+			_powerState = PowerState::SuspendNotified;
+			_powerBroadcastTimer.callOnce(kPowerBroadcastDebounce);
+		} else if (wParam == PBT_APMRESUMEAUTOMATIC) {
+			if (_powerState == PowerState::Awake
+				|| _powerState == PowerState::AutomaticResumeSettled
+				|| _powerState == PowerState::UserResumeNotified) {
+				Core::App().notifySystemSleep();
+			}
+			_powerState = PowerState::AutomaticResumeNotified;
+			_powerBroadcastTimer.callOnce(kPowerBroadcastDebounce);
+		} else if (wParam == PBT_APMRESUMESUSPEND) {
+			if (_powerState == PowerState::Awake) {
+				Core::App().notifySystemSleep();
+			}
+			_powerState = PowerState::UserResumeNotified;
+			_powerBroadcastTimer.callOnce(kPowerBroadcastDebounce);
 		}
 		break;
 

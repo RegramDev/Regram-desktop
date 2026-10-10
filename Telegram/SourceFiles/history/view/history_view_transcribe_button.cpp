@@ -15,6 +15,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_document.h"
 #include "data/data_session.h"
 #include "main/main_session.h"
+#include "regram/nagram/services/transcription.h"
 #include "lang/lang_keys.h"
 #include "settings/sections/settings_premium.h"
 #include "ui/chat/chat_style.h"
@@ -331,7 +332,8 @@ void TranscribeButton::paint(
 
 bool TranscribeButton::hasLock() const {
 	const auto session = &_item->history()->session();
-	if (session->premium()) {
+	if (session->premium() || (!_summarize
+			&& Nagram::ExternalTranscriptionSelected(session))) {
 		return false;
 	}
 	const auto transcribes = &session->api().transcribes();
@@ -376,6 +378,13 @@ ClickHandlerPtr TranscribeButton::link() {
 	_link = std::make_shared<LambdaClickHandler>([=](ClickContext context) {
 		const auto item = session->data().message(id);
 		if (!item) {
+			return;
+		}
+		if (!summarize && Nagram::ExternalTranscriptionSelected(session)) {
+			const auto my = context.other.value<ClickHandlerContext>();
+			if (const auto controller = my.sessionWindow.get()) {
+				Nagram::ShowCustomTranscription(controller->uiShow(), item);
+			}
 			return;
 		}
 		if (session->premium()) {

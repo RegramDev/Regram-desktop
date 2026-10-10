@@ -40,6 +40,8 @@ InfoTopBar {
 	titleWithSubtitlePosition: point;
 	subtitle: FlatLabel;
 	subtitlePosition: point;
+	badge: FlatLabel;
+	badgeSkip: pixels;
 	bg: color;
 	mediaCancel: IconButton;
 	mediaActionsSkip: pixels;
@@ -239,6 +241,10 @@ infoTopBar: InfoTopBar {
 		maxHeight: 20px;
 	}
 	subtitlePosition: point(16px, 28px);
+	badge: FlatLabel(defaultFlatLabel) {
+		textFg: windowSubTextFg;
+	}
+	badgeSkip: 8px;
 	bg: windowBg;
 	mediaCancel: infoTopBarMediaCancel;
 	mediaActionsSkip: 4px;
@@ -1334,7 +1340,18 @@ earnTonIconSize: 16px;
 earnTonIconMargin: margins(0px, 2px, 0px, 0px);
 
 infoMusicButtonRipple: universalRippleAnimation;
-infoMusicButtonPadding: margins(16px, 6px, 13px, 6px);
+infoMusicButtonPadding: margins(12px, 8px, 24px, 8px);
+infoMusicButtonPerformer: FlatLabel(defaultFlatLabel) {
+	textFg: windowSubTextFg;
+	maxHeight: 20px;
+}
+infoMusicButtonTitle: FlatLabel(defaultFlatLabel) {
+	textFg: windowBoldFg;
+	style: semiboldTextStyle;
+	maxHeight: 20px;
+}
+infoMusicButtonBottom: 8px;
+infoMusicButtonLine: 2px;
 
 memberTagPillPadding: margins(5px, -1px, 5px, 0px);
 

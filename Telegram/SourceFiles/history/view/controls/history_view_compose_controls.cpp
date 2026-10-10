@@ -42,6 +42,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/notify/data_notify_settings.h"
 #include "data/data_birthday.h"
 #include "data/data_changes.h"
+#include "data/data_compose_stash.h"
 #include "data/data_drafts.h"
 #include "data/data_group_call.h"
 #include "data/data_messages.h"
@@ -82,11 +83,16 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_compose_ai_button.h"
 #include "history/view/controls/history_view_compose_ai_tooltip.h"
 #include "history/view/controls/history_view_compose_media_edit_manager.h"
+#include "history/view/controls/history_view_compose_stash_hint.h"
 #include "history/view/controls/history_view_forward_panel.h"
 #include "history/view/controls/history_view_rich_draft_preview.h"
 #include "history/view/controls/history_view_draft_options.h"
 #include "history/view/controls/history_view_suggest_options.h"
 #include "history/view/controls/history_view_ttl_button.h"
+#include "regram/nagram/compose/buttons.h"
+#include "regram/nagram/compose/format_toolbar.h"
+#include "regram/nagram/compose/placeholder.h"
+#include "regram/nagram/links/inline_bot.h"
 #include "history/view/controls/history_view_voice_record_bar.h"
 #include "history/view/controls/history_view_webpage_processor.h"
 #include "history/view/history_view_reply.h"
@@ -140,6 +146,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_layers.h"
 #include "styles/style_menu_icons.h"
 
+// AyuGram includes
+#include "data/data_ai_compose_tones.h"
+#include "regram/ayu/ayu_settings.h"
+#include "history/history_item_components.h"
+
+
 namespace HistoryView {
 namespace {
 
@@ -151,6 +163,7 @@ constexpr auto kFullDayInMs = 86400 * 1000;
 constexpr auto kMouseEvents = {
 	QEvent::MouseMove,
 	QEvent::MouseButtonPress,
+	QEvent::MouseButtonDblClick,
 	QEvent::MouseButtonRelease
 };
 constexpr auto kRefreshSlowmodeLabelTimeout = crl::time(200);
@@ -195,6 +208,13 @@ using ForwardPanel = Controls::ForwardPanel;
 	}
 	return QString();
 }
+
+#define SWITCH_BUTTON(button, show_v) \
+	if (show_v) { \
+		(button)->show(); \
+	} else { \
+		(button)->hide(); \
+	}
 
 } // namespace
 
@@ -541,7 +561,8 @@ void FieldHeader::init() {
 			return;
 		}
 		const auto isLeftButton = (e->button() == Qt::LeftButton);
-		if (type == QEvent::MouseButtonPress) {
+		if (type == QEvent::MouseButtonPress
+			|| type == QEvent::MouseButtonDblClick) {
 			if (isLeftButton && inPhotoEdit) {
 				_editPhotoRequests.fire({});
 			} else if (isLeftButton && inPreviewRect) {
@@ -1427,7 +1448,8 @@ ComposeControls::ComposeControls(
 				updateControlsGeometry(_wrap->size());
 			} else if (_botKeyboardHide && !has) {
 				_botKeyboardHide = nullptr;
-				_tabbedSelectorToggle->show();
+				_tabbedSelectorToggle->setVisible(!Nagram::Compose::Hidden(
+					Nagram::Compose::kHideEmojiButton));
 				updateControlsGeometry(_wrap->size());
 			}
 		}, _wrap->lifetime());
@@ -1796,9 +1818,9 @@ void ComposeControls::setupCommentsShownNewDot() {
 
 void ComposeControls::setToggleCommentsButton(
 		rpl::producer<ToggleCommentsState> state) {
-	if (!state) {
-		delete base::take(_commentsShown);
-	} else {
+	_commentsShownNewDot = nullptr;
+	delete base::take(_commentsShown);
+	if (state) {
 		_commentsShown = Ui::CreateChild<Ui::IconButton>(
 			_wrap.get(),
 			_st.commentsShow);
@@ -1809,12 +1831,9 @@ void ComposeControls::setToggleCommentsButton(
 		_commentsShownHidden.value(
 		) | rpl::on_next([=](bool hidden) {
 			if (_commentsShown->isHidden() != hidden) {
-				if (hidden) {
-					_commentsShown->hide();
-				} else {
-					_commentsShown->show();
-					updateControlsGeometry(_wrap->size());
-				}
+				_commentsShown->setVisible(!hidden);
+				updateControlsGeometry(_wrap->size());
+				_commentsShown->parentWidget()->update();
 			}
 		}, _commentsShown->lifetime());
 		std::move(
@@ -2289,10 +2308,17 @@ void ComposeControls::offerRichPaste(not_null<const QMimeData*> data) {
 	const auto cursor = _field->textCursor();
 	const auto position = cursor.position();
 	const auto anchor = cursor.anchor();
+	const auto from = std::min(position, anchor);
+	const auto till = std::max(position, anchor);
+	const auto textFrom = int(_field->getTextWithTagsPart(0, from).text.size());
+	const auto textTill = int(_field->getTextWithTagsPart(0, till).text.size());
+	const auto tail = cursor.document()->characterCount() - till;
 	crl::on_main(_wrap.get(), [=] {
 		const auto now = _field->getTextWithTags();
 		const auto parent = _pasteToastParent.data();
-		if ((now == was) || !parent) {
+		if ((now == was)
+			|| !parent
+			|| !_richPasteOfferThrottle.take()) {
 			return;
 		}
 		ChatHelpers::ShowRichPasteToast({
@@ -2306,15 +2332,14 @@ void ComposeControls::offerRichPaste(not_null<const QMimeData*> data) {
 					if (!unchanged) {
 						return;
 					}
-					const auto &markdown = decision->markdown;
-					const auto from = std::min(position, anchor);
 					_field->setTextWithTags(ChatHelpers::TextWithTagsReplaced(
 						was,
-						from,
-						std::max(position, anchor),
-						markdown));
+						textFrom,
+						textTill,
+						decision->markdown));
 					_field->setCursorPosition(
-						from + int(markdown.text.size()));
+						_field->textCursor().document()->characterCount()
+							- tail);
 					return;
 				}
 				if (unchanged) {
@@ -2384,6 +2409,9 @@ auto ComposeControls::inlineResultChosen() const
 }
 
 void ComposeControls::showStarted() {
+	if (focused()) {
+		_parent->setFocus();
+	}
 	if (_inlineResults) {
 		_inlineResults->hideFast();
 	}
@@ -2647,6 +2675,106 @@ void ComposeControls::migrateFieldToRichEditor() {
 	}
 }
 
+Data::DraftKey ComposeControls::composeStashKey() const {
+	return draftKey(DraftType::Normal);
+}
+
+bool ComposeControls::canUseComposeStash() const {
+	return _history
+		&& composeStashKey()
+		&& !isEditingMessage()
+		&& !_writeRestriction.current()
+		&& !_voiceRecordBar->isActive();
+}
+
+bool ComposeControls::hasStashableContent() const {
+	return _history
+		&& (!_field->empty()
+			|| replyingToMessage().replying()
+			|| readyToForward()
+			|| shouldShowRichDraftPreview()
+			|| (_currentSuggest && _currentSuggest().exists));
+}
+
+bool ComposeControls::canSendTexts() const {
+	return _canSendTexts.current();
+}
+
+std::unique_ptr<Data::ComposeStash> ComposeControls::takeComposeStash() {
+	Expects(_history != nullptr);
+
+	if (!hasStashableContent()) {
+		return nullptr;
+	}
+	auto result = std::make_unique<Data::ComposeStash>();
+	const auto rich = shouldShowRichDraftPreview() ? cloudDraft() : nullptr;
+	if (rich) {
+		result->draft = *rich;
+		result->draft.saveRequestId = 0;
+		clearRichDraft();
+		cancelReplyMessage();
+	} else {
+		result->draft = Data::Draft(
+			_field,
+			replyingToMessage(),
+			_currentSuggest ? _currentSuggest() : SuggestOptions(),
+			_preview ? _preview->draft() : Data::WebPageDraft());
+		clear();
+	}
+	saveDraftWithTextNow();
+	saveCloudDraft();
+	result->forward = _history->forwardDraft(_topicRootId, _monoforumPeerId);
+	if (!result->forward.ids.empty()) {
+		cancelForward();
+	}
+	if (_stashHintManager) {
+		_stashHintManager->markUsed();
+	}
+	return result;
+}
+
+void ComposeControls::applyComposeStash(Data::ComposeStash &&stash) {
+	Expects(_history != nullptr);
+
+	const auto key = composeStashKey();
+	if (stash.draft.hasRichMessage()) {
+		_history->clearDraft(key);
+		const auto cloud = _history->createCloudDraft(
+			_topicRootId,
+			_monoforumPeerId,
+			&stash.draft);
+		applyDraft();
+		const auto thread = _history->threadFor(
+			_topicRootId,
+			_monoforumPeerId);
+		if (cloud && thread) {
+			session().api().saveDraftToCloud(not_null{ thread }, *cloud);
+		}
+	} else {
+		const auto reply = stash.draft.reply;
+		_history->setDraft(
+			key,
+			std::make_unique<Data::Draft>(std::move(stash.draft)));
+		applyDraft();
+		if (!_canSendTexts.current() && reply.replying()) {
+			replyToMessage(reply);
+		}
+		saveDraftWithTextNow();
+		saveCloudDraft();
+	}
+	if (!stash.forward.ids.empty()) {
+		_history->setForwardDraft(
+			_topicRootId,
+			_monoforumPeerId,
+			std::move(stash.forward));
+		updateForwarding();
+	}
+	if (_stashHintManager) {
+		_stashHintManager->markUsed();
+	}
+	focus();
+}
+
 void ComposeControls::migrateScheduledFieldToRichEditor() {
 	Expects(_history != nullptr);
 	Expects(!isEditingMessage());
@@ -2703,6 +2831,9 @@ void ComposeControls::hidePanelsAnimated() {
 void ComposeControls::hide() {
 	showStarted();
 	_hidden = true;
+	if (_stashHintManager) {
+		_stashHintManager->hide();
+	}
 }
 
 void ComposeControls::show() {
@@ -2716,6 +2847,17 @@ void ComposeControls::show() {
 }
 
 void ComposeControls::init() {
+	if (session().settings().shouldShowStashHint()) {
+		_stashHintManager = std::make_unique<Controls::StashHintManager>(
+			Controls::StashHintDescriptor{
+				.session = _session,
+				.toastParent = [=]() -> QWidget* {
+					return _pasteToastParent.data();
+				},
+				.fieldText = [=] { return _field->getTextWithTags().text; },
+				.canUse = [=] { return canUseComposeStash(); },
+			});
+	}
 	if (_attachToggle) {
 		_attachToggle->setAccessibleName(tr::lng_attach(tr::now));
 	}
@@ -2922,9 +3064,56 @@ void ComposeControls::init() {
 		updateSubmitSettings();
 	}, _wrap->lifetime());
 
-	session().attachWebView().attachBotsUpdates(
+	rpl::merge(
+		session().attachWebView().attachBotsUpdates(),
+		Nagram::ForDevice().Value(Nagram::Compose::kDisableAttachHover
+		) | rpl::skip(1) | rpl::to_empty
 	) | rpl::on_next([=] {
 		updateAttachBotsMenu();
+	}, _wrap->lifetime());
+	Nagram::Compose::ButtonsChanged(
+	) | rpl::on_next([=] {
+		updateBotCommandShown();
+		refreshBotMenuButton();
+		updateMessagesTTLShown();
+		refreshSendGiftToggle();
+		updateSendButtonType();
+		updateControlsVisibility();
+		updateControlsGeometry(_wrap->size());
+	}, _wrap->lifetime());
+
+	rpl::merge(
+		AyuSettings::getInstance().showAttachButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showCommandsButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showEmojiButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showMicrophoneButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showAutoDeleteButtonInMessageFieldChanges() | rpl::to_empty,
+		session().data().aiComposeTones().updated() | rpl::to_empty,
+		AyuSettings::getInstance().showAiEditorButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showAttachPopupChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showEmojiPopupChanges() | rpl::to_empty,
+		AyuSettings::getInstance().channelBottomButtonChanges() | rpl::to_empty,
+		AyuSettings::getInstance().removeMessageTailChanges() | rpl::to_empty
+	) | rpl::on_next([=] {
+		updateSendButtonType();
+		updateControlsVisibility();
+		updateControlsGeometry(_wrap->size());
+		orderControls();
+	}, _wrap->lifetime());
+
+	AyuSettings::getInstance().translationProviderChanges(
+	) | rpl::on_next([=](TranslationProvider) {
+		if (_history) {
+			for (const auto &block : _history->blocks) {
+				for (const auto &view : block->messages) {
+					const auto item = view->data();
+					if (item->Has<HistoryMessageTranslation>()) {
+						item->removeTranslationBit();
+						_history->owner().requestItemTextRefresh(item);
+					}
+				}
+			}
+		}
 	}, _wrap->lifetime());
 
 	orderControls();
@@ -2936,7 +3125,9 @@ void ComposeControls::orderControls() {
 }
 
 bool ComposeControls::showRecordButton() const {
-	return _features.recordMediaMessage
+	return AyuSettings::getInstance().showMicrophoneButtonInMessageField()
+		&& !Nagram::Compose::Hidden(Nagram::Compose::kHideRecordingButton)
+		&& _features.recordMediaMessage
 		&& (_recordAvailability != Webrtc::RecordAvailability::None)
 		&& !_voiceRecordBar->isListenState()
 		&& !_voiceRecordBar->isRecordingByAnotherBar()
@@ -3149,6 +3340,7 @@ void ComposeControls::initField() {
 		return false;
 	});
 	InitMessageFieldFade(_field, _st.field.textBg);
+	Nagram::Compose::SetupFormatToolbar(_field, _parent);
 	_field->setEditLinkCallback(
 		DefaultEditLinkCallback(_show, _field, &_st.boxField));
 	_field->setEditLanguageCallback(DefaultEditLanguageCallback(_show));
@@ -3304,10 +3496,10 @@ void ComposeControls::updateFieldPlaceholder() {
 			} else if (channel->adminRights() & ChatAdminRight::Anonymous) {
 				return tr::lng_send_anonymous_ph();
 			} else {
-				return tr::lng_message_ph();
+				return Nagram::Compose::InputPlaceholder(peer);
 			}
 		} else {
-			return tr::lng_message_ph();
+			return Nagram::Compose::InputPlaceholder(peer);
 		}
 	}();
 	_field->setPlaceholder(rpl::combine(
@@ -3343,6 +3535,12 @@ bool ComposeControls::suppressSendAction() const {
 }
 
 void ComposeControls::fieldChanged() {
+	if (_stashHintManager) {
+		const auto save = bool(_textUpdateEvents & TextUpdateEvent::SaveDraft);
+		const auto sendTyping = bool(
+			_textUpdateEvents & TextUpdateEvent::SendTyping);
+		_stashHintManager->trackChange(save && sendTyping);
+	}
 	const auto typing = (!_inlineBot
 		&& !_header->isEditingMessage()
 		&& (_textUpdateEvents & TextUpdateEvent::SendTyping)
@@ -3924,10 +4122,12 @@ void ComposeControls::initTabbedSelector() {
 						}
 						return;
 					}
+					const auto effectiveFrom = options.scheduled
+						? Ui::MessageSendingAnimationFrom() : from;
 					_fileChosen.fire({
 						.document = document,
 						.options = options,
-						.messageSendingFrom = from,
+						.messageSendingFrom = effectiveFrom,
 						.caption = std::move(caption),
 					});
 				}));
@@ -4108,7 +4308,8 @@ void ComposeControls::clearInlineBot() {
 }
 
 void ComposeControls::inlineBotChanged() {
-	const auto isInlineBot = (_inlineBot && !_inlineLookingUpBot);
+	const auto isInlineBot = (_inlineBot && !_inlineLookingUpBot)
+		&& !Nagram::Links::AutomaticInlineQuery(_field);
 	if (_isInlineBot != isInlineBot) {
 		_isInlineBot = isInlineBot;
 		updateFieldPlaceholder();
@@ -4419,7 +4620,8 @@ void ComposeControls::initVoiceRecordBar() {
 		return Ui::AppInFocus();
 	}) | rpl::on_next([=](not_null<Shortcuts::Request*> request) {
 		using Command = Shortcuts::Command;
-		if (Data::CanSendAnything(_history->peer, !_topicRootId)) {
+		if (showRecordButton()
+			&& Data::CanSendAnything(_history->peer, !_topicRootId)) {
 			const auto isVoice = request->check(Command::RecordVoice, 1);
 			const auto isRound = !isVoice
 				&& request->check(Command::RecordRound, 1);
@@ -4896,6 +5098,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	// (_commentsShown) (_attachToggle|_replaceMedia) (_sendAs) -- _inlineResults ------ _tabbedPanel -- _fieldBarCancel (_starsReaction)
 	// (_attachDocument|_attachPhoto) _field (_ttlInfo) (_scheduled) (_silent|_botCommandStart) _tabbedSelectorToggle _send
 
+	const auto &settings = AyuSettings::getInstance();
 	const auto oldComposeHeight = composeFieldHeight();
 	const auto commentsShown = _commentsShown
 		&& !_commentsShown->isHidden();
@@ -4909,8 +5112,9 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		- (_botMenu.button
 			? (st::historyBotMenuSkip + _botMenu.button->width())
 			: 0)
-		- (_attachToggle ? _attachToggle->width() : 0)
-		- (_sendAs ? _sendAs->width() : 0)
+		- ((_attachToggle && (!_attachToggle->isHidden() || _replaceMedia))
+			? _attachToggle->width() : 0)
+		- ((_sendAs && !_sendAs->isHidden()) ? _sendAs->width() : 0)
 		- _st.padding.right()
 		- _send->width()
 		- (_editStars ? _editStars->width() : 0)
@@ -4918,7 +5122,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 			? 0
 			: _tabbedSelectorToggle->width())
 		- (_likeShown ? _like->width() : 0)
-		- (_botCommandShown ? _botCommandStart->width() : 0)
+		- (_botCommandShown && settings.showCommandsButtonInMessageField() ? _botCommandStart->width() : 0)
 		- ((_silent && !_silent->isHidden()) ? _silent->width() : 0)
 		- ((_toggleSuggestPost && !_toggleSuggestPost->isHidden())
 			? _toggleSuggestPost->width()
@@ -4930,7 +5134,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		- (_botKeyboardShow ? _botKeyboardShow->width() : 0)
 		- (_botKeyboardHide ? _botKeyboardHide->width() : 0)
 		- ((_ttlInfo && _ttlInfo->isVisible()) ? _ttlInfo->width() : 0)
-		- (_starsReaction
+		- ((_starsReaction && !_starsReaction->isHidden())
 			? (_st.starsSkip + _starsReaction->width())
 			: 0);
 	{
@@ -4965,13 +5169,17 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	if (_replaceMedia) {
 		_replaceMedia->moveToLeft(left, buttonsTop);
 	}
-	if (_attachToggle) {
+	if (_attachToggle && settings.showAttachButtonInMessageField()) {
 		_attachToggle->moveToLeft(left, buttonsTop);
-		left += _attachToggle->width();
+		if (!_attachToggle->isHidden() || _replaceMedia) {
+			left += _attachToggle->width();
+		}
 	}
 	if (_sendAs) {
 		_sendAs->moveToLeft(left, buttonsTop);
-		left += _sendAs->width();
+		if (!_sendAs->isHidden()) {
+			left += _sendAs->width();
+		}
 	}
 	const auto fieldHeight = composeFieldHeight();
 	const auto fieldTop = size.height() - _st.padding.bottom() - fieldHeight;
@@ -4990,7 +5198,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 		fieldTop - _st.padding.top() - _header->height());
 
 	auto right = 0;
-	if (_starsReaction) {
+	if (_starsReaction && !_starsReaction->isHidden()) {
 		_starsReaction->moveToRight(right, buttonsTop);
 		right += _starsReaction->width() + _st.starsSkip;
 	}
@@ -5018,7 +5226,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 	}
 	if (_botCommandStart) {
 		_botCommandStart->moveToRight(right, buttonsTop);
-		if (_botCommandShown) {
+		if (_botCommandShown && settings.showCommandsButtonInMessageField()) {
 			right += _botCommandStart->width();
 		}
 	}
@@ -5052,7 +5260,7 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 			right += _scheduled->width();
 		}
 	}
-	if (_ttlInfo) {
+	if (_ttlInfo && settings.showAutoDeleteButtonInMessageField()) {
 		_ttlInfo->move(size.width() - right - _ttlInfo->width(), buttonsTop);
 	}
 	updateAiButtonGeometry();
@@ -5067,13 +5275,17 @@ void ComposeControls::updateControlsGeometry(QSize size) {
 }
 
 void ComposeControls::updateControlsVisibility() {
+	const auto &settings = AyuSettings::getInstance();
 	const auto hide = hideExtraButtons()
 		|| isEditingMessage()
 		|| textExceedsMaxSize();
 	const auto showGiftToUser = (_mode == Mode::Normal) && !hide;
 	if (_botCommandStart) {
-		_botCommandStart->setVisible(_botCommandShown);
+		SWITCH_BUTTON(_botCommandStart, _botCommandShown && settings.showCommandsButtonInMessageField());
 	}
+	_tabbedSelectorToggle->setVisible(!_botKeyboardHide
+		&& settings.showEmojiButtonInMessageField()
+		&& !Nagram::Compose::Hidden(Nagram::Compose::kHideEmojiButton));
 	if (_silent) {
 		_silent->setVisible(!hide);
 	}
@@ -5087,7 +5299,8 @@ void ComposeControls::updateControlsVisibility() {
 		_ttlInfo->setVisible(!hide);
 	}
 	if (_sendAs) {
-		_sendAs->show();
+		_sendAs->setVisible(!Nagram::Compose::Hidden(
+			Nagram::Compose::kHideSendAsButton));
 	}
 	if (_replaceMedia) {
 		_replaceMedia->show();
@@ -5096,7 +5309,10 @@ void ComposeControls::updateControlsVisibility() {
 		_botMenu.button->show();
 	}
 	if (_attachToggle) {
-		_attachToggle->setVisible(!_replaceMedia);
+		_attachToggle->setVisible(!_replaceMedia
+			&& settings.showAttachButtonInMessageField()
+			&& !Nagram::Compose::Hidden(
+				Nagram::Compose::kHideAttachButton));
 	}
 	if (_scheduled) {
 		_scheduled->setVisible(!hide);
@@ -5111,7 +5327,11 @@ void ComposeControls::updateControlsVisibility() {
 		_commentsShown->setVisible(!_commentsShownHidden.current());
 	}
 	if (_starsReaction) {
-		_starsReaction->show();
+		_starsReaction->setVisible(!Nagram::Compose::Hidden(
+			Nagram::Compose::kHideStarsReactionButton));
+	}
+	if (_ttlInfo) {
+		_ttlInfo->setVisible(!hide && settings.showAutoDeleteButtonInMessageField());
 	}
 	updateAiButtonVisibility();
 	updateSendAsFileVisibility();
@@ -5120,7 +5340,8 @@ void ComposeControls::updateControlsVisibility() {
 }
 
 void ComposeControls::updateAiButtonVisibility() {
-	const auto hidden = !hasEnoughLinesForAi()
+	const auto hidden = Nagram::Compose::Hidden(Nagram::Compose::kHideAiButton)
+		|| !hasEnoughLinesForAi()
 		|| !_wrap->isVisible()
 		|| _recording.current()
 		|| !_field->isVisible();
@@ -5350,7 +5571,8 @@ bool ComposeControls::textExceedsMaxSize() const {
 bool ComposeControls::updateBotCommandShown() {
 	auto shown = false;
 	const auto peer = _history ? _history->peer.get() : nullptr;
-	if (_botCommandStart
+	if (!Nagram::Compose::Hidden(Nagram::Compose::kHideBotCommandButton)
+			&& _botCommandStart
 			&& peer
 			&& _botCommandStartExtraGuard.current()
 			&& !isEditingMessage()) {
@@ -5398,7 +5620,8 @@ bool ComposeControls::refreshBotMenuButton() {
 		return changed;
 	}
 	auto buttonChanged = false;
-	if (!bot
+	if (Nagram::Compose::Hidden(Nagram::Compose::kHideBotMenu)
+		|| !bot
 		|| (_mode != Mode::Normal)
 		|| (bot->botInfo->botMenuButtonUrl.isEmpty()
 			&& bot->botInfo->commands.empty())) {
@@ -5482,7 +5705,9 @@ void ComposeControls::updateOuterGeometry(QRect rect) {
 
 void ComposeControls::updateMessagesTTLShown() {
 	const auto peer = _history ? _history->peer.get() : nullptr;
-	const auto shown = _features.ttlInfo
+	const auto shown = !Nagram::Compose::Hidden(
+		Nagram::Compose::kHideAutoDeleteButton)
+		&& _features.ttlInfo
 		&& peer
 		&& (peer->messagesTTL() > 0);
 	if (!shown && _ttlInfo) {
@@ -5509,6 +5734,7 @@ void ComposeControls::refreshSendGiftToggle() {
 		| Type::Limited
 		| Type::Unique;
 	const auto has = _regularWindow
+		&& !Nagram::Compose::Hidden(Nagram::Compose::kHideGiftButton)
 		&& user
 		&& !_writeRestriction.current()
 		&& !user->isServiceUser()
@@ -5597,7 +5823,9 @@ void ComposeControls::updateAttachBotsMenu() {
 	}
 	_attachBotsMenu->setOrigin(
 		Ui::PanelAnimation::Origin::BottomLeft);
-	if (!ChatHelpers::ShowPanelOnClick()) {
+	if (!ChatHelpers::ShowPanelOnClick()
+		&& !Nagram::Compose::Hidden(
+			Nagram::Compose::kDisableAttachHover)) {
 		_attachToggle->installEventFilter(_attachBotsMenu.get());
 	}
 	_attachBotsMenu->heightValue(
@@ -6360,6 +6588,8 @@ void ComposeControls::applyInlineBotQuery(
 		if (_inlineBot != bot) {
 			_inlineBot = bot;
 			_inlineLookingUpBot = false;
+			inlineBotChanged();
+		} else if (Nagram::Links::AutoInlineBotEnabled()) {
 			inlineBotChanged();
 		}
 		if (!_inlineResults) {

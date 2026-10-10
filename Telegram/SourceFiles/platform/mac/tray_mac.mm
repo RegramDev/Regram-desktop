@@ -23,6 +23,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #import <AppKit/NSMenu.h>
 #import <AppKit/NSStatusItem.h>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
+
 @interface CommonDelegate : NSObject<NSMenuDelegate> {
 }
 
@@ -196,8 +200,10 @@ void UpdateIcon(const NSStatusItem *status) {
 	auto resultActive = result;
 	resultActive.detach();
 
-	const auto counter = Core::App().unreadBadge();
-	const auto muted = Core::App().unreadBadgeMuted();
+    const auto &settings = AyuSettings::getInstance();
+
+	const auto counter = settings.hideNotificationBadge() ? 0 : Core::App().unreadBadge();
+	const auto muted = settings.hideNotificationBadge() ? 0 : Core::App().unreadBadgeMuted();
 
 	const auto &bg = (muted ? st::trayCounterBgMute : st::trayCounterBg);
 	const auto &fg = st::trayCounterFg;
@@ -375,6 +381,8 @@ void Tray::createIcon() {
 			_nativeIcon->deactivateButton();
 			_showFromTrayRequests.fire({});
 		}, _lifetime);
+		_nativeIcon->aboutToShowRequests(
+		) | rpl::start_to_stream(_aboutToShowRequests, _lifetime);
 	}
 	updateIcon();
 }
@@ -468,9 +476,7 @@ bool Tray::hasTrayMessageSupport() const {
 }
 
 rpl::producer<> Tray::aboutToShowRequests() const {
-	return _nativeIcon
-		? _nativeIcon->aboutToShowRequests()
-		: rpl::never<>();
+	return _aboutToShowRequests.events();
 }
 
 rpl::producer<> Tray::showFromTrayRequests() const {

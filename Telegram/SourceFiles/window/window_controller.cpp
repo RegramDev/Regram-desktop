@@ -19,9 +19,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session_settings.h"
 #include "main/main_app_config.h"
 #include "media/view/media_view_open_common.h"
+#include "lang/lang_hardcoded.h"
 #include "lang/lang_keys.h"
 #include "intro/intro_widget.h"
 #include "mtproto/mtproto_config.h"
+#include "storage/storage_account.h"
 #include "ui/toast/toast.h"
 #include "ui/emoji_config.h"
 #include "chat_helpers/emoji_sets_manager.h"
@@ -31,11 +33,19 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/components/promo_suggestions.h"
 #include "data/data_thread.h"
 #include "settings/settings_common.h"
+#include "wallet/wallet_panel.h"
+#include "wallet/wallet_session.h"
 #include "apiwrap.h" // ApiWrap::acceptTerms.
 #include "styles/style_layers.h"
 
 #include <QtGui/QWindow>
 #include <QtGui/QScreen>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/ayu_state.h"
+#include "data/data_story.h"
+
 
 namespace Window {
 namespace {
@@ -244,8 +254,8 @@ void Controller::setupSideBar() {
 		sideBarChanged();
 	}, _sessionController->lifetime());
 
-	if (_sessionController->session().settings().dialogsFiltersEnabled()
-		&& _sessionController->enoughSpaceForFilters()
+	if (_sessionController->enoughSpaceForFilters()
+		&& _sessionController->session().settings().dialogsFiltersEnabled()
 		&& !Core::App().settings().chatFiltersHorizontal()) {
 		_sessionController->toggleFiltersMenu(true);
 	} else {
@@ -264,6 +274,7 @@ void Controller::checkLockByTerms() {
 		return;
 	}
 	hideSettingsAndLayer(anim::type::instant);
+	Wallet::CloseWallet(&account().session());
 	const auto box = show(Box<TermsBox>(
 		*data,
 		tr::lng_terms_agree(),
@@ -405,10 +416,10 @@ void Controller::clearSetupEmailLock() {
 void Controller::setupIntro(
 		Main::Account *accountBeforeIntro,
 		QPixmap oldContentCache) {
-	const auto point = Core::App().domain().maybeLastOrSomeAuthedAccount()
-		? Intro::EnterPoint::Qr
-		: Intro::EnterPoint::Start;
-	_widget.setupIntro(point, accountBeforeIntro, std::move(oldContentCache));
+	_widget.setupIntro(
+		Intro::EnterPoint::Qr,
+		accountBeforeIntro,
+		std::move(oldContentCache));
 }
 
 void Controller::setupMain(
@@ -566,6 +577,29 @@ QPoint Controller::getPointForCallPanelCenter() const {
 		: _widget.geometry().center();
 }
 
+QString LogoutConfirmationText(Main::Account *account) {
+	auto result = tr::lng_sure_logout(tr::now);
+	const auto append = [&](const QString &line) {
+		if (!line.isEmpty()) {
+			result += u"\n\n"_q + line;
+		}
+	};
+	const auto &domain = Core::App().domain();
+	if (account) {
+		append(Wallet::WalletLossWarning(
+			Wallet::WalletLossOnLogout(account)));
+	} else if (!domain.started()) {
+		append(tr::lng_sure_logout_wallet_unknown(tr::now));
+	} else {
+		auto loss = Wallet::WalletLoss();
+		for (const auto &[index, one] : domain.accounts()) {
+			loss.add(Wallet::WalletLossOnLogout(one.get()));
+		}
+		append(Wallet::WalletLossWarning(loss));
+	}
+	return result;
+}
+
 void Controller::showLogoutConfirmation() {
 	const auto account = Core::App().passcodeLocked()
 		? nullptr
@@ -582,10 +616,27 @@ void Controller::showLogoutConfirmation() {
 		}
 	};
 	show(Ui::MakeConfirmBox({
-		.text = tr::lng_sure_logout(),
+		.text = LogoutConfirmationText(account),
 		.confirmed = callback,
 		.confirmText = tr::lng_settings_logout(),
 		.confirmStyle = &st::attentionBoxButton,
+	}));
+}
+
+void Controller::showPasscodeClearFailed(Fn<bool()> retry) {
+	if (_passcodeClearFailedBox) {
+		return;
+	}
+	_passcodeClearFailedBox = show(Ui::MakeConfirmBox({
+		.text = Lang::Hard::SecureSaveError(),
+		.confirmed = [=](Fn<void()> close) {
+			if (retry && retry()) {
+				close();
+			}
+		},
+		.confirmText = tr::lng_bot_download_retry(),
+		.cancelText = tr::lng_close(),
+		.title = tr::lng_passcode_remove(),
 	}));
 }
 
@@ -594,6 +645,38 @@ Window::Adaptive &Controller::adaptive() const {
 }
 
 void Controller::openInMediaView(Media::View::OpenRequest &&request) {
+	if (request.story()) {
+		const auto story = not_null{ request.story() };
+		auto &ghost = AyuSettings::ghost(&story->session());
+		const auto suggestGhostMode = ghost.suggestGhostModeBeforeViewingStory()
+			&& ghost.sendReadStories()
+			&& !ghost.sendReadStoriesLocked()
+			&& !ghost.isGhostModeActive();
+		if (suggestGhostMode) {
+			const auto controller = request.controller();
+			const auto context = request.storiesContext();
+			show(Ui::MakeConfirmBox({
+				.text = tr::ayu_SuggestGhostModeStoryText(tr::now, tr::rich),
+				.confirmed = [=](Fn<void()> close) {
+					close();
+					AyuSettings::ghost(&story->session()).setGhostModeEnabled(true);
+					AyuState::setDisableGhostModeOnStoryClose(&story->session());
+					_openInMediaViewRequests.fire(
+						Media::View::OpenRequest(controller, story, context));
+				},
+				.cancelled = [=](Fn<void()> close) {
+					close();
+					_openInMediaViewRequests.fire(
+						Media::View::OpenRequest(controller, story, context));
+				},
+				.confirmText = tr::ayu_SuggestGhostModeStoryActionTextYes(),
+				.cancelText = tr::ayu_SuggestGhostModeStoryActionTextNo(),
+				.title = tr::ayu_SuggestGhostModeTitle(),
+				.strictCancel = true,
+			}));
+			return;
+		}
+	}
 	_openInMediaViewRequests.fire(std::move(request));
 }
 

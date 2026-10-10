@@ -26,6 +26,7 @@ struct CommunityUserpicEffect {
 	QRgb color = 0;
 	int paletteVersion = 0;
 	int dpr = 0;
+	uint8 ayuState = 0xFF;
 };
 
 void PaintCommunityUserpicEffect(
@@ -53,6 +54,7 @@ struct PeerUserpicView {
 	base::weak_ptr<const EmptyUserpic> empty;
 	uint32 paletteVersion : 30 = 0;
 	uint32 shape : 2 = 0;
+	uint8 ayuState = 0xFF;
 };
 
 [[nodiscard]] bool PeerUserpicLoading(const PeerUserpicView &view);

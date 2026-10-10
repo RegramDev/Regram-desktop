@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/platform/mac/base_confirm_quit.h"
 #include "base/platform/mac/base_utilities_mac.h"
 #include "base/platform/base_platform_info.h"
+#include "platform/mac/wallet_protection_mac.h"
 
 #include <QtCore/QDirIterator>
 #include <QtGui/QDesktopServices>
@@ -246,8 +247,8 @@ void ShowTranslocationError() {
 
 	NSAlert *alert = [[NSAlert alloc] init];
 	alert.alertStyle = NSAlertStyleCritical;
-	alert.messageText = @"Telegram Desktop can't start from here";
-	alert.informativeText = @"macOS started this copy of Telegram Desktop "
+	alert.messageText = @"Regram Desktop can't start from here";
+	alert.informativeText = @"macOS started this copy of Regram Desktop "
 		@"from a read-only temporary location (App Translocation), so it "
 		@"can't use its own folder. Please reinstall the app and launch it "
 		@"again.";
@@ -263,6 +264,7 @@ namespace Platform {
 
 void start() {
 	objc_start();
+	RegisterWalletProtectionProvider();
 }
 
 void finish() {
@@ -271,7 +273,7 @@ void finish() {
 
 // macOS starts a quarantined bundle that was never moved by Finder from
 // a random read-only mount, so a portable build loses the
-// TelegramForcePortable folder it was shipped with and silently works on
+// RegramForcePortable folder it was shipped with and silently works on
 // the default installation's data. When the original location is known
 // and is the shipped portable layout, stripping the quarantine attribute
 // there is exactly what a Finder move would have done (Gatekeeper has
@@ -304,7 +306,7 @@ bool CheckAppTranslocation() {
 	const auto portable = !state.original.isEmpty()
 		&& QFileInfo(state.original + u"/Contents/Info.plist"_q).isFile()
 		&& QDir(QFileInfo(state.original).path()
-			+ u"/TelegramForcePortable"_q).exists();
+			+ u"/RegramForcePortable"_q).exists();
 	if (!relaunched
 		&& portable
 		&& RemoveQuarantineRecursively(state.original)
@@ -524,6 +526,24 @@ void LaunchMaps(const Data::LocationPoint &point, Fn<void()> fail) {
 			point.latAsString(),
 			point.lonAsString()))) {
 		fail();
+	}
+}
+
+QString LocalizedCurrencyName(
+		const QString &currency,
+		const QString &languageId) {
+	@autoreleasepool {
+		NSLocale *locale = [NSLocale localeWithLocaleIdentifier:
+			Q2NSString(languageId)];
+		// An unknown language falls back to the system one, not to English.
+		NSString *language = locale.languageCode;
+		if (!language || ![[NSLocale availableLocaleIdentifiers]
+				containsObject:language]) {
+			return QString();
+		}
+		NSString *name = [locale localizedStringForCurrencyCode:
+			Q2NSString(currency)];
+		return name ? NS2QString(name) : QString();
 	}
 }
 

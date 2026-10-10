@@ -6,6 +6,9 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/ui/dialogs_layout.h"
+#include "regram/nagram/chats/layout.h"
+#include "regram/nagram/chats/local_pins.h"
+#include "regram/nagram/privacy/options.h"
 
 #include "base/options.h"
 #include "base/unixtime.h"
@@ -50,6 +53,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_dialogs_layout.h"
 #include "styles/style_widgets.h"
 #include "styles/style_window.h"
+
+// AyuGram includes
+#include "regram/ayu/features/filters/filters_controller.h"
+#include "styles/style_ayu_icons.h"
+
 
 namespace Dialogs::Ui {
 
@@ -244,9 +252,7 @@ int PaintBadges(
 	}
 	if ((!narrow || (painted < 2))
 		&& (badgesState.mention || badgesState.reaction)) {
-		const auto muted = badgesState.mention
-			? badgesState.mentionMuted
-			: badgesState.reactionMuted;
+		const auto muted = false;
 		paintIconBadge(
 			badgesState.mention
 				? (narrow
@@ -270,15 +276,16 @@ int PaintBadges(
 		++painted;
 	}
 	if ((!narrow || (painted < 2)) && badgesState.poll) {
+		const auto muted = false;
 		paintIconBadge(
 			narrow
-				? (badgesState.pollMuted
+				? (muted
 					? st::dialogsUnreadPollBadgeMuted
 					: st::dialogsUnreadPollBadge)
-				: (badgesState.pollMuted
+				: (muted
 					? st::dialogsUnreadPollMuted
 					: st::dialogsUnreadPoll),
-			badgesState.pollMuted,
+			muted,
 			UnreadBadgeSize::PollInDialogs);
 		++painted;
 	}
@@ -464,6 +471,11 @@ void PaintRow(
 	const auto history = entry->asHistory();
 	const auto thread = entry->asThread();
 	const auto sublist = entry->asSublist();
+	const auto itemIsFiltered = item && FiltersController::filtered(item);
+	const auto itemIsEmpty = item && (item->isEmpty() || itemIsFiltered);
+	const auto showFilteredItem = !fakeRow
+		&& itemIsEmpty
+		&& itemIsFiltered;
 
 	auto bg = context.active
 		? st::dialogsBgActive
@@ -485,6 +497,17 @@ void PaintRow(
 		p.translate(swipeMirrored ? swipeTranslation : -swipeTranslation, 0);
 	}
 	p.fillRect(geometry, bg);
+
+	if (Nagram::Privacy::DemoMode()) {
+		p.setFont(st::semiboldFont);
+		p.setPen(st::dialogsNameFg);
+		p.drawTextLeft(
+			context.st->nameLeft,
+			context.st->nameTop,
+			context.width,
+			tr::lng_nagram_demo_hidden(tr::now));
+		return;
+	}
 	if (!(flags & Flag::TopicJumpRipple)) {
 		auto ripple = context.active
 			? st::dialogsRippleBgActive
@@ -554,7 +577,9 @@ void PaintRow(
 		PaintExpandedTopicsBar(p, context.topicsExpanded);
 	}
 	if (context.narrow) {
-		if (!draft && item && !item->isEmpty()) {
+		if (!draft
+			&& item
+			&& (!itemIsEmpty || showFilteredItem)) {
 			PaintNarrowCounter(p, context, badgesState);
 		}
 		return;
@@ -606,7 +631,31 @@ void PaintRow(
 		}
 	}
 	auto texttop = context.st->textTop;
-	if (const auto folder = entry->asFolder()) {
+	if (Nagram::Chats::HidePreview(entry->asFolder(),
+				history && history->peer->isSelf())) {
+		if (history) {
+			PaintDialogDate(p, entry, fakeRow, date, rectForName, context);
+		}
+		const auto availableWidth = PaintWideCounter(
+			p,
+			context,
+			badgesState,
+			texttop,
+			namewidth,
+			false);
+		p.setFont(st::dialogsTextFont);
+		p.setPen(context.active
+			? st::dialogsTextFgActive
+			: context.selected
+			? st::dialogsTextFgOver
+			: st::dialogsTextFg);
+		p.drawText(
+			nameleft,
+			texttop + st::dialogsTextFont->ascent,
+			st::dialogsTextFont->elided(
+				Nagram::Chats::HiddenPreviewText(entry->asFolder()),
+				availableWidth));
+	} else if (const auto folder = entry->asFolder()) {
 		const auto availableWidth = PaintWideCounter(
 			p,
 			context,
@@ -672,7 +721,7 @@ void PaintRow(
 		auto availableWidth = namewidth;
 		if (const auto used = PaintRightButton(p, context)) {
 			availableWidth -= used;
-		} else if (entry->isPinnedDialog(context.filter)
+		} else if (Nagram::Chats::ShowsPinnedIcon(entry, context.filter)
 			&& (context.filter || !entry->fixedOnTopIndex())) {
 			auto &icon = ThreeStateIcon(
 				st::dialogsPinnedIcon,
@@ -770,7 +819,7 @@ void PaintRow(
 		auto availableWidth = namewidth;
 		if (const auto used = PaintRightButton(p, context)) {
 			availableWidth -= used;
-		} else if (entry->isPinnedDialog(context.filter)
+		} else if (Nagram::Chats::ShowsPinnedIcon(entry, context.filter)
 			&& (context.filter || !entry->fixedOnTopIndex())) {
 			auto &icon = ThreeStateIcon(
 				st::dialogsPinnedIcon,
@@ -804,13 +853,13 @@ void PaintRow(
 					tr::lng_community_chat_loading(tr::now));
 			}
 		}
-	} else if (!item->isEmpty()) {
+	} else if (!itemIsEmpty || showFilteredItem) {
 		if ((thread || sublist) && !promoted) {
 			PaintDialogDate(p, entry, fakeRow, date, rectForName, context);
 		}
 
 		paintItemCallback(nameleft, namewidth);
-	} else if (entry->isPinnedDialog(context.filter)
+	} else if (Nagram::Chats::ShowsPinnedIcon(entry, context.filter)
 		&& (context.filter || !entry->fixedOnTopIndex())) {
 		auto &icon = ThreeStateIcon(
 			st::dialogsPinnedIcon,
@@ -875,6 +924,14 @@ void PaintRow(
 				: context.selected
 				? &st::dialogsVerifiedIconOver
 				: &st::dialogsVerifiedIcon),
+			.exteraOfficial = &ThreeStateIcon(
+				st::dialogsExteraOfficialIcon,
+				context.active,
+				context.selected),
+			.exteraSupporter = &ThreeStateIcon(
+				st::dialogsExteraSupporterIcon,
+				context.active,
+				context.selected),
 			.premium = &ThreeStateIcon(
 				st::dialogsPremiumIcon,
 				context.active,
@@ -1164,7 +1221,7 @@ void RowPainter::Paint(
 		return std::max(itemDate, draftDate);
 	}();
 	const auto displayPinnedIcon = badgesState.empty()
-		&& entry->isPinnedDialog(context.filter)
+		&& Nagram::Chats::ShowsPinnedIcon(entry, context.filter)
 		&& (context.filter || !entry->fixedOnTopIndex());
 
 	const auto from = history
@@ -1240,6 +1297,11 @@ void RowPainter::Paint(
 					[=] { entry->updateChatListEntry(); },
 					{});
 			}
+			if (Nagram::Chats::PreviewLines() > 1 && !forum && !monoforum
+				&& !entry->hasChatsFilterTags(context.filter)) {
+				rect.setHeight(st::dialogsTextFont->height
+					* Nagram::Chats::PreviewLines());
+			}
 			if (forum || monoforum) {
 				rect.setHeight(context.st->topicsHeight + rect.height());
 			}
@@ -1272,21 +1334,28 @@ void RowPainter::Paint(
 		not_null<const FakeRow*> row,
 		const PaintContext &context) {
 	const auto item = row->item();
+	const auto itemIsFiltered = FiltersController::filtered(item);
 	const auto topic = context.forum ? row->topic() : nullptr;
 	const auto history = topic ? nullptr : item->history().get();
 	const auto entry = topic ? (Entry*)topic : (Entry*)history;
 	auto cloudDraft = nullptr;
 	const auto from = [&] {
 		const auto in = row->searchInChat();
-		return (topic && (in.topic() != topic))
-			? nullptr
-			: in
-			? item->displayFrom()
-			: history->peer->migrateTo()
+		if (topic && (in.topic() != topic)) {
+			return (PeerData*)nullptr;
+		} else if (in && !itemIsFiltered) {
+			return item->displayFrom();
+		} else if (!history) {
+			return (PeerData*)nullptr;
+		}
+		return history->peer->migrateTo()
 			? history->peer->migrateTo()
 			: history->peer.get();
 	}();
 	const auto hiddenSenderInfo = [&]() -> const HiddenSenderInfo* {
+		if (itemIsFiltered) {
+			return nullptr;
+		}
 		if (const auto searchChat = row->searchInChat()) {
 			if (const auto peer = searchChat.peer()) {
 				if (const auto forwarded = item->Get<HistoryMessageForwarded>()) {

@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/stickers_list_footer.h"
+#include "regram/nagram/media/options.h"
 
 #include "chat_helpers/emoji_keywords.h"
 #include "chat_helpers/stickers_emoji_pack.h"
@@ -131,9 +132,14 @@ std::optional<EmojiSection> SetIdEmojiSection(uint64 id) {
 rpl::producer<std::vector<GifSection>> GifSectionsValue(
 		not_null<Main::Session*> session) {
 	const auto config = &session->appConfig();
-	return config->value(
+	return rpl::merge(
+		config->value() | rpl::map_to(0),
+		Nagram::ForDevice().Value(Nagram::Media::kHideGifCategories
+		) | rpl::map_to(0)
 	) | rpl::map([=] {
-		return config->get<std::vector<QString>>(
+		return Nagram::ForDevice().Get(Nagram::Media::kHideGifCategories)
+			? std::vector<QString>()
+			: config->get<std::vector<QString>>(
 			u"gif_search_emojies"_q,
 			GifSearchEmojiFallback());
 	}) | rpl::distinct_until_changed(

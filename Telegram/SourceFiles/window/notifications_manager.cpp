@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/notifications_manager.h"
+#include "regram/nagram/interface/notifications.h"
+#include "regram/nagram/privacy/options.h"
 
 #include "base/options.h"
 #include "base/platform/base_platform_info.h"
@@ -53,6 +55,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #if __has_include(<gio/gio.hpp>)
 #include <gio/gio.hpp>
 #endif // __has_include(<gio/gio.hpp>)
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace Window {
 namespace Notifications {
@@ -367,6 +374,11 @@ System::SkipState System::computeSkipState(
 		notifySettings->request(notifyBy);
 	}
 
+	const auto review = Nagram::Interface::ReviewNotification(item, messageType);
+	if (review) {
+		return withSilent(*review ? SkipState::DontSkip : SkipState::Skip);
+	}
+
 	if (messageType && notifySettings->muteUnknown(thread)) {
 		return { SkipState::Unknown };
 	} else if (messageType && !notifySettings->isMuted(thread)) {
@@ -400,11 +412,20 @@ System::Timing System::countTiming(
 	const bool isOnline = updates.lastWasOnline();
 	const auto otherNotOld = ((cOtherOnline() * 1000LL) + config.onlineCloudTimeout > t * 1000LL);
 	const bool otherLaterThanMe = (cOtherOnline() * 1000LL + (ms - updates.lastSetOnline()) > t * 1000LL);
-	if (!isOnline && otherNotOld && otherLaterThanMe) {
+	const auto cloudDelay = !isOnline && otherNotOld && otherLaterThanMe;
+	const auto otherActive = cloudDelay || cOtherOnline() >= t;
+	if (cloudDelay) {
 		delay = config.notifyCloudDelay;
 	} else if (cOtherOnline() >= t) {
 		delay = config.notifyDefaultDelay;
 	}
+	delay = Nagram::Interface::NotificationDelay(delay, minimalDelay, otherActive);
+
+	const auto &settings = AyuSettings::getInstance();
+	if (settings.disableNotificationsDelay()) {
+		delay = minimalDelay;
+	}
+
 	return {
 		.delay = delay,
 		.when = ms + delay,
@@ -439,6 +460,10 @@ void System::schedule(Data::ItemNotification notification) {
 	const auto thread = item->notificationThread();
 	const auto skip = skipNotification(notification);
 	if (skip.value == SkipState::Skip) {
+		thread->popNotification(notification);
+		return;
+	}
+	if (isMessageHidden(item)) {
 		thread->popNotification(notification);
 		return;
 	}
@@ -1551,7 +1576,12 @@ void NativeManager::doShowNotification(NotificationFields &&fields) {
 			? Data::ItemNotificationType::PollVote
 			: Data::ItemNotificationType::Reaction)
 		: Data::ItemNotificationType::Message;
-	const auto options = getNotificationOptions(fields.item, type);
+	auto options = getNotificationOptions(fields.item, type);
+	const auto demo = Nagram::Privacy::DemoMode();
+	if (demo) {
+		options.hideNameAndPhoto = true;
+		options.hideMessageText = true;
+	}
 	const auto item = fields.item;
 	const auto peer = item->history()->peer;
 	const auto reactionFrom = fields.reactionFrom;
@@ -1577,7 +1607,7 @@ void NativeManager::doShowNotification(NotificationFields &&fields) {
 		: (scheduled && peer->isSelf())
 		? tr::lng_notification_reminder(tr::now)
 		: subWithChat();
-	const auto fullTitle = addTargetAccountName(title, &peer->session());
+	const auto fullTitle = demo ? u"Regram"_q : addTargetAccountName(title, &peer->session());
 	const auto hideReactionSender = reactionFrom
 		&& !peer->session().api().reactionsNotifySettings()
 			.showPreviewsCurrent();
@@ -1623,7 +1653,7 @@ void NativeManager::doShowNotification(NotificationFields &&fields) {
 		});
 	} : Fn<NotificationSound()>();
 	auto actions = std::vector<NotificationAction>();
-	if (AllowNotificationActions(peer) && !options.hideMarkAsRead) {
+	if (!demo && AllowNotificationActions(peer) && !options.hideMarkAsRead) {
 		if (const auto markup = item->inlineReplyMarkup()) {
 			using ButtonType = HistoryMessageMarkupButton::Type;
 			const auto &rows = markup->data.rows;

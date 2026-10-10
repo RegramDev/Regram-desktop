@@ -64,6 +64,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QScreen>
 #include <QSvgRenderer>
 
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+
+
 namespace Settings {
 
 using ChangeType = Window::Notifications::ChangeType;
@@ -373,6 +377,24 @@ void NotificationsCount::paintEvent(QPaintEvent *e) {
 			p.setOpacity(1.);
 		}
 	}
+
+	// support for top center notifications
+	auto sampleLeft = screenRect.x() + screenRect.width() / 2 - st::notificationSampleSize.width() / 2;
+	auto sampleTop = screenRect.y() + st::notificationsSampleTopSkip;
+	if (static_cast<int>(_chosenCorner) == 4) {
+		auto count = _oldCount;
+		for (int i = 0; i != kMaxNotificationsCount; ++i) {
+			auto opacity = _sampleOpacities[i].value((i < count) ? 1. : 0.);
+			p.setOpacity(opacity);
+			p.drawPixmapLeft(sampleLeft, sampleTop, width(), _notificationSampleSmall);
+			sampleTop += st::notificationSampleSize.height() + st::notificationsSampleMargin;
+		}
+		p.setOpacity(1.);
+	} else {
+		p.setOpacity(st::notificationSampleOpacity);
+		p.drawPixmapLeft(sampleLeft, sampleTop, width(), _notificationSampleSmall);
+		p.setOpacity(1.);
+	}
 }
 
 void NotificationsCount::setCount(int count) {
@@ -429,7 +451,7 @@ void NotificationsCount::prepareNotificationSampleSmall() {
 		auto padding = height / 8;
 		auto userpicSize = height - 2 * padding;
 		p.setBrush(st::notificationSampleUserpicFg);
-		p.drawEllipse(style::rtlrect(padding, padding, userpicSize, userpicSize, width));
+		AyuUserpic::PaintShape(p, QRectF(style::rtlrect(padding, padding, userpicSize, userpicSize, width)));
 
 		auto rowLeft = height;
 		auto rowHeight = padding;
@@ -495,7 +517,7 @@ void NotificationsCount::prepareNotificationSampleLarge() {
 		p.setPen(st::dialogsNameFg);
 		p.setFont(st::msgNameFont);
 
-		auto notifyTitle = st::msgNameFont->elided(u"Telegram Desktop"_q, rectForName.width());
+		auto notifyTitle = st::msgNameFont->elided(u"Regram Desktop"_q, rectForName.width());
 		p.drawText(rectForName.left(), rectForName.top() + st::msgNameFont->ascent, notifyTitle);
 
 		st::notifyClose.icon.paint(p, w - st::notifyClosePos.x() - st::notifyClose.width + st::notifyClose.iconPosition.x(), st::notifyClosePos.y() + st::notifyClose.iconPosition.y(), w);
@@ -526,6 +548,7 @@ void NotificationsCount::mouseMoveEvent(QMouseEvent *e) {
 	auto topRight = style::rtlrect(screenRect.x() + screenRect.width() - cornerWidth, screenRect.y(), cornerWidth, cornerHeight, width());
 	auto bottomRight = style::rtlrect(screenRect.x() + screenRect.width() - cornerWidth, screenRect.y() + screenRect.height() - cornerHeight, cornerWidth, cornerHeight, width());
 	auto bottomLeft = style::rtlrect(screenRect.x(), screenRect.y() + screenRect.height() - cornerHeight, cornerWidth, cornerHeight, width());
+	auto topCenter = style::rtlrect(screenRect.x() + cornerWidth, screenRect.y(), cornerWidth, cornerHeight, width());
 	if (topLeft.contains(e->pos())) {
 		setOverCorner(ScreenCorner::TopLeft);
 	} else if (topRight.contains(e->pos())) {
@@ -534,6 +557,8 @@ void NotificationsCount::mouseMoveEvent(QMouseEvent *e) {
 		setOverCorner(ScreenCorner::BottomRight);
 	} else if (bottomLeft.contains(e->pos())) {
 		setOverCorner(ScreenCorner::BottomLeft);
+	} else if (topCenter.contains(e->pos())) {
+		setOverCorner(ScreenCorner::TopCenter);
 	} else {
 		clearOverCorner();
 	}
@@ -574,6 +599,11 @@ void NotificationsCount::setOverCorner(ScreenCorner corner) {
 		auto isTop = Core::Settings::IsTopCorner(_overCorner);
 		auto sampleLeft = (isLeft == rtl()) ? (r.x() + r.width() - st::notifyWidth - st::notifyDeltaX) : (r.x() + st::notifyDeltaX);
 		auto sampleTop = isTop ? (r.y() + st::notifyDeltaY) : (r.y() + r.height() - st::notifyDeltaY - st::notifyMinHeight);
+
+		if (Core::Settings::IsTopCenterCorner(_overCorner)) {
+			sampleLeft = (r.x() + r.width() / 2 - st::notifyWidth / 2);
+		}
+
 		for (int i = samplesLeave; i != samplesNeeded; ++i) {
 			auto widget = std::make_unique<SampleWidget>(this, _notificationSampleLarge);
 			widget->move(sampleLeft, sampleTop + (isTop ? 1 : -1) * i * (st::notifyMinHeight + st::notifyDeltaY));
@@ -778,7 +808,13 @@ void NotifyPreview::paint(Painter &p, int x, int y) {
 		QSize{ st::notifyPreviewUserpicSize, st::notifyPreviewUserpicSize });
 
 	if (_nameShown) {
+		const auto r = AyuUserpic::ComputeRadiusF(userpic.width());
+		auto clip = QPainterPath();
+		clip.addRoundedRect(QRectF(userpic), r, r);
+		p.save();
+		p.setClipPath(clip);
 		_userpic.render(&p, QRectF(userpic));
+		p.restore();
 	} else {
 		p.drawImage(userpic.topLeft(), _logo);
 	}

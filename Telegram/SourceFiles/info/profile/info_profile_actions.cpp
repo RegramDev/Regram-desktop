@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_actions.h"
+#include "regram/nagram/privacy/profile.h"
 
 #include "api/api_blocked_peers.h"
 #include "api/api_chat_participants.h"
@@ -116,6 +117,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
+
+// AyuGram includes
+#include "regram/ayu/ui/utils/ayu_profile_values.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "styles/style_ayu_styles.h"
+#include "ui/widgets/tooltip.h"
+#include "ui/text/text_entity.h"
+
 
 namespace Info {
 namespace Profile {
@@ -234,26 +243,11 @@ base::options::toggle ShowChannelJoinedBelowAbout({
 	return AboutValue(
 		peer
 	) | rpl::map([=](TextWithEntities &&value) {
-		if (ShowPeerIdBelowAbout.value()) {
-			using namespace Ui::Text;
-			if (!value.empty()) {
-				value.append("\n\n");
-			}
-			value.append(Italic(u"id: "_q));
-			const auto raw = peer->id.value & PeerId::kChatTypeMask;
-			value.append(Link(
-				Italic(Lang::FormatCountDecimal(raw)),
-				kPeerIdLinkIndex));
-		}
 		if (ShowChannelJoinedBelowAbout.value()) {
 			if (const auto channel = peer->asChannel()) {
 				if (!channel->amCreator() && channel->inviteDate) {
 					if (!value.empty()) {
-						if (ShowPeerIdBelowAbout.value()) {
-							value.append("\n");
-						} else {
-							value.append("\n\n");
-						}
+						value.append("\n\n");
 					}
 					using namespace Ui::Text;
 					value.append((channel->isMegagroup()
@@ -696,6 +690,7 @@ void SetupAboutPeerIdDrag(
 		object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
 			inner,
 			object_ptr<Ui::VerticalLayout>(inner)));
+	other->ease = anim::easeOutCubic;
 	other->toggleOn(state->expanded.value(), anim::type::normal);
 	constexpr auto kSlideDuration = float64(st::slideWrapDuration);
 	other->setDuration(kSlideDuration);
@@ -711,7 +706,7 @@ void SetupAboutPeerIdDrag(
 		timingArrow->paintRequest() | rpl::on_next([=] {
 			auto p = QPainter(timingArrow);
 			const auto progress = other->animating()
-				? (crl::now() - arrowAnimation->started()) / kSlideDuration
+				? anim::easeOutCubic(1., (crl::now() - arrowAnimation->started()) / kSlideDuration)
 				: 1.;
 
 			const auto path = Ui::ToggleUpDownArrowPath(
@@ -940,9 +935,7 @@ void DeleteContactNote(
 	) | rpl::start_spawning(result->lifetime());
 
 	auto label = BirthdayLabelText(rpl::duplicate(birthday));
-	auto text = BirthdayValueText(
-		rpl::duplicate(birthday)
-	) | rpl::map(tr::marked);
+	auto text = BirthdayValueMarkedText(user, rpl::duplicate(birthday));
 
 	const auto giftIcon = Ui::CreateChild<Ui::RpWidget>(layout);
 	giftIcon->resize(st::birthdayTodayIcon.size());
@@ -995,7 +988,12 @@ void DeleteContactNote(
 	layout->add(object_ptr<Ui::FlatLabel>(
 		layout,
 		std::move(nonEmptyText),
-		st::birthdayLabeled));
+		st::birthdayLabeled,
+		st::defaultPopupMenu,
+		Ui::Text::MarkedContext{
+			.customEmojiFactory = user->owner().customEmojiManager().factory(
+				Data::CustomEmojiManager::SizeTag::Normal),
+		}));
 	layout->add(Ui::CreateSkipWidget(layout, st::infoLabelSkip));
 	layout->add(object_ptr<Ui::FlatLabel>(
 		layout,
@@ -1132,7 +1130,7 @@ rpl::producer<CreditsAmount> AddCurrencyAction(
 	const auto button = wrapButton->entity();
 	const auto name = Ui::CreateChild<Ui::FlatLabel>(button, st.rightLabel);
 	const auto icon = state->helper.paletteDependent({ .factory = [=] {
-		return Ui::Earn::IconCurrencyColored(
+		return Ui::Earn::IconCurrencyTwoTone(
 			st.rightLabel.style.font,
 			st.rightLabel.textFg->c);
 	}, .margin = st::channelEarnCurrencyCommonMargins });
@@ -1405,6 +1403,80 @@ bool SetClickContext(
 	return false;
 }
 
+void AddRegistrationOrCreationButton(
+		not_null<Window::SessionController*> controller,
+		not_null<PeerData*> peer,
+		TextWithLabel &idInfo,
+		const auto &fitLabelToButton) {
+	if (peer->isBot() || peer->isServiceUser()) {
+		return;
+	}
+
+	const auto registrationDateButton = Ui::CreateChild<Ui::IconButton>(
+		idInfo.text->parentWidget(),
+		st::infoProfileLabeledButtonRegistrationDate);
+	const auto rightSkip = st::infoProfileLabeledButtonQrRightSkip;
+	fitLabelToButton(registrationDateButton, idInfo.text, rightSkip);
+	fitLabelToButton(registrationDateButton, idInfo.subtext, rightSkip);
+	registrationDateButton->setClickedCallback([=] {
+		const auto weak = QPointer<Ui::IconButton>(registrationDateButton);
+		getRegistrationDate(
+			peer,
+			[=](const TextWithEntities &result) {
+				if (result.empty() || !weak) {
+					return;
+				}
+				const auto parent = weak->window();
+				const auto tooltip = Ui::CreateChild<Ui::ImportantTooltip>(
+					parent,
+					Ui::MakeNiceTooltipLabel(
+						parent,
+						rpl::single(result),
+						st::boxWideWidth,
+						st::registrationDateImportantTooltipLabel),
+					st::defaultImportantTooltip);
+				tooltip->toggleFast(false);
+
+				const auto geometry = Ui::MapFrom(
+					parent,
+					weak.data(),
+					weak->rect());
+				const auto countPosition = [=](QSize size) {
+					const auto left = geometry.x()
+						+ (geometry.width() - size.width()) / 2;
+					const auto right = parent->width()
+						- st::normalFont->spacew;
+					return QPoint(
+						std::max(std::min(left, right - size.width()), 0),
+						geometry.y() - size.height() - st::normalFont->descent);
+				};
+				tooltip->pointAt(geometry, RectPart::Top, countPosition);
+
+				const auto weakTooltip = QPointer(tooltip);
+				tooltip->setHiddenCallback([weakTooltip] {
+					if (weakTooltip) {
+						weakTooltip->deleteLater();
+					}
+				});
+
+				base::install_event_filter(
+					tooltip,
+					qApp,
+					[weakTooltip](not_null<QEvent*> e) {
+						if (e->type() == QEvent::MouseButtonPress) {
+							if (weakTooltip) {
+								weakTooltip->toggleAnimated(false);
+							}
+						}
+						return base::EventFilterResult::Continue;
+					});
+
+				tooltip->toggleAnimated(true);
+			});
+		return false;
+	});
+}
+
 Section DetailsFiller::makeInfo() {
 	const auto parent = _stack->layout();
 	auto wrap = object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
@@ -1441,9 +1513,9 @@ Section DetailsFiller::makeInfo() {
 				Qt::SkipEmptyParts).last();
 			if (!joinDate.isEmpty()) {
 				const auto weak = base::make_weak(window);
-				window->session().api().resolveJumpToDate(
+				window->session().api().resolveJumpToTime(
 					Dialogs::Key(peer->owner().history(peer)),
-					base::unixtime::parse(joinDate.toULongLong()).date(),
+					TimeId(joinDate.toULongLong()),
 					[=](not_null<PeerData*> p, MsgId m) {
 						const auto f = Window::SectionShow::Way::Forward;
 						if (const auto strong = weak.get()) {
@@ -1788,6 +1860,34 @@ Section DetailsFiller::makeInfo() {
 				QString()
 			).text->setLinksTrusted();
 		}
+
+		{
+			const auto dataCenter = getPeerDC(_peer);
+			const auto idLabel = dataCenter.isEmpty() ? u"ID"_q : dataCenter;
+
+			auto idDrawableText = IDValue(
+				user
+			) | rpl::map([](TextWithEntities &&text)
+			{
+				return Ui::Text::Code(text.text);
+			});
+			auto idInfo = addInfoOneLine(
+				rpl::single(idLabel),
+				std::move(idDrawableText),
+				tr::ayu_ContextCopyID(tr::now)
+			);
+
+			idInfo.text->setClickHandlerFilter([=](auto &&...)
+			{
+				const auto idText = IDString(user);
+				if (!idText.isEmpty()) {
+					QGuiApplication::clipboard()->setText(idText);
+					controller->showToast(tr::ayu_IDCopiedToast(tr::now));
+				}
+				return false;
+			});
+			AddRegistrationOrCreationButton(controller, _peer, idInfo, fitLabelToButton);
+		}
 	} else {
 		const auto topicRootId = _topic ? _topic->rootId() : 0;
 		const auto addToLink = topicRootId
@@ -1876,6 +1976,66 @@ Section DetailsFiller::makeInfo() {
 			setupAboutContextMenu(about.text, AboutWithAdvancedValue(_peer));
 			SetupAboutPeerIdDrag(about.text, _peer);
 		}
+
+		if (!_topic) {
+			const auto dataCenter = getPeerDC(_peer);
+			const auto idLabel = dataCenter.isEmpty() ? u"ID"_q : dataCenter;
+
+			auto idDrawableText = IDValue(
+				_peer
+			) | rpl::map([](TextWithEntities &&text)
+			{
+				return Ui::Text::Code(text.text);
+			});
+			auto idInfo = addInfoOneLine(
+				idLabel,
+				std::move(idDrawableText),
+				tr::ayu_ContextCopyID(tr::now)
+			);
+
+			idInfo.text->setClickHandlerFilter([=, peer = _peer](auto &&...)
+			{
+				const auto idText = IDString(peer);
+				if (!idText.isEmpty()) {
+					QGuiApplication::clipboard()->setText(idText);
+					controller->showToast(tr::ayu_IDCopiedToast(tr::now));
+				}
+				return false;
+			});
+			AddRegistrationOrCreationButton(controller, _peer, idInfo, fitLabelToButton);
+		}
+
+		if (_topic) {
+			auto idDrawableText = IDValue(
+				_peer->forumTopicFor(topicRootId)->topicRootId()
+			) | rpl::map([](TextWithEntities &&text)
+			{
+				return Ui::Text::Code(text.text);
+			});
+			auto idInfo = addInfoOneLine(
+				rpl::single(u"ID"_q),
+				std::move(idDrawableText),
+				tr::ayu_ContextCopyID(tr::now)
+			);
+
+			idInfo.text->setClickHandlerFilter([=, peer = _peer](auto &&...)
+			{
+				const auto idText = IDString(peer->forumTopicFor(topicRootId)->topicRootId());
+				if (!idText.isEmpty()) {
+					QGuiApplication::clipboard()->setText(idText);
+					controller->showToast(tr::ayu_IDCopiedToast(tr::now));
+				}
+				return false;
+			});
+		}
+	}
+	if (!_topic) {
+		addInfoOneLine(tr::lng_nagram_profile_id(),
+			Nagram::Privacy::ProfileIdValue(_peer), QString());
+		addInfoOneLine(tr::lng_nagram_profile_dc(),
+			Nagram::Privacy::ProfileDcValue(_peer), QString());
+		addInfoOneLine(Nagram::Privacy::ProfileRegistrationLabel(_peer),
+			Nagram::Privacy::ProfileRegistrationValue(_peer), QString());
 	}
 	raw->toggleOn(tracker.atLeastOneShownValue());
 	raw->finishAnimating();
@@ -2275,9 +2435,14 @@ void DetailsFiller::addMainApp(not_null<UserData*> user) {
 		return text;
 	});
 	auto setup = [url](not_null<Ui::FlatLabel*> label) {
-		label->setClickHandlerFilter([=](const auto &...) {
-			UrlClickHandler::Open(url);
-			return false;
+		label->setClickHandlerFilter([=](
+				const ClickHandlerPtr &link,
+				Qt::MouseButton) {
+			if (link && link->url() == url) {
+				UrlClickHandler::Open(url);
+				return false;
+			}
+			return true;
 		});
 	};
 

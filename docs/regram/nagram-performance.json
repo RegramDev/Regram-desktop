@@ -1,0 +1,164 @@
+{
+  "date": "2026-10-10",
+  "configuration": "Debug; macOS arm64; Qt 6.11.2; identical workload with 32 active regex rules",
+  "before": {
+    "apply_ms": 1919.007875,
+    "bytes": 59100000,
+    "hidden": 0,
+    "messages": 1000,
+    "option_read_ms": 13447.505167,
+    "option_reads": 10000,
+    "rules": 32
+  },
+  "after": {
+    "apply_ms": 41.776791,
+    "bytes": 59100000,
+    "hidden": 0,
+    "messages": 1000,
+    "option_read_ms": 5.567792,
+    "option_reads": 10000,
+    "rules": 32
+  },
+  "interpretation": "CPU microbenchmark of configuration validation and filter projection, not application FPS or measured real-account responsiveness",
+  "idle_sample": ".cache/regram/perf-user-idle-before.txt",
+  "idle_observation": "Main thread mostly waits for AppKit events; this sample did not capture scrolling",
+  "unit_tests": {
+    "groups": 32,
+    "status": "passed",
+    "evidence": ".cache/regram/nagram-current-unit-results.txt"
+  },
+  "app_integration": {
+    "status": "passed",
+    "write_exit": 0,
+    "read_exit": 0,
+    "evidence": "/Users/yuki/Documents/project/Regram-desktop/.cache/regram/nagram-widgets._fsywci2/evidence",
+    "checks": [
+      "206 registered options",
+      "Qt window",
+      "encrypted storage write/restart read",
+      "branding",
+      "Markdown menu",
+      "notification quiet hours/keyword decisions",
+      "real message projection invalidation",
+      "three settings changes coalesced into one refresh",
+      "Qt settings and new boxes"
+    ]
+  },
+  "requested_ui_scope": "User reports stutter across all interfaces; whole-page paint and active UI profile added to the isolated app scenario",
+  "build_parallelism": "Follow-up Debug builds limited to four jobs; UI measurements run after build completion",
+  "ui_paint_comparison": [
+    {
+      "page": "chat",
+      "before": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 4.846,
+        "median_ms": 3.923875,
+        "p95_ms": 4.502333,
+        "page": "chat"
+      },
+      "after": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 5.247,
+        "median_ms": 3.953667,
+        "p95_ms": 4.557333,
+        "page": "chat"
+      }
+    },
+    {
+      "page": "interface-settings",
+      "before": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 34.853542,
+        "median_ms": 22.81275,
+        "p95_ms": 25.277834,
+        "page": "interface-settings"
+      },
+      "after": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 22.348917,
+        "median_ms": 18.880167,
+        "p95_ms": 21.078041,
+        "page": "interface-settings"
+      }
+    },
+    {
+      "page": "settings-traced",
+      "before": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 34.059958,
+        "median_ms": 20.5825,
+        "p95_ms": 21.215875,
+        "page": "settings-traced"
+      },
+      "after": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 18.315916,
+        "median_ms": 16.327583,
+        "p95_ms": 17.227625,
+        "page": "settings-traced"
+      }
+    },
+    {
+      "page": "settings",
+      "before": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 23.551,
+        "median_ms": 19.46225,
+        "p95_ms": 20.344292,
+        "page": "settings"
+      },
+      "after": {
+        "device_pixel_ratio": 2,
+        "iterations": 120,
+        "logical_height": 632,
+        "logical_width": 800,
+        "max_ms": 16.547875,
+        "median_ms": 15.833041,
+        "p95_ms": 16.238125,
+        "page": "settings"
+      }
+    }
+  ],
+  "background_paint_ms": {
+    "before": 12.384338208333332,
+    "after": 8.258143733333334,
+    "method": "120 widget paint events, test-only event-dispatch timing"
+  },
+  "visual_comparison": {
+    "scope": "settings interface panel; 800x632 logical window at device pixel ratio 2",
+    "header_max_rgb_diff": 0,
+    "panel_max_rgb_diff": 3,
+    "panel_mean_rgb_diff": 0.01943247673387494
+  },
+  "ui_measurement_limit": "Offscreen full-window QWidget::render CPU cost; excludes compositor latency, frame scheduling and real-account content. Sample tool collected too few main-thread stacks for statistically useful call profiling; widget event timings were used instead.",
+  "normal_build_log": ".cache/regram/nagram-final-build.log",
+  "normal_startup": {
+    "root": "/Users/yuki/Documents/project/Regram-desktop/.cache/regram/nagram-normal.h5a16g4u",
+    "normal_startup": "passed",
+    "renderer_ready": true,
+    "alive_after_ready": true,
+    "testagent": false
+  },
+  "actual_click_followup": "debug-click-performance.md"
+}

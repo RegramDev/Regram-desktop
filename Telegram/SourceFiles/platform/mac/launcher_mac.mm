@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "platform/mac/launcher_mac.h"
 
 #include "core/crash_reports.h"
+#include "regram/nagram/core/relaunch.h"
 #include "core/update_checker.h"
 #include "base/base_file_utilities.h"
 #include "base/platform/base_platform_file_utilities.h"
@@ -33,15 +34,37 @@ bool Launcher::launchUpdater(UpdaterLaunch action) {
 	}
 	@autoreleasepool {
 
-#ifdef OS_MAC_STORE
-	// In AppStore version we don't have Updater.
-	// We just relaunch our app.
 	if (action == UpdaterLaunch::JustRelaunch) {
-		NSDictionary *conf = [NSDictionary dictionaryWithObject:[NSArray array] forKey:NSWorkspaceLaunchConfigurationArguments];
-		[[NSWorkspace sharedWorkspace] launchApplicationAtURL:[NSURL fileURLWithPath:Q2NSString(cExeDir() + cExeName())] options:NSWorkspaceLaunchAsync | NSWorkspaceLaunchNewInstance configuration:conf error:0];
-		return true;
+#ifdef OS_MAC_STORE
+		const auto updaterDisabled = true;
+#else
+		const auto updaterDisabled = Core::UpdaterDisabled();
+#endif
+		if (updaterDisabled) {
+			NSDictionary *conf = [NSDictionary dictionaryWithObject:[NSArray array] forKey:NSWorkspaceLaunchConfigurationArguments];
+			[[NSWorkspace sharedWorkspace] launchApplicationAtURL:[NSURL fileURLWithPath:Q2NSString(cExeDir() + cExeName())] options:NSWorkspaceLaunchAsync | NSWorkspaceLaunchNewInstance configuration:conf error:0];
+			return true;
+		}
 	}
-#endif // OS_MAC_STORE
+
+	if (action == UpdaterLaunch::JustRelaunch) {
+		auto arguments = QStringList();
+		if (customWorkingDir()) {
+			arguments << u"-workdir"_q << cWorkingDir();
+		}
+		if (cRestartingToSettings()) arguments << u"-tosettings"_q;
+		if (Logs::DebugEnabled()) arguments << u"-debug"_q;
+		if (cStartInTray()) arguments << u"-startintray"_q;
+		if (cLaunchMode() == LaunchModeAutoStart) arguments << u"-autostart"_q;
+		if (cDataFile() != u"data"_q) {
+			arguments << u"-key"_q << cDataFile();
+		}
+		if (Nagram::RelaunchWithoutUpdater(
+				cExeDir() + cExeName(),
+				arguments)) {
+			return true;
+		}
+	}
 
 	NSString *path = @"", *args = @"";
 	@try {

@@ -981,6 +981,10 @@ bool InnerWidget::elementHideTopicButton(not_null<const Element*> view) {
 	return false;
 }
 
+HistoryView::GramReadLine *InnerWidget::elementGramReadLine() {
+	return nullptr;
+}
+
 void InnerWidget::saveState(not_null<SectionMemento*> memento) {
 	memento->setFilter(std::move(_filter));
 	memento->setAdmins(std::move(_admins));
@@ -2877,7 +2881,7 @@ void InnerWidget::updateSelected() {
 		|| dragState.cursor == CursorState::Date
 		|| dragState.cursor == CursorState::Forwarded
 		|| dragState.cursor == CursorState::LogAdminService) {
-		Ui::Tooltip::Show(1000, this);
+		Ui::Tooltip::Show(350, this);
 	}
 
 	auto cursor = style::cur_default;

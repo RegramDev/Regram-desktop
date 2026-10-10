@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_media_types.h"
+#include "regram/core/local_premium.h"
 
 #include "base/random.h"
 #include "boxes/send_credits_box.h" // CreditsEmoji.
@@ -1066,7 +1067,7 @@ std::unique_ptr<HistoryView::Media> MediaPhoto::createView(
 					message,
 					_chat,
 					_photo,
-					st::msgServicePhotoWidth));
+					st::msgServiceUserpicSuggestionPhotoWidth));
 		}
 		return std::make_unique<HistoryView::Photo>(
 			message,
@@ -1126,7 +1127,7 @@ std::unique_ptr<Media> MediaFile::clone(not_null<HistoryItem*> parent) {
 		.videoCover = _videoCover,
 		.videoTimestamp = _videoTimestamp,
 		.hasQualitiesList = _hasQualitiesList,
-		.skipPremiumEffect = !_document->session().premium(),
+		.skipPremiumEffect = !Regram::Premium::ForLocalFeatures(_document->session()),
 		.spoiler = _spoiler,
 	});
 }
@@ -1429,7 +1430,7 @@ crl::time MediaFile::ttlSeconds() const {
 }
 
 bool MediaFile::allowsForward() const {
-	return !ttlSeconds();
+	return true;
 }
 
 bool MediaFile::updateInlineResultMedia(const MTPMessageMedia &media) {

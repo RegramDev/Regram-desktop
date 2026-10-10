@@ -24,7 +24,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "iv/iv_rich_page.h"
 #include "lang/translate_provider.h"
 #include "main/main_session.h"
+#include "regram/nagram/services/auto_translate.h"
+#include "regram/nagram/services/chat_translation.h"
 #include "spellcheck/platform/platform_language.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 namespace HistoryView {
 namespace {
@@ -39,7 +45,7 @@ constexpr auto kRequestCountLimit = 20;
 
 TranslateTracker::TranslateTracker(not_null<History*> history)
 : _history(history)
-, _provider(Ui::CreateTranslateProvider(&_history->session()))
+, _provider(Nagram::CreateChatTranslateProvider(_history))
 , _api(&_history->session().mtp())
 , _limit(kEnoughForRecognition) {
 	setup();
@@ -71,7 +77,13 @@ void TranslateTracker::setup() {
 		Core::App().settings().translateChatEnabledValue(),
 		Data::AmPremiumValue(&_history->session()),
 		std::move(autoTranslationValue),
-		_1 && (_2 || _3));
+		Nagram::AutoTranslate::StateValue(_history),
+		[](bool enabled, bool premium, auto automatic, auto state) {
+			return Nagram::AutoTranslate::Tracking(
+				enabled,
+				premium || automatic,
+				state);
+		});
 	_trackingLanguage.value() | rpl::on_next([=](bool tracking) {
 		_trackingLifetime.destroy();
 		if (tracking) {
@@ -82,6 +94,11 @@ void TranslateTracker::setup() {
 			checkRecognized({});
 			stopAndRevert();
 		}
+	}, _lifetime);
+
+	AyuSettings::getInstance().translationProviderChanges(
+	) | rpl::on_next([=](TranslationProvider) {
+		resetProvider();
 	}, _lifetime);
 }
 
@@ -241,6 +258,7 @@ void TranslateTracker::cancelToRequest() {
 
 void TranslateTracker::cancelSentRequest() {
 	if (_requestInProcess) {
+		Nagram::CancelChatTranslation(_provider.get());
 		const auto owner = &_history->owner();
 		for (const auto &id : base::take(_requested)) {
 			if (const auto item = owner->message(id)) {
@@ -267,6 +285,32 @@ void TranslateTracker::stopAndRevert() {
 	_history->translateTo({});
 	if (const auto migrated = _history->migrateFrom()) {
 		migrated->translateTo({});
+	}
+}
+
+void TranslateTracker::resetProvider() {
+	cancelToRequest();
+	cancelSentRequest();
+	_provider = Ui::CreateTranslateProvider(&_history->session());
+	invalidateTranslations();
+}
+
+void TranslateTracker::invalidateTranslations() {
+	const auto clear = [&](not_null<History*> history) {
+		for (const auto &block : history->blocks) {
+			for (const auto &view : block->messages) {
+				const auto item = view->data();
+				if (!item->Has<HistoryMessageTranslation>()) {
+					continue;
+				}
+				item->removeTranslationBit();
+				history->owner().requestItemTextRefresh(item);
+			}
+		}
+	};
+	clear(_history);
+	if (const auto migrated = _history->migrateFrom()) {
+		clear(migrated);
 	}
 }
 

@@ -15,6 +15,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_document.h"
 #include "apiwrap.h"
 #include "base/openssl_help.h"
+#include "regram/nagram/network/runtime.h"
 
 namespace Storage {
 namespace {
@@ -110,11 +111,12 @@ void DownloadManagerMtproto::Queue::removeSession(int index) {
 }
 
 DownloadManagerMtproto::DcSessionBalanceData::DcSessionBalanceData()
-: maxWaitedAmount(kStartWaitedInSession) {
+: maxWaitedAmount(
+	Nagram::Network::DownloadStartWindow(kStartWaitedInSession)) {
 }
 
 DownloadManagerMtproto::DcBalanceData::DcBalanceData()
-: sessions(kStartSessionsCount) {
+: sessions(Nagram::Network::DownloadStartSessions(kStartSessionsCount)) {
 }
 
 DownloadManagerMtproto::DownloadManagerMtproto(not_null<ApiWrap*> api)
@@ -283,7 +285,8 @@ void DownloadManagerMtproto::requestSucceeded(
 	if (dc.timeouts > 0) {
 		--dc.timeouts;
 		return;
-	} else if (dc.sessions.size() == kMaxSessionsCount) {
+	} else if (int(dc.sessions.size())
+		>= Nagram::Network::DownloadMaxSessions(kMaxSessionsCount)) {
 		return;
 	}
 	const auto now = crl::now();
@@ -350,9 +353,11 @@ void DownloadManagerMtproto::removeSession(MTP::DcId dcId) {
 	auto &session = dc.sessions.back();
 
 	// Make sure we don't send anything to that session while redirecting.
-	session.requested += kMaxWaitedInSession * kMaxSessionsCount;
+	const auto parked = kMaxWaitedInSession
+		* Nagram::Network::DownloadMaxSessions(kMaxSessionsCount);
+	session.requested += parked;
 	queue.removeSession(index);
-	Assert(session.requested == kMaxWaitedInSession * kMaxSessionsCount);
+	Assert(session.requested == parked);
 
 	dc.sessions.pop_back();
 	api().instance().killSession(MTP::downloadDcId(dcId, index));

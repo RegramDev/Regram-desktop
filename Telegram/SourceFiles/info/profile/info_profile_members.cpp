@@ -37,7 +37,7 @@ namespace Info {
 namespace Profile {
 namespace {
 
-constexpr auto kEnableSearchMembersAfterCount = 20;
+constexpr auto kEnableSearchMembersAfterCount = 8;
 
 } // namespace
 

@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "boxes/filters/edit_filter_chats_list.h"
 
+#include "regram/nagram/chats/recent_chats.h"
 #include "core/ui_integration.h"
 #include "data/data_chat_filters.h"
 #include "data/data_premium_limits.h"
@@ -24,6 +25,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "styles/style_window.h"
 #include "styles/style_boxes.h"
+
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+
 
 namespace {
 
@@ -101,6 +106,9 @@ public:
 	[[nodiscard]] rpl::producer<Flags> selectedChanges() const;
 	[[nodiscard]] auto rowSelectionChanges() const
 		-> rpl::producer<RowSelectionChange>;
+	[[nodiscard]] rpl::producer<bool> nagramRecentToggles() const {
+		return _nagramRecentToggles.events();
+	}
 
 private:
 	[[nodiscard]] std::unique_ptr<PeerListRow> createRow(Flag flag) const;
@@ -111,6 +119,7 @@ private:
 
 	rpl::event_stream<> _selectionChanged;
 	rpl::event_stream<RowSelectionChange> _rowSelectionChanges;
+	rpl::event_stream<bool> _nagramRecentToggles;
 
 };
 
@@ -275,6 +284,10 @@ Flags TypeController::collectSelectedOptions() const {
 void TypeController::rowClicked(not_null<PeerListRow*> row) {
 	const auto checked = !row->checked();
 	delegate()->peerListSetRowChecked(row, checked);
+	if (row->id() == Nagram::Chats::kRecentFilterRowId) {
+		_nagramRecentToggles.fire_copy(checked);
+		return;
+	}
 	_rowSelectionChanges.fire({ row, checked });
 }
 
@@ -371,7 +384,7 @@ void PaintFilterChatsTypeIcon(
 	bg.setStops({ { 0., color1->c }, { 1., color2->c } });
 	p.setBrush(bg);
 	p.setPen(Qt::NoPen);
-	p.drawEllipse(rect);
+	AyuUserpic::PaintShape(p, rect);
 	icon.paintInCenter(p, rect);
 }
 
@@ -435,7 +448,9 @@ int EditFilterChatsListController::selectedTypesCount() const {
 	}
 	auto result = 0;
 	for (auto i = 0; i != _typesDelegate->peerListFullRowsCount(); ++i) {
-		if (_typesDelegate->peerListRowAt(i)->checked()) {
+		const auto row = _typesDelegate->peerListRowAt(i);
+		if (row->checked()
+			&& row->id() != Nagram::Chats::kRecentFilterRowId) {
 			++result;
 		}
 	}
@@ -514,6 +529,16 @@ object_ptr<Ui::RpWidget> EditFilterChatsListController::prepareTypesList() {
 		controller));
 	_typesDelegate->setContent(content);
 	controller->setDelegate(_typesDelegate);
+	if (auto row = _nagramFolderId
+		? Nagram::Chats::MakeRecentFilterRow()
+		: nullptr) {
+		const auto raw = row.get();
+		_typesDelegate->peerListAppendRow(std::move(row));
+		_typesDelegate->peerListRefreshRows();
+		if (_nagramRecent) {
+			content->changeCheckState(raw, true, anim::type::instant);
+		}
+	}
 	for (const auto flag : kAllTypes) {
 		if (_selected & flag) {
 			if (const auto row = _typesDelegate->peerListFindRow(TypeId(flag))) {
@@ -543,6 +568,11 @@ object_ptr<Ui::RpWidget> EditFilterChatsListController::prepareTypesList() {
 			update.row,
 			update.checked,
 			anim::type::normal);
+	}, _lifetime);
+
+	controller->nagramRecentToggles(
+	) | rpl::on_next([=](bool checked) {
+		_nagramRecent = checked;
 	}, _lifetime);
 
 	_deselectOption = [=](PeerListRowId itemId) {

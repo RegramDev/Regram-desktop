@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "iv/iv_rich_message_html_export.h"
+#include "regram/nagram/privacy/protection.h"
 
 #include "base/base_file_utilities.h"
 #include "base/random.h"
@@ -1396,40 +1397,6 @@ void CollectClipboardMediaFromText(
 	}
 }
 
-[[nodiscard]] Main::Session *SessionFromBlocks(
-		const std::vector<RichPage::Block> &blocks) {
-	for (const auto &block : blocks) {
-		if (block.photo) {
-			return &block.photo->session();
-		} else if (block.document) {
-			return &block.document->session();
-		} else if (block.peer) {
-			return &block.peer->session();
-		}
-		for (const auto &item : block.mediaItems) {
-			if (item.photo) {
-				return &item.photo->session();
-			} else if (item.document) {
-				return &item.document->session();
-			}
-		}
-		for (const auto &article : block.relatedArticles) {
-			if (article.photo) {
-				return &article.photo->session();
-			}
-		}
-		for (const auto &item : block.listItems) {
-			if (const auto session = SessionFromBlocks(item.blocks)) {
-				return session;
-			}
-		}
-		if (const auto session = SessionFromBlocks(block.blocks)) {
-			return session;
-		}
-	}
-	return nullptr;
-}
-
 void CollectClipboardMedia(
 		ClipboardMedia &media,
 		Main::Session *session,
@@ -1491,7 +1458,7 @@ QByteArray RichBlocksClipboardHtml(
 	auto media = ClipboardMedia();
 	CollectClipboardMedia(
 		media,
-		session ? session : SessionFromBlocks(slice.blocks),
+		session ? session : RichBlocksMediaSession(slice.blocks),
 		slice.blocks);
 
 	auto page = RichPage();
@@ -2165,7 +2132,7 @@ void AddSaveRichMessageHtmlActionForItem(
 		not_null<Window::SessionController*> controller,
 		not_null<HistoryItem*> item,
 		Fn<void()> done) {
-	if (!item->richPage() || item->forbidsForward()) {
+	if (!item->richPage() || Nagram::Privacy::ForbidsCopy(item)) {
 		return;
 	}
 	const auto itemId = item->fullId();

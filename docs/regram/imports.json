@@ -1,0 +1,185 @@
+{
+  "date": "2026-10-10",
+  "scope": "All Nagram and AyuGram features, plus the Regram iOS matrix",
+  "nagram": "5d0222ca152396aa213f3455528ce09c544cce30",
+  "ayu": "db3b9891cb0b04ebb7d8c0e71ada3bcc669b910a",
+  "ayu_upstream": "v7.0.9",
+  "initial_upstream": "v7.2.9",
+  "modules": {
+    "nagram": {
+      "files": 297,
+      "cpp": 153
+    },
+    "ayu": {
+      "files": 148,
+      "cpp": 67
+    }
+  },
+  "retention_sqlcipher": "c7e811b399379c948b423872ad7ba91d2ce38434",
+  "status": "integration in progress; not accepted",
+  "current_submodules": [
+    {
+      "path": "Telegram/ThirdParty/GSL",
+      "commit": "87f9d768866548b5b86e72be66c60c5abd4d9b37"
+    },
+    {
+      "path": "Telegram/ThirdParty/xxHash",
+      "commit": "c87183a77d67f7d37e3d2d1b7eaac5e7c695e4f0"
+    },
+    {
+      "path": "Telegram/ThirdParty/lz4",
+      "commit": "5ff839680134437dbf4678f3d0c7b371d84f4964"
+    },
+    {
+      "path": "Telegram/lib_crl",
+      "commit": "de724667d7bdfbf906f78fc405af1ee9f7723d49"
+    },
+    {
+      "path": "Telegram/lib_rpl",
+      "commit": "c57cccffb01d85570decd7fccb88419c9a682e63"
+    },
+    {
+      "path": "Telegram/lib_base",
+      "commit": "de35c7abcbf6464a0845695a55568bdac12a5fba"
+    },
+    {
+      "path": "Telegram/codegen",
+      "commit": "dbd1d53137cd581cfdbeebe93bcaf54abf55ec74"
+    },
+    {
+      "path": "Telegram/lib_ui",
+      "commit": "24310a3196c6632f58101a3ec1c553c4565bc9be"
+    },
+    {
+      "path": "Telegram/lib_lottie",
+      "commit": "fbb922c30b7c30ba17ad5fd4fcb989eadd620062"
+    },
+    {
+      "path": "Telegram/lib_tl",
+      "commit": "29746d31247c915a9ec870241399a9d103c39f87"
+    },
+    {
+      "path": "Telegram/lib_spellcheck",
+      "commit": "3273fd25c185fb626a9836dafbd644c2bd129ee1"
+    },
+    {
+      "path": "Telegram/lib_storage",
+      "commit": "ccdc72548a5065b5991b4e06e610d76bc4f6023e"
+    },
+    {
+      "path": "cmake",
+      "commit": "699262e441dbc6270f0ba6cc74f2e7a8e4c7e422"
+    },
+    {
+      "path": "Telegram/ThirdParty/expected",
+      "commit": "292eff8bd8ee230a7df1d6a1c00c4ea0eb2f0362"
+    },
+    {
+      "path": "Telegram/ThirdParty/QR",
+      "commit": "720f62bddb7226106071d4728c292cb1df519ceb"
+    },
+    {
+      "path": "Telegram/lib_qr",
+      "commit": "6fdf60461444ba150e13ac36009c0ffce72c4c83"
+    },
+    {
+      "path": "Telegram/ThirdParty/hunspell",
+      "commit": "a698d8b53cab3507d1d619d5fa08a88777abe50b"
+    },
+    {
+      "path": "Telegram/ThirdParty/range-v3",
+      "commit": "a81477931a8aa2ad025c6bda0609f38e09e4d7ec"
+    },
+    {
+      "path": "Telegram/ThirdParty/nimf",
+      "commit": "498ec7ffab3ac140c2469638a14451788f03e798"
+    },
+    {
+      "path": "Telegram/ThirdParty/hime",
+      "commit": "9b3e6f9ab59d1fe4d9de73d3bf0fed7789f921c5"
+    },
+    {
+      "path": "Telegram/ThirdParty/fcitx5-qt",
+      "commit": "0285a5d18367d8f3af80dab7e4819d5555982340"
+    },
+    {
+      "path": "Telegram/lib_webrtc",
+      "commit": "52636e86eaa493de670daf71959d000b281bd153"
+    },
+    {
+      "path": "Telegram/ThirdParty/tgcalls",
+      "commit": "1c236c09f8d8569fead14bd68000618a52051225"
+    },
+    {
+      "path": "Telegram/lib_webview",
+      "commit": "d6e2e0b8b171a104cd7b63bd351f056563e964b0"
+    },
+    {
+      "path": "Telegram/ThirdParty/kimageformats",
+      "commit": "df82311a1081e576c4ac020204578bb8a81b21ec"
+    },
+    {
+      "path": "Telegram/ThirdParty/kcoreaddons",
+      "commit": "fd84da51b554eac25e35b1e3f373edaab3029b15"
+    },
+    {
+      "path": "Telegram/ThirdParty/cld3",
+      "commit": "b48dc46512566f5a2d41118c8c1116c4f96dc661"
+    },
+    {
+      "path": "Telegram/ThirdParty/libprisma",
+      "commit": "75f26c17308871bee69f69a2831a8af2bc2f3627"
+    },
+    {
+      "path": "Telegram/ThirdParty/xdg-desktop-portal",
+      "commit": "23a76c392170dbbd26230f85ef56c3a57e52b857"
+    },
+    {
+      "path": "Telegram/lib_translate",
+      "commit": "b23983df9dd87b6993afdcefb48daf890beb545e"
+    },
+    {
+      "path": "Telegram/ThirdParty/cmark-gfm",
+      "commit": "d7d4a24a9ebfa7581994ea6df0297662bfeaf413"
+    },
+    {
+      "path": "Telegram/ThirdParty/MicroTeX",
+      "commit": "61aaa7cc354de91d5898ffb0b2a6c62628d9a76f"
+    },
+    {
+      "path": "Telegram/ThirdParty/TooManyCooks",
+      "commit": "b86af81982860c96295a7e95e4c60cb335615cef"
+    },
+    {
+      "path": "Telegram/ThirdParty/libcbor",
+      "commit": "170bee2b82cdb7b2ed25af301f62cb6efdd40ec1"
+    },
+    {
+      "path": "Telegram/ThirdParty/libfido2",
+      "commit": "b974e7cf2ee7392134cc12c08b76a068cf250dd8"
+    },
+    {
+      "path": "Telegram/lib_icu",
+      "commit": "7e55ddbcda78145b1fdb55c1f07f39299fa263f6"
+    },
+    {
+      "path": "Telegram/ThirdParty/zxcvbn",
+      "commit": "ab51000506afc1a450557a3608646bc04ba951fa"
+    }
+  ],
+  "library_patches": "Telegram/build/regram/patches/manifest.json",
+  "feature_inventory": "reference-feature-inventory.json",
+  "current_upstream": "v7.3.0",
+  "current_upstream_commit": "42f8a36d43b8c805bc821905bea4cfeb3af1d41d",
+  "ui": "upstream Qt; Liquid Glass and independent AppKit preview removed",
+  "previous_nagram": "f50c8ca9fb0001393862b04ae6c3ba367096fb78",
+  "nagram_integration": "latest product feature hooks adopted; source-project release/version channels retain Regram policy; real network and cross-platform acceptance pending",
+  "nagram_validation": {
+    "model_groups_passed": 32,
+    "offline_write": "passed",
+    "offline_restart_read": "passed",
+    "normal_debug_build": "passed",
+    "feature_options": 206,
+    "details": "nagram-latest.md"
+  }
+}

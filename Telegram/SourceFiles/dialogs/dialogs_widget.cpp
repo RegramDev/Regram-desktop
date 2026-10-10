@@ -7,11 +7,17 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_widget.h"
 
+#include "boxes/peer_list_controllers.h"
 #include "base/call_delayed.h"
 #include "base/qt/qt_key_modifiers.h"
 #include "base/options.h"
 #include "dialogs/ui/chat_search_in.h"
 #include "dialogs/ui/dialogs_stories_content.h"
+#include "regram/nagram/chats/layout.h"
+#include "regram/nagram/chats/options.h"
+#include "regram/nagram/chats/folders.h"
+#include "regram/nagram/chats/community.h"
+#include "regram/nagram/core/options.h"
 #include "dialogs/ui/dialogs_stories_list.h"
 #include "dialogs/ui/dialogs_suggestions.h"
 #include "dialogs/ui/dialogs_top_bar_suggestion_content.h"
@@ -46,6 +52,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/chat/group_call_bar.h"
 #include "ui/chat/more_chats_bar.h"
 #include "ui/controls/download_bar.h"
+#include "ui/controls/userpic_button.h"
 #include "ui/controls/jump_down_button.h"
 #include "ui/controls/swipe_handler.h"
 #include "ui/painter.h"
@@ -58,6 +65,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_domain.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
+#include "regram/appearance/stories.h" // MARK: Regram
 #include "api/api_authorizations.h"
 #include "api/api_chat_filters.h"
 #include "apiwrap.h"
@@ -95,6 +103,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/profile/info_profile_values.h"
 #include "info/info_memento.h"
 #include "inline_bots/bot_attach_web_view.h"
+#include "styles/style_ayu_icons.h"
 #include "styles/style_dialogs.h"
 #include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h"
@@ -108,12 +117,74 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtWidgets/QScrollBar>
 #include <QtWidgets/QTextEdit>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "base/platform/base_platform_haptic.h"
+
+
 namespace Dialogs {
 namespace {
 
 constexpr auto kSearchPerPage = 50;
 constexpr auto kStoriesExpandDuration = crl::time(200);
 constexpr auto kSearchRequestDelay = crl::time(900);
+
+enum class IdSearchType {
+	None,
+	UserOnly,
+	ChatOnly,
+	Both,
+};
+
+struct IdSearchQuery {
+	IdSearchType type = IdSearchType::None;
+	qint64 id = 0;
+};
+
+[[nodiscard]] bool IsNumericString(const QString &str) {
+	if (str.isEmpty()) {
+		return false;
+	}
+	for (const auto &ch : str) {
+		if (!ch.isDigit()) {
+			return false;
+		}
+	}
+	return true;
+}
+
+[[nodiscard]] IdSearchQuery ParseIdSearchQuery(const QString &query) {
+	if (query.startsWith(u"id:"_q, Qt::CaseInsensitive)
+		|| query.startsWith(u"id "_q, Qt::CaseInsensitive)) {
+		const auto idPart = query.mid(3).trimmed();
+		if (idPart.startsWith(u"-100"_q)) {
+			const auto chatId = idPart.mid(4);
+			if (chatId.length() >= 1 && IsNumericString(chatId)) {
+				return { IdSearchType::ChatOnly, chatId.toLongLong() };
+			}
+			return {};
+		}
+		if (idPart.length() >= 5 && IsNumericString(idPart)) {
+			return { IdSearchType::Both, idPart.toLongLong() };
+		}
+		return {};
+	}
+
+	if (query.startsWith(u"-100"_q)) {
+		const auto idPart = query.mid(4);
+		if (idPart.length() >= 1 && IsNumericString(idPart)) {
+			return { IdSearchType::ChatOnly, idPart.toLongLong() };
+		}
+		return {};
+	}
+
+	if (query.length() >= 5 && IsNumericString(query)) {
+		return { IdSearchType::UserOnly, query.toLongLong() };
+	}
+
+	return {};
+}
 
 base::options::toggle OptionForumHideChatsList({
 	.id = kOptionForumHideChatsList,
@@ -874,8 +945,9 @@ void Widget::setupSwipeBack() {
 			_inner->clearQuickActions();
 			if (!isRightToLeft) {
 				if (const auto key = _inner->calcSwipeKey(top);
-						key && !isDisabled) {
-					_inner->prepareQuickAction(key, action);
+						key
+						&& !isDisabled
+						&& _inner->prepareQuickAction(key, action)) {
 					return Ui::Controls::SwipeHandlerFinishData{
 						.callback = [=, session = &session()] {
 							auto callback = [=, peerId = PeerId(key)] {
@@ -998,12 +1070,12 @@ void Widget::chosenRow(const ChosenRow &row) {
 		: nullptr;
 	const auto userpicCommunity = [&]() -> ChannelData* {
 		if (!history
-			|| !row.userpicClick
+			|| !(row.userpicClick || row.communityBadgeClick)
 			|| (row.message.fullId.msg != ShowAtUnreadMsgId)) {
 			return nullptr;
 		}
 		const auto communityId = Data::PeerLinkedCommunityId(history->peer);
-		if (!communityId) {
+		if (!communityId || Nagram::Chats::CommunityGroupingDisabled()) {
 			return nullptr;
 		}
 		const auto community = session().data().channel(communityId);
@@ -1057,7 +1129,8 @@ void Widget::chosenRow(const ChosenRow &row) {
 		&& row.userpicClick
 		&& (row.message.fullId.msg == ShowAtUnreadMsgId)
 		&& history->peer->hasActiveStories()
-		&& !history->peer->isSelf()) {
+		&& !history->peer->isSelf()
+		&& !AyuSettings::getInstance().disableStories()) {
 		controller()->openPeerStories(history->peer->id);
 		return;
 	} else if (userpicCommunity) {
@@ -1231,7 +1304,7 @@ void Widget::setupFrozenAccountBar() {
 }
 
 void Widget::setupTopBarSuggestions() {
-	if (_layout == Layout::Child) {
+	if (_layout == Layout::Child || !controller()->windowId().primary()) {
 		return;
 	}
 	using namespace rpl::mappers;
@@ -1247,7 +1320,7 @@ void Widget::setupTopBarSuggestions() {
 		) | rpl::filter(_1 == nullptr) | rpl::map([=] {
 			auto on = rpl::combine(
 				controller()->activeChatsFilter(),
-				_openedFolderOrForumChanges.events_starting_with(false),
+				_openedFolderOrForum.value(),
 				_searchStateForTopBarSuggestion.events_starting_with(
 					!_searchState.query.isEmpty()),
 				_jumpToDate->toggledValue()
@@ -1307,10 +1380,9 @@ void Widget::updateFrozenAccountBar() {
 }
 
 void Widget::updateTopBarSuggestions() {
-	if (_topBarSuggestion) {
-		_openedFolderOrForumChanges.fire(
-			_openedFolder || _openedForum || _openedCommunity);
-	}
+	_openedFolderOrForum = (_openedFolder
+		|| _openedForum
+		|| _openedCommunity);
 }
 
 bool Widget::communityOverlaysShown() const {
@@ -1694,16 +1766,26 @@ void Widget::setupMainMenuToggle() {
 	Window::OtherAccountsUnreadState(
 		&controller()->session().account()
 	) | rpl::on_next([=](const Window::OthersUnreadState &state) {
-		const auto icon = !state.count
+		auto icon = !state.count
 			? nullptr
 			: !state.allMuted
 			? &st::dialogsMenuToggleUnread
 			: &st::dialogsMenuToggleUnreadMuted;
+
+		const auto &settings = AyuSettings::getInstance();
+		if (settings.hideNotificationCounters()) {
+			icon = nullptr;
+		}
+
 		_mainMenu.toggle->setIconOverride(icon, icon);
 	}, _mainMenu.toggle->lifetime());
 }
 
 void Widget::setupStories() {
+	Nagram::ForDevice().Value(Nagram::Chats::kHideStories
+	) | rpl::skip(1) | rpl::on_next([=] {
+		updateStoriesVisibility();
+	}, _stories->lifetime());
 	_stories->verticalScrollEvents(
 	) | rpl::on_next([=](not_null<QWheelEvent*> e) {
 		_scroll->viewportEvent(e);
@@ -1727,7 +1809,7 @@ void Widget::setupStories() {
 		});
 	}
 
-	_storiesContents.fire(Stories::ContentForSession(
+	_storiesContents.fire(Regram::Appearance::StoriesContent(
 		&controller()->session(),
 		Data::StorySourcesList::NotHidden));
 
@@ -1811,6 +1893,7 @@ void Widget::setupStories() {
 			storiesToggleExplicitExpand(true);
 			_scroll->setOverscrollDefaults(0, 0);
 		} else {
+			base::Platform::Haptic();
 			_scroll->setOverscrollDefaults(
 				-st::dialogsStoriesFull.height,
 				0);
@@ -2330,7 +2413,7 @@ void Widget::storiesExplicitCollapse() {
 	collectStoriesUserpicsViews(_openedFolder
 		? List::NotHidden
 		: List::Hidden);
-	_storiesContents.fire(Stories::ContentForSession(
+	_storiesContents.fire(Regram::Appearance::StoriesContent(
 		&session(),
 		_openedFolder ? List::Hidden : List::NotHidden));
 }
@@ -2354,6 +2437,7 @@ void Widget::changeOpenedForum(Data::Forum *forum, anim::type animated) {
 	if (_openedForum == forum) {
 		return;
 	}
+	_childListPostponed = false;
 	changeOpenedSubsection([&] {
 		cancelSearch({ .forceFullCancel = true });
 		closeChildList(anim::type::instant);
@@ -2635,7 +2719,7 @@ void Widget::checkUpdateStatus() {
 		}
 		_updateTelegram.create(
 			this,
-			tr::lng_update_telegram(tr::now),
+			tr::ayu_UpdateAyuGram(tr::now),
 			st::dialogsUpdateButton,
 			st::dialogsInstallUpdate,
 			st::dialogsInstallUpdateOver,
@@ -2844,8 +2928,16 @@ void Widget::updateStoriesVisibility() {
 	if (!_stories) {
 		return;
 	}
+
+	const auto &settings = AyuSettings::getInstance();
+	if (settings.disableStories()) {
+		_stories->setVisible(false);
+		return;
+	}
+
 	const auto widthAnimation = !_widthAnimationCache.isNull();
 	const auto suggestionsAnimation = widthAnimation
+		&& !_openedFolder
 		&& (!_suggestions || !_hidingSuggestions.empty());
 	const auto hiddenAnimated = _searchHasFocus
 		|| _searchSuggestionsLocked
@@ -2858,6 +2950,7 @@ void Widget::updateStoriesVisibility() {
 	const auto pulledDown = _scroll->position().overscroll
 		< -st::dialogsFilterSkip;
 	const auto hiddenInstant = _showAnimation
+		|| Nagram::Chats::HideStories()
 		|| _openedForum
 		|| _openedCommunity
 		|| (widthAnimation && !suggestionsAnimation)
@@ -2897,9 +2990,9 @@ void Widget::updateStoriesTitleShown() {
 	if (!_subsectionTopBar || !_openedFolder) {
 		return;
 	}
-	const auto shown = (!_stories
-		|| _stories->empty()
-		|| _stories->toggledHidden())
+	const auto shown = !_widthAnimationCache.isNull()
+		? 0.
+		: (!_stories || _stories->empty() || _stories->toggledHidden())
 		? 1.
 		: _stories->collapsedGeometryCurrent().expanded;
 	_subsectionTopBar->setTitleShownRatio(shown);
@@ -3287,11 +3380,63 @@ bool Widget::search(bool inCache, SearchRequestDelay delay) {
 		_topicSearchQuery = peerQuery;
 		_topicSearchFull = true;
 	}
+
+	const auto isGlobalSearch = !inPeer;
+	const auto idQuery = ParseIdSearchQuery(query);
+	const auto shouldIdSearch = isGlobalSearch && (idQuery.type != IdSearchType::None);
+
+	if (!isGlobalSearch || _idSearchQuery != query) {
+		if (!_idSearchResults.empty() || !_idSearchQuery.isEmpty()) {
+			_idSearchResults.clear();
+			_idSearchQuery.clear();
+			_inner->idSearchReceived({});
+		}
+	}
+
+	if (shouldIdSearch && !inCache && _idSearchQuery != query) {
+		const auto weak = base::make_weak(this);
+		const auto currentQuery = query;
+		const auto id = idQuery.id;
+		const auto searchType = idQuery.type;
+
+		_idSearchQuery = currentQuery;
+
+		if (searchType == IdSearchType::UserOnly || searchType == IdSearchType::Both) {
+			searchUserById(id, &session(), [=](const QString &, PeerData *peer) {
+				crl::on_main(weak, [=] {
+					if (_idSearchQuery != currentQuery) {
+						return;
+					}
+					if (peer && !ranges::contains(_idSearchResults, not_null{ peer })) {
+						_idSearchResults.push_back(peer);
+						_inner->idSearchReceived(_idSearchResults);
+					}
+				});
+			});
+		}
+
+		if (searchType == IdSearchType::ChatOnly || searchType == IdSearchType::Both) {
+			searchChatById(id, &session(), [=](const QString &, PeerData *peer) {
+				crl::on_main(weak, [=] {
+					if (_idSearchQuery != currentQuery) {
+						return;
+					}
+					if (peer && !ranges::contains(_idSearchResults, not_null{ peer })) {
+						_idSearchResults.push_back(peer);
+						_inner->idSearchReceived(_idSearchResults);
+					}
+				});
+			});
+		}
+	}
+
 	return result;
 }
 
 bool Widget::peerSearchRequired() const {
-	return _searchState.filterChatsList() && !_openedForum;
+	return _searchState.filterChatsList()
+		&& !_openedForum
+		&& !Nagram::Chats::GlobalSearchDisabled();
 }
 
 bool Widget::searchForTopicsRequired(const QString &query) const {
@@ -3956,10 +4101,13 @@ void Widget::showForum(
 	}
 	const auto nochat = !controller()->mainSectionShown();
 	if (!params.childColumn
-		|| (Core::App().settings().dialogsWidthRatio(nochat) == 0.)
 		|| (_layout != Layout::Main)
 		|| OptionForumHideChatsList.value()) {
 		changeOpenedForum(forum, params.animated);
+		return;
+	} else if (Core::App().settings().dialogsWidthRatio(nochat) == 0.) {
+		changeOpenedForum(forum, params.animated);
+		_childListPostponed = true;
 		return;
 	}
 	cancelSearch({ .forceFullCancel = true });
@@ -4094,6 +4242,14 @@ bool Widget::applySearchState(SearchState state) {
 		}
 		hideChildList();
 	}
+	if (state.inChat || _searchState.inChat != state.inChat) {
+		if (!_idSearchResults.empty() || !_idSearchQuery.isEmpty()) {
+			_idSearchResults.clear();
+			_idSearchQuery.clear();
+			_inner->idSearchReceived({});
+		}
+	}
+
 	if (state.inChat
 		&& _layout == Layout::Main
 		&& state.inChat.folder() != _openedFolder) {
@@ -4238,7 +4394,7 @@ bool Widget::applySearchState(SearchState state) {
 			&& !searchInPeer());
 		updateControlsGeometry();
 	}
-	if (_topBarSuggestion && queryEmptyChanged) {
+	if (queryEmptyChanged) {
 		_searchStateForTopBarSuggestion.fire(!_searchState.query.isEmpty());
 	}
 	_searchWithPostsPreview = computeSearchWithPostsPreview();
@@ -4433,6 +4589,16 @@ void Widget::completeHashtag(QString tag) {
 
 void Widget::resizeEvent(QResizeEvent *e) {
 	updateControlsGeometry();
+	if (_childListPostponed) {
+		const auto nochat = !controller()->mainSectionShown();
+		if (Core::App().settings().dialogsWidthRatio(nochat) > 0.) {
+			const auto forum = not_null(_openedForum);
+			changeOpenedForum(nullptr, anim::type::instant);
+			showForum(
+				forum,
+				Window::SectionShow(anim::type::instant).withChildColumn());
+		}
+	}
 }
 
 void Widget::updateLockUnlockVisibility(anim::type animated) {
@@ -4442,6 +4608,7 @@ void Widget::updateLockUnlockVisibility(anim::type animated) {
 	const auto widthAnimation = !_widthAnimationCache.isNull();
 	const auto suggestionsAnimation = widthAnimation
 		&& (!_suggestions || !_hidingSuggestions.empty());
+	// Show verified locking; the layout path only reads the cache.
 	const auto hiddenInstant = _showAnimation
 		|| _openedForum
 		|| (widthAnimation && !suggestionsAnimation)
@@ -4592,9 +4759,12 @@ void Widget::updateControlsGeometry() {
 	if (_stories) {
 		const auto inFolderTitle = _openedFolder && _subsectionTopBar;
 		const auto storiesLeft = inFolderTitle
-			? (_subsectionTopBar->titleLeft()
-				- st::dialogsStories.left
-				- st::dialogsStories.photoLeft)
+			? anim::interpolate(
+				(_subsectionTopBar->titleLeft()
+					- st::dialogsStories.left
+					- st::dialogsStories.photoLeft),
+				_narrowWidth,
+				narrowRatio)
 			: (filterLeft + filterWidth);
 		_stories->setLayoutConstraints(
 			{ storiesLeft, filterTop + added },
@@ -5001,6 +5171,11 @@ bool Widget::cancelSearch(CancelSearchOptions options) {
 		}
 	}
 	cancelSearchRequest();
+
+	_idSearchQuery.clear();
+	_idSearchResults.clear();
+	_inner->idSearchReceived({});
+
 	auto updatedState = _searchState;
 	const auto clearingQuery = clearingSuggestionsQuery
 		|| !updatedState.query.isEmpty();

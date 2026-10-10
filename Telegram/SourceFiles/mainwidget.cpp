@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "mainwidget.h"
+#include "regram/nagram/links/behavior.h"
 
 #include "api/api_updates.h"
 #include "api/api_views.h"
@@ -102,6 +103,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QMimeData>
+
+// AyuGram includes
+#include "regram/ayu/features/forward/ayu_forward.h"
+
 
 namespace {
 
@@ -359,6 +364,13 @@ MainWidget::MainWidget(
 		updateControlsGeometry();
 	}, lifetime());
 
+	Core::App().settings().thirdSectionInfoEnabledValue(
+	) | rpl::skip(1) | rpl::on_next([=] {
+		crl::on_main(this, [=] {
+			updateColumnLayout();
+		});
+	}, lifetime());
+
 	session().changes().historyUpdates(
 		Data::HistoryUpdate::Flag::MessageSent
 	) | rpl::on_next([=](const Data::HistoryUpdate &update) {
@@ -604,7 +616,9 @@ bool MainWidget::setForwardDraft(
 			.forward = &items,
 			.ignoreSlowmodeCountdown = true,
 		});
-	if (error) {
+	// allow opening chat that
+	// already have some forward task
+	if (error && !AyuForward::isForwarding(history->peer->id)) {
 		Data::ShowSendErrorToast(_controller, history->peer, error);
 		return false;
 	}
@@ -855,6 +869,7 @@ void MainWidget::searchMessages(
 			.query = tags.empty() ? query : QString(),
 		};
 		state.tab = state.defaultTabForMe();
+		Nagram::Links::ApplyHashtagSearchPage(state);
 		_dialogs->searchMessages(std::move(state));
 		if (isOneColumn()) {
 			_controller->clearSectionStack();
@@ -2777,32 +2792,33 @@ void MainWidget::updateControlsGeometry() {
 				st::lineWidth,
 				shadowHeight);
 		}
+		const auto historyLeft = dialogsWidth;
 		const auto mainSectionWidth = width()
-			- dialogsWidth
+			- historyLeft
 			- thirdSectionWidth;
 		if (_callTopBar) {
 			_callTopBar->resizeToWidth(mainSectionWidth);
-			_callTopBar->moveToLeft(dialogsWidth, 0);
+			_callTopBar->moveToLeft(historyLeft, 0);
 		}
 		if (_exportTopBar) {
 			_exportTopBar->resizeToWidth(mainSectionWidth);
-			_exportTopBar->moveToLeft(dialogsWidth, _callTopBarHeight);
+			_exportTopBar->moveToLeft(historyLeft, _callTopBarHeight);
 		}
 		if (_player) {
 			_player->resizeToWidth(mainSectionWidth);
 			_player->moveToLeft(
-				dialogsWidth,
+				historyLeft,
 				_callTopBarHeight + _exportTopBarHeight);
 		}
 		_history->setGeometryWithTopMoved(QRect(
-			dialogsWidth,
+			historyLeft,
 			mainSectionTop,
 			mainSectionWidth,
 			height() - mainSectionTop
 		), _contentScrollAddToY);
 		if (_hider) {
 			_hider->setGeometryToLeft(
-				dialogsWidth,
+				historyLeft,
 				0,
 				mainSectionWidth,
 				height());

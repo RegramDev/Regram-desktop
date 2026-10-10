@@ -1,0 +1,22 @@
+[Desktop Entry]
+Name=Regram
+Comment=New era of messaging
+TryExec=Regram
+Exec=Regram -- %U
+Icon=dev.regram.desktop
+Terminal=false
+StartupWMClass=RegramDesktop
+Type=Application
+Categories=Chat;Network;InstantMessaging;Qt;
+MimeType=x-scheme-handler/tg;x-scheme-handler/tonsite;
+Keywords=tg;chat;im;messaging;messenger;sms;tdesktop;
+Actions=quit;
+DBusActivatable=true
+SingleMainWindow=true
+X-GNOME-UsesNotifications=true
+X-GNOME-SingleWindow=true
+
+[Desktop Action quit]
+Exec=Regram -quit
+Name=Quit Regram
+Icon=application-exit

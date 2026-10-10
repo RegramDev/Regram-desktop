@@ -6,6 +6,7 @@ on:
 
 jobs:
   User-agent:
+    if: github.repository == 'telegramdesktop/tdesktop'
     runs-on: ubuntu-slim
     steps:
       - uses: desktop-app/action_code_updater@master

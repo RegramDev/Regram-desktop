@@ -88,6 +88,7 @@ private:
 	void drawName(Painter &p);
 
 	const not_null<SessionController*> _controller;
+	const QString _nagramTitle;
 	object_ptr<Ui::UserpicButton> _userpicButton;
 	Ui::Text::String _name;
 	int _nameVersion = 0;
@@ -95,6 +96,7 @@ private:
 	object_ptr<Ui::FlatLabel> _setEmojiStatus;
 	std::unique_ptr<Info::Profile::EmojiStatusPanel> _emojiStatusPanel;
 	std::unique_ptr<Info::Profile::Badge> _badge;
+	std::unique_ptr<Info::Profile::Badge> _exteraBadge;
 	object_ptr<ResetScaleButton> _resetScaleButton = { nullptr };
 	object_ptr<Ui::ScrollArea> _scroll;
 	not_null<Ui::VerticalLayout*> _inner;

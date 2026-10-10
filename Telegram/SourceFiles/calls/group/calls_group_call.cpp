@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "calls/group/calls_group_call.h"
 
+#include "regram/nagram/media/audio.h"
 #include "calls/group/calls_group_common.h"
 #include "calls/group/calls_group_messages.h"
 #include "calls/calls_instance.h"
@@ -3105,6 +3106,7 @@ bool GroupCall::tryCreateController() {
 			});
 			return result;
 		},
+		.disableOutgoingAudioProcessing = Nagram::Media::GroupCallRawAudio(),
 		.videoContentType = tgcalls::VideoContentType::Generic,
 		.initialEnableNoiseSuppression
 			= settings.groupCallNoiseSuppression(),

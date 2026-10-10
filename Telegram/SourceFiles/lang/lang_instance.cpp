@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "lang/lang_instance.h"
 
+#include "regram/nagram/core/language.h"
+#include "regram/nagram/interface/text.h"
+
 #include "core/application.h"
 #include "storage/serialize_common.h"
 #include "storage/localstorage.h"
@@ -729,6 +732,13 @@ QString Instance::getNonDefaultValue(const QByteArray &key) const {
 }
 
 void Instance::applyValue(const QByteArray &key, const QByteArray &value) {
+	const auto lower = value.toLower();
+	if (lower.contains("ayugram")
+		|| lower.contains("nagram")
+		|| lower.contains("exteragram")) {
+		resetValue(key);
+		return;
+	}
 	_nonDefaultValues[key] = value;
 	ParseKeyValue(key, value, [&](ushort key, QString &&value) {
 		_nonDefaultSet[key] = 1;
@@ -805,7 +815,32 @@ QString GetNonDefaultValue(const QByteArray &key) {
 namespace details {
 
 QString Current(ushort key) {
-	return GetInstance().getValue(key);
+	auto value = Nagram::Interface::UiText(
+		Nagram::LocalizedValue(GetInstance(), key));
+	switch (key) {
+	case tr::lng_open_from_tray.base:
+	case tr::lng_quit_from_tray.base:
+	case tr::lng_tray_icon_text.base:
+	case tr::lng_error_start_minimized_passcoded.base:
+	case tr::lng_proxy_unsupported.base:
+	case tr::lng_update_telegram.base:
+	case tr::lng_settings_auto_start.base:
+	case tr::lng_settings_auto_start_disabled_uwp.base:
+	case tr::lng_passcode_about.base:
+	case tr::lng_passcode_about2.base:
+	case tr::lng_passcode_about3.base:
+	case tr::lng_unsupported_message_text.base:
+	case tr::lng_unsupported_block_text.base:
+	case tr::lng_new_version_wrap.base:
+	case tr::lng_group_call_mac_access.base:
+	case tr::lng_group_call_mac_screencast_access.base:
+	case tr::lng_outdated_soon.base:
+	case tr::lng_outdated_now.base:
+	case tr::lng_mac_menu_show.base:
+		return value.replace(u"Telegram"_q, u"Regram"_q);
+	default:
+		return value;
+	}
 }
 
 rpl::producer<QString> Value(ushort key) {

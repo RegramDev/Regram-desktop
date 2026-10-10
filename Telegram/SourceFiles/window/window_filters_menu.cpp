@@ -6,6 +6,11 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_filters_menu.h"
+#include "regram/settings/home.h"
+#include "regram/nagram/chats/folders.h"
+#include "regram/nagram/chats/managed_folders.h"
+#include "regram/nagram/chats/options.h"
+#include "regram/nagram/core/options.h"
 
 #include "menu/menu_mark_as_read.h"
 #include "mainwindow.h"
@@ -49,6 +54,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_menu_icons.h"
 
 #include <QtGui/QtEvents>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 namespace Window {
 namespace {
@@ -120,6 +129,7 @@ FiltersMenu::~FiltersMenu() = default;
 void FiltersMenu::setup() {
 	setupDragAndDrop();
 	setupMainMenuIcon();
+
 	_menu.setIsMenuButton(true);
 	_menu.setAccessibleName(tr::lng_main_menu(tr::now));
 
@@ -146,8 +156,7 @@ void FiltersMenu::setup() {
 		_outer.setGeometry({ 0, 0, width, height });
 		_menu.resizeToWidth(width);
 		_menu.move(0, 0);
-		_scroll.setGeometry(
-			{ 0, _menu.height(), width, height - _menu.height() });
+		_scroll.setGeometry({ 0, _menu.height(), width, height - _menu.height() });
 		_container->resizeToWidth(width);
 		_container->move(0, 0);
 	}, _outer.lifetime());
@@ -157,7 +166,8 @@ void FiltersMenu::setup() {
 	const auto filters = &_session->session().data().chatsFilters();
 	rpl::combine(
 		rpl::single(rpl::empty) | rpl::then(filters->changed()),
-		std::move(premium)
+		std::move(premium),
+		Nagram::ForDevice().Value(Nagram::Chats::kHideAllChatsFolder)
 	) | rpl::on_next([=] {
 		refresh();
 	}, _outer.lifetime());
@@ -167,6 +177,10 @@ void FiltersMenu::setup() {
 	) | rpl::filter([=](FilterId id) {
 		return (id != _activeFilterId);
 	}) | rpl::on_next([=](FilterId id) {
+		if (!id && Nagram::Chats::RedirectFromAllChats(_session)) {
+			_session->setActiveChatsFilter(filters->displayList().front().id());
+			return;
+		}
 		if (!_list) {
 			_activeFilterId = id;
 			return;
@@ -184,8 +198,17 @@ void FiltersMenu::setup() {
 		_reorder->finishReordering();
 	}, _outer.lifetime());
 
+	_session->openedFolder().changes(
+	) | rpl::on_next([=] {
+		const auto i = _filters.find(_activeFilterId);
+		if (i != end(_filters)) {
+			i->second->setActive(Nagram::Chats::FolderButtonActive(_session));
+		}
+	}, _outer.lifetime());
+
 	_menu.setClickedCallback([=] {
 		_session->widget()->showMainMenu();
+
 	});
 
 	Core::App().settings().chatFiltersTabsModeValue(
@@ -234,11 +257,17 @@ void FiltersMenu::setupMainMenuIcon() {
 	OtherAccountsUnreadState(
 		&_session->session().account()
 	) | rpl::on_next([=](const OthersUnreadState &state) {
-		const auto icon = !state.count
+		auto icon = !state.count
 			? nullptr
 			: !state.allMuted
 			? &st::windowFiltersMainMenuUnread
 			: &st::windowFiltersMainMenuUnreadMuted;
+
+		const auto &settings = AyuSettings::getInstance();
+		if (settings.hideNotificationCounters()) {
+			icon = nullptr;
+		}
+
 		_menu.setIconOverride(icon, icon);
 	}, _outer.lifetime());
 }
@@ -346,8 +375,12 @@ bool FiltersMenu::listFocused() const {
 }
 
 void FiltersMenu::refresh() {
+	// AyuGram hideAllChatsFolder
+	const auto &settings = AyuSettings::getInstance();
+
 	const auto filters = &_session->session().data().chatsFilters();
-	if (!filters->has() || _ignoreRefresh) {
+	if (!filters->has()
+		|| _ignoreRefresh) {
 		return;
 	}
 	const auto oldTop = _scroll.scrollTop();
@@ -360,13 +393,13 @@ void FiltersMenu::refresh() {
 	_reorder->clearPinnedIntervals();
 	const auto maxLimit = (reorderAll ? 1 : 0)
 		+ Data::PremiumLimits(&_session->session()).dialogFiltersCurrent();
-	const auto premiumFrom = (reorderAll ? 0 : 1) + maxLimit;
-	if (!reorderAll) {
+	const auto premiumFrom = filters->displayLimit();
+	if (!reorderAll && !filters->allChatsHidden()) {
 		_reorder->addPinnedInterval(0, 1);
 	}
 	_reorder->addPinnedInterval(
 		premiumFrom,
-		std::max(1, int(filters->list().size()) - maxLimit));
+		std::max(1, int(filters->displayList().size()) - maxLimit));
 
 	// Remember which folder holds keyboard focus so the roving Tab-stop can be
 	// re-established on its replacement after the rebuild: the new buttons are
@@ -381,11 +414,15 @@ void FiltersMenu::refresh() {
 	}
 
 	auto now = base::flat_map<int, base::unique_qptr<Ui::SideBarButton>>();
+	if (!_session->activeChatsFilterCurrent()
+		&& Nagram::Chats::RedirectFromAllChats(_session)) {
+		_session->setActiveChatsFilter(filters->displayList().front().id());
+	}
 	const auto &currentFilter = _session->activeChatsFilterCurrent();
-	for (const auto &filter : filters->list()) {
+	for (const auto &filter : filters->displayList()) {
 		const auto nextIsLocked = (now.size() >= premiumFrom);
 		if (nextIsLocked && (currentFilter == filter.id())) {
-			_session->setActiveChatsFilter(FilterId(0));
+			_session->setActiveChatsFilter(filters->displayList().front().id());
 		}
 		auto button = prepareButton(
 			_list,
@@ -426,6 +463,11 @@ void FiltersMenu::refresh() {
 	// so we have to restore it.
 	_scroll.scrollToY(oldTop);
 
+	if (settings.hideAllChatsFolder()
+		&& _session->widget()->sessionContent()) {
+		_session->setActiveChatsFilter(filters->lookupId(0));
+	}
+
 	if (refocus) {
 		refocus->setFocus();
 		scrollToButton(refocus);
@@ -435,6 +477,7 @@ void FiltersMenu::refresh() {
 void FiltersMenu::setupList() {
 	_list = _container->add(object_ptr<TabListLayout>(_container));
 	_list->setAccessibleName(tr::lng_filters_title(tr::now));
+	Nagram::Chats::SetupFolderListButtons(_container, _session);
 	_setup = prepareButton(
 		_container,
 		-1,
@@ -606,23 +649,28 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 		}
 		rpl::combine(
 			Data::UnreadStateValue(&_session->session(), id),
-			Data::IncludeMutedCounterFoldersValue()
+			Data::IncludeMutedCounterFoldersValue(),
+			rpl::combine(
+                Nagram::ForDevice().Value(Nagram::Chats::kHideFolderUnreadCounters),
+                AyuSettings::getInstance().hideNotificationCountersValue(),
+                [](bool first, bool second) { return first || second; })
 		) | rpl::on_next([=](
 				const Dialogs::UnreadState &state,
-				bool includeMuted) {
+				bool includeMuted,
+				bool hideCounters) {
 			const auto chats = state.chats;
 			const auto chatsMuted = state.chatsMuted;
-			const auto muted = (chatsMuted + state.marksMuted);
-			const auto count = (chats + state.marks)
+			auto muted = (chatsMuted + state.marksMuted);
+			auto count = (chats + state.marks)
 				- (includeMuted ? 0 : muted);
-			const auto string = !count
+			const auto string = (!count || hideCounters)
 				? QString()
 				: (count > 999)
 				? "99+"
 				: QString::number(count);
 			raw->setBadge(string, includeMuted && (count == muted));
 			if (!locked) {
-				raw->setAccessibleName(count
+				raw->setAccessibleName((count && !hideCounters)
 					? tr::lng_filter_unread_chats(
 						tr::now,
 						lt_count,
@@ -679,7 +727,8 @@ base::unique_qptr<Ui::SideBarButton> FiltersMenu::prepareButton(
 			return base::EventFilterResult::Cancel;
 		});
 	}
-	raw->setActive(_session->activeChatsFilterCurrent() == id);
+	raw->setActive((_session->activeChatsFilterCurrent() == id)
+		&& Nagram::Chats::FolderButtonActive(_session));
 	raw->setClickedCallback([=] {
 		if (_reordering) {
 			return;
@@ -761,6 +810,7 @@ void FiltersMenu::showMenu(QPoint position, FilterId id) {
 			tr::lng_filters_context_edit(tr::now),
 			crl::guard(&_outer, [=] { EditExistingFilter(_session, id); }),
 			&st::menuIconEdit);
+		Nagram::Chats::AddManagedOnlyAction(addAction, &_session->session(), id);
 
 		auto filteredChats = [=] {
 			return _session->session().data().chatsFilters().chatsList(id);
@@ -806,13 +856,16 @@ void FiltersMenu::applyReorder(
 		return;
 	}
 
+	// AyuGram hideAllChatsFolder
+	const auto &settings = AyuSettings::getInstance();
+
 	const auto filters = &_session->session().data().chatsFilters();
-	const auto &list = filters->list();
-	if (!premium()) {
-		if (list[0].id() != FilterId()) {
+	if (!premium() && !filters->allChatsHidden()) {
+		if (filters->list()[0].id() != FilterId()) {
 			filters->moveAllToFront();
 		}
 	}
+	const auto list = filters->displayList();
 	Assert(oldPosition >= 0 && oldPosition < list.size());
 	Assert(newPosition >= 0 && newPosition < list.size());
 	const auto id = list[oldPosition].id();
@@ -828,7 +881,7 @@ void FiltersMenu::applyReorder(
 	base::reorder(order, oldPosition, newPosition);
 
 	_ignoreRefresh = true;
-	filters->saveOrder(order);
+	filters->saveDisplayOrder(order);
 	_ignoreRefresh = false;
 }
 

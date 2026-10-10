@@ -7,6 +7,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/section_widget.h"
 
+#include "regram/nagram/interface/options.h"
+#include "regram/nagram/interface/appearance.h"
+
 #include "mainwidget.h"
 #include "mainwindow.h"
 #include "ui/ui_utility.h"
@@ -38,6 +41,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_polls.h"
 
 #include <rpl/range.h>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 namespace Window {
 namespace {
@@ -551,10 +558,16 @@ auto ChatThemeValueFromPeer(
 	not_null<SessionController*> controller,
 	not_null<PeerData*> peer)
 -> rpl::producer<std::shared_ptr<Ui::ChatTheme>> {
-	auto cloud = MaybeCloudThemeValueFromPeer(
-		peer
-	) | rpl::map([=](ResolvedTheme resolved)
+	auto cloud = rpl::combine(
+		MaybeCloudThemeValueFromPeer(peer),
+		AyuSettings::getInstance().disableCustomBackgroundsValue()
+	) | rpl::map([=](ResolvedTheme resolved, bool disableCustomBackgrounds)
 	-> rpl::producer<std::shared_ptr<Ui::ChatTheme>> {
+		// this check ensures that background is not a pattern wallpaper in a private chat
+		if (disableCustomBackgrounds && resolved.paper && resolved.paper->media) {
+			resolved.paper = std::nullopt;
+		}
+
 		if (!resolved.theme && !resolved.paper) {
 			return rpl::single(controller->defaultChatTheme());
 		}
@@ -577,10 +590,15 @@ auto ChatThemeValueFromPeer(
 
 	return rpl::combine(
 		std::move(cloud),
-		controller->peerThemeOverrideValue()
+		controller->peerThemeOverrideValue(),
+		Nagram::Interface::IgnoreChatThemeValue(peer)
 	) | rpl::map([=](
 			std::shared_ptr<Ui::ChatTheme> &&cloud,
-			PeerThemeOverride &&overriden) {
+			PeerThemeOverride &&overriden,
+			bool ignoreCustomTheme) {
+		if (ignoreCustomTheme) {
+			return controller->defaultChatTheme();
+		}
 		return (overriden.peer == peer.get()
 			&& peer->themeToken() != overriden.token)
 			? std::move(overriden.theme)

@@ -1,0 +1,2 @@
+set(TDESKTOP_API_ID "0" CACHE STRING "Telegram API id")
+set(TDESKTOP_API_HASH "" CACHE STRING "Telegram API hash")

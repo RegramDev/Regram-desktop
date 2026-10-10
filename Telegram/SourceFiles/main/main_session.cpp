@@ -6,6 +6,12 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "main/main_session.h"
+#include "regram/nagram/display/view_refresher.h"
+#include "regram/nagram/core/diagnostics.h"
+#include "regram/nagram/messages/badges.h"
+#include "regram/nagram/media/sticker_export.h"
+#include "regram/nagram/privacy/protection.h"
+#include "regram/nagram/settings/cloud_sync.h"
 
 #include "apiwrap.h"
 #include "api/api_peer_colors.h"
@@ -37,6 +43,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/components/passkeys.h"
 #include "data/components/promo_suggestions.h"
 #include "data/components/recent_inline_bots.h"
+#include "data/components/recent_money_recipients.h"
 #include "data/components/recent_peers.h"
 #include "data/components/recent_shared_media_gifts.h"
 #include "data/components/scheduled_messages.h"
@@ -50,6 +57,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_user.h"
 #include "data/data_download_manager.h"
 #include "data/stickers/data_stickers.h"
+#include "wallet/wallet_session.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
 #include "window/window_lock_widgets.h"
@@ -65,6 +73,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #ifndef TDESKTOP_DISABLE_SPELLCHECK
 #include "chat_helpers/spellchecker_common.h"
 #endif // TDESKTOP_DISABLE_SPELLCHECK
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "api/api_blocked_peers.h"
+
 
 namespace Main {
 namespace {
@@ -94,6 +107,43 @@ constexpr auto kTmpPasswordReserveTime = TimeId(10);
 	).internalLinksDomain;
 }
 
+void InitializeBlockedPeers(not_null<Main::Session*> session) {
+	const auto offset = std::make_shared<int>(0);
+	const auto allLoaded = std::make_shared<bool>(false);
+	const auto applySlice = [=](
+			const Api::BlockedPeers::Slice &slice,
+			auto self) -> void {
+		if (slice.list.empty()) {
+			*allLoaded = true;
+		}
+
+		*offset += slice.list.size();
+		for (const auto &item : slice.list) {
+			if (const auto peer = session->data().peerLoaded(item.id)) {
+				peer->setIsBlocked(true);
+			}
+		}
+		if (*offset >= slice.total) {
+			*allLoaded = true;
+		}
+
+		if (!*allLoaded) {
+			session->api().blockedPeers().request(
+				*offset,
+				[=](const Api::BlockedPeers::Slice &slice) {
+					self(slice, self);
+				});
+		}
+	};
+
+	session->api().blockedPeers().slice(
+	) | rpl::take(
+		1
+	) | rpl::on_next([=](const Api::BlockedPeers::Slice &result) {
+		applySlice(result, applySlice);
+	}, session->lifetime());
+}
+
 } // namespace
 
 Session::Session(
@@ -118,6 +168,7 @@ Session::Session(
 , _sendAsPeers(std::make_unique<SendAsPeers>(this))
 , _attachWebView(std::make_unique<InlineBots::AttachWebView>(this))
 , _recentPeers(std::make_unique<Data::RecentPeers>(this))
+, _recentMoneyRecipients(std::make_unique<Data::RecentMoneyRecipients>(this))
 , _recentSharedGifts(std::make_unique<Data::RecentSharedMediaGifts>(this))
 , _giftAuctions(std::make_unique<Data::GiftAuctions>(this))
 , _scheduledMessages(std::make_unique<Data::ScheduledMessages>(this))
@@ -134,6 +185,7 @@ Session::Session(
 , _factchecks(std::make_unique<Data::Factchecks>(this))
 , _locationPickers(std::make_unique<Data::LocationPickers>())
 , _credits(std::make_unique<Data::Credits>(this))
+, _wallet(std::make_unique<Wallet::Session>(this))
 , _promoSuggestions(std::make_unique<Data::PromoSuggestions>(this, [=] {
 	using State = Data::SetupEmailState;
 	if (_promoSuggestions->setupEmailState() == State::Setup
@@ -181,6 +233,11 @@ Session::Session(
 , _fastButtonsBots(std::make_unique<Support::FastButtonsBots>(this))
 , _saveSettingsTimer([=] { saveSettings(); }) {
 	Expects(_settings != nullptr);
+	Nagram::ViewRefresher::Attach(this);
+	Nagram::Media::StickerExport::Attach(this);
+	Nagram::Privacy::AttachSensitive(this);
+	Nagram::AttachCloudSync(this);
+	Nagram::InstallRpcErrorObserver();
 
 	_api->requestTermsUpdate();
 	_api->requestFullPeer(_user);
@@ -272,6 +329,8 @@ Session::Session(
 	) | rpl::on_next([=] {
 		appConfigRefreshed();
 	}, _lifetime);
+
+	InitializeBlockedPeers(this);
 }
 
 void Session::appConfigRefreshed() {
@@ -355,26 +414,31 @@ bool Session::premium() const {
 }
 
 bool Session::premiumPossible() const {
-	return premium() || premiumCanBuy();
+	return premium() || premiumCanBuy()
+		|| AyuSettings::getInstance().localPremium();
 }
 
 bool Session::premiumBadgesShown() const {
-	return supportMode() || premiumPossible();
+	return Nagram::Messages::ShowPremiumBadges()
+		&& (supportMode() || premiumPossible());
 }
 
 rpl::producer<bool> Session::premiumPossibleValue() const {
 	using namespace rpl::mappers;
 
-	auto premium = _user->flagsValue(
+	// fix issue with GCC
+	rpl::producer<bool> premium = _user->flagsValue(
 	) | rpl::filter([=](UserData::Flags::Change change) {
 		return (change.diff & UserDataFlag::Premium);
 	}) | rpl::map([=] {
 		return _user->isPremium();
 	});
+
 	return rpl::combine(
 		std::move(premium),
 		_premiumPossible.value(),
-		_1 || _2);
+		AyuSettings::getInstance().localPremiumValue(),
+		_1 || _2 || _3);
 }
 
 bool Session::premiumCanBuy() const {

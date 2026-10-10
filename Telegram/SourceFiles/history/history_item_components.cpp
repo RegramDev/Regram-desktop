@@ -64,6 +64,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QGuiApplication>
 
+// AyuGram includes
+#include "regram/ayu/features/filters/filters_controller.h"
+
+
 namespace {
 
 const auto kPsaForwardedPrefix = "cloud_lng_forwarded_psa_";
@@ -578,16 +582,20 @@ void HistoryMessageReply::updateData(
 		&& (asExternal || _fields.manualQuote);
 	_multiline = !_fields.storyId && (asExternal || nonEmptyQuote);
 
+	const auto filtered = resolvedMessage &&
+			!resolvedMessage.empty() &&
+			FiltersController::filtered(resolvedMessage.get());
+
 	const auto displaying = resolvedMessage
 		|| resolvedStory
 		|| ((nonEmptyQuote || _fields.externalMedia)
 			&& (!_fields.messageId || force));
-	_displaying = displaying ? 1 : 0;
+	_displaying = displaying && !filtered ? 1 : 0;
 
 	const auto unavailable = !resolvedMessage
 		&& !resolvedStory
 		&& ((!_fields.storyId && !_fields.messageId) || force);
-	_unavailable = unavailable ? 1 : 0;
+	_unavailable = (unavailable || filtered) ? 1 : 0;
 
 	if (force) {
 		if (!_displaying && (_fields.messageId || _fields.storyId)) {
@@ -749,7 +757,14 @@ QString ReplyMarkupClickHandler::copyToClipboardText() const {
 
 QString ReplyMarkupClickHandler::copyToClipboardContextItemText() const {
 	const auto button = getUrlButton();
-	return button ? tr::lng_context_copy_link(tr::now) : QString();
+	if (button) {
+		using Type = HistoryMessageMarkupButton::Type;
+		if (button->type == Type::Callback) {
+			return tr::ayu_ContextCopyCallbackData(tr::now);
+		}
+		return tr::lng_context_copy_link(tr::now);
+	}
+	return QString();
 }
 
 // Finds the corresponding button in the items markup struct.
@@ -764,7 +779,8 @@ auto ReplyMarkupClickHandler::getUrlButton() const
 -> const HistoryMessageMarkupButton* {
 	if (const auto button = getButton()) {
 		using Type = HistoryMessageMarkupButton::Type;
-		if (button->type == Type::Url || button->type == Type::Auth) {
+		if (button->type == Type::Url || button->type == Type::Auth || button->type == Type::Callback ||
+			button->type == Type::WebView || button->type == Type::SimpleWebView) {
 			return button;
 		}
 	}
@@ -1529,6 +1545,12 @@ TextWithEntities ComposeTodoTasksList(
 			TextWithEntities().append('"').append(task.text).append('"'));
 	}
 	return ComposeTodoTasksList(names.size(), names);
+}
+
+QString HistoryServiceGramTransfer::commentText() const {
+	return commentEncrypted
+		? tr::lng_action_gram_transfer_encrypted_comment(tr::now)
+		: TextUtilities::SingleLine(comment);
 }
 
 HistoryDocumentCaptioned::HistoryDocumentCaptioned()

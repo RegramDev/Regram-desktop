@@ -1574,43 +1574,8 @@ void LanguageBox::setupTop(not_null<Ui::VerticalLayout*> container) {
 		Core::App().saveSettingsDelayed();
 	}, translateEnabled->lifetime());
 
-	if (Platform::IsTranslateProviderAvailable()) {
-		const auto platformTranslateWrap = container->add(
-			object_ptr<Ui::SlideWrap<Ui::VerticalLayout>>(
-				container,
-				object_ptr<Ui::VerticalLayout>(container)));
-		platformTranslateWrap->toggle(
-			translateEnabled->toggled(),
-			anim::type::instant);
-		platformTranslateWrap->toggleOn(translateEnabled->toggledValue());
-		const auto platformTranslateEnabled = platformTranslateWrap->entity()->add(
-			object_ptr<Ui::SettingsButton>(
-				platformTranslateWrap->entity(),
-				Platform::IsMac()
-					? tr::lng_translate_settings_use_platform_mac()
-					: tr::lng_translate_settings_use_platform_linux(),
-				st::settingsButtonNoIcon))->toggleOn(
-					rpl::single(
-						Core::App().settings().usePlatformTranslation()));
-		platformTranslateEnabled->toggledValue(
-		) | rpl::filter([](bool checked) {
-			return (checked
-				!= Core::App().settings().usePlatformTranslation());
-		}) | rpl::on_next([=](bool checked) {
-			Core::App().settings().setUsePlatformTranslation(checked);
-			Core::App().saveSettingsDelayed();
-		}, platformTranslateEnabled->lifetime());
-		if (Platform::IsMac()) {
-			Ui::AddSkip(platformTranslateWrap->entity());
-			Ui::AddDividerText(
-				platformTranslateWrap->entity(),
-				tr::lng_translate_settings_use_platform_mac_about());
-			Ui::AddSkip(platformTranslateWrap->entity());
-		}
-	}
-
 	using namespace rpl::mappers;
-	auto premium = Data::AmPremiumValue(&_controller->session());
+	auto premium = rpl::single(true);
 	const auto translateChat = container->add(object_ptr<Ui::SettingsButton>(
 		container,
 		tr::lng_translate_settings_chat(),
@@ -1627,16 +1592,8 @@ void LanguageBox::setupTop(not_null<Ui::VerticalLayout*> container) {
 	}, translateChat->lifetime());
 
 	translateChat->toggledValue(
-	) | rpl::filter([=](bool checked) {
-		const auto premium = _controller->session().premium();
-		if (checked && !premium) {
-			ShowPremiumPreviewToBuy(
-				_controller,
-				PremiumFeature::RealTimeTranslation);
-			_translateChatTurnOff.fire(false);
-		}
-		return premium
-			&& (checked != Core::App().settings().translateChatEnabled());
+	) | rpl::filter([](bool checked) {
+		return checked != Core::App().settings().translateChatEnabled();
 	}) | rpl::on_next([=](bool checked) {
 		Core::App().settings().setTranslateChatEnabled(checked);
 		Core::App().saveSettingsDelayed();

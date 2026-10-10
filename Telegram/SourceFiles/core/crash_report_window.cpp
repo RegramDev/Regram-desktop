@@ -28,6 +28,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QStandardPaths>
 #include <QtCore/QTimer>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
+
 namespace {
 
 constexpr auto kDefaultProxyPort = 80;
@@ -40,7 +44,7 @@ PreLaunchWindow::PreLaunchWindow(QString title) {
 	setWindowIcon(Window::CreateIcon());
 	setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
 
-	setWindowTitle(title.isEmpty() ? u"Telegram"_q : title);
+	setWindowTitle(title.isEmpty() ? u"Regram"_q : title);
 
 	QPalette p(palette());
 	p.setColor(QPalette::Window, QColor(255, 255, 255));
@@ -245,7 +249,7 @@ NotStartedWindow::NotStartedWindow()
 : _label(this)
 , _log(this)
 , _close(this) {
-	_label.setText(u"Could not start Telegram Desktop!\nYou can see complete log below:"_q);
+	_label.setText(u"Could not start Regram Desktop!\nYou can see complete log below:"_q);
 
 	_log.setPlainText(Logs::full());
 
@@ -317,8 +321,12 @@ LastCrashedWindow::LastCrashedWindow(
 , _launch(std::move(launch)) {
 	excludeReportUsername();
 
-	if (!cInstallBetaVersion() && !cAlphaVersion()) {
-		// Currently accept crash reports only from testers.
+#ifndef TDESKTOP_DISABLE_AUTOUPDATE
+	const auto &settings = AyuSettings::getInstance();
+	if (!settings.crashReporting()) {
+#else
+	if (true) {
+#endif
 		_sendingState = SendingNoReport;
 	} else if (Core::OpenGLLastCheckFailed()) {
 		// Nothing we can do right now with graphics driver crashes in GL.
@@ -391,9 +399,9 @@ LastCrashedWindow::LastCrashedWindow(
 		[=] { networkSettings(); });
 
 	if (_sendingState == SendingNoReport) {
-		_label.setText(u"Last time Telegram Desktop was not closed properly."_q);
+		_label.setText(u"Last time Regram Desktop was not closed properly."_q);
 	} else {
-		_label.setText(u"Last time Telegram Desktop crashed :("_q);
+		_label.setText(u"Last time Regram Desktop crashed :("_q);
 	}
 
 	if (_updaterData) {
@@ -474,6 +482,9 @@ LastCrashedWindow::LastCrashedWindow(
 	_yourReportName.setTextInteractionFlags(Qt::TextSelectableByMouse);
 
 	_includeUsername.setText(u"Include username @%1 as your contact info"_q.arg(_reportUsername));
+	_includeUsername.setCheckState(Qt::Unchecked);
+	_includeUsername.setDisabled(true);
+	_includeUsername.setVisible(false);
 
 	_report.setPlainText(_reportTextNoUsername);
 
@@ -484,9 +495,9 @@ LastCrashedWindow::LastCrashedWindow(
 	});
 	_saveReport.setText(u"SAVE TO FILE"_q);
 	connect(&_saveReport, &QPushButton::clicked, [=] { saveReport(); });
-	_getApp.setText(u"GET THE LATEST OFFICIAL VERSION OF TELEGRAM DESKTOP"_q);
+	_getApp.setText(u"GET THE LATEST VERSION OF REGRAM DESKTOP"_q);
 	connect(&_getApp, &QPushButton::clicked, [=] {
-		QDesktopServices::openUrl(u"https://desktop.telegram.org"_q);
+		QDesktopServices::openUrl(u"https://github.com/RegramDev/Regram-desktop/releases"_q);
 	});
 
 	_send.setText(u"SEND CRASH REPORT"_q);
@@ -504,7 +515,7 @@ LastCrashedWindow::LastCrashedWindow(
 }
 
 void LastCrashedWindow::saveReport() {
-	QString to = QFileDialog::getSaveFileName(0, u"Telegram Crash Report"_q, QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + u"/report.telegramcrash"_q, u"Telegram crash report (*.telegramcrash)"_q);
+	QString to = QFileDialog::getSaveFileName(0, u"Regram Crash Report"_q, QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + u"/report.telegramcrash"_q, u"Telegram crash report (*.telegramcrash)"_q);
 	if (!to.isEmpty()) {
 		QFile file(to);
 		if (file.open(QIODevice::WriteOnly)) {
@@ -578,21 +589,7 @@ void LastCrashedWindow::sendReport() {
 		_sendReply = nullptr;
 	}
 
-	QString apiid = getReportField(qstr("apiid"), qstr("ApiId:")), version = getReportField(qstr("version"), qstr("Version:"));
-	_checkReply = _sendManager.get(QNetworkRequest(u"https://tdesktop.com/crash.php?act=query_report&apiid=%1&version=%2&dmp=%3&platform=%4"_q.arg(
-		apiid,
-		version,
-		QString::number(minidumpFileName().isEmpty() ? 0 : 1),
-		CrashReports::PlatformString())));
-
-	connect(
-		_checkReply,
-		&QNetworkReply::errorOccurred,
-		[=](QNetworkReply::NetworkError code) { sendingError(code); });
-	connect(
-		_checkReply,
-		&QNetworkReply::finished,
-		[=] { checkingFinished(); });
+	checkingFinished();
 
 	_pleaseSendReport.setText(u"Sending crash report..."_q);
 	_sendingState = SendingProgress;
@@ -610,41 +607,39 @@ QString LastCrashedWindow::minidumpFileName() {
 }
 
 void LastCrashedWindow::checkingFinished() {
-	if (!_checkReply || _sendReply) return;
-
-	QByteArray result = _checkReply->readAll().trimmed();
-	_checkReply->deleteLater();
-	_checkReply = nullptr;
-
-	LOG(("Crash report check for sending done, result: %1").arg(QString::fromUtf8(result)));
-
-	if (result == "Old") {
-		_pleaseSendReport.setText(u"This report is about some old version of Telegram Desktop."_q);
-		_sendingState = SendingTooOld;
-		updateControls();
-		return;
-	} else if (result == "Unofficial") {
-		_pleaseSendReport.setText(u"You use some custom version of Telegram Desktop."_q);
-		_sendingState = SendingUnofficial;
-		updateControls();
-		return;
-	} else if (result != "Report") {
-		_pleaseSendReport.setText(u"Thank you for your report!"_q);
-		_sendingState = SendingDone;
-		updateControls();
-
-		CrashReports::Restart();
-		return;
-	}
+	if (_sendReply) return;
 
 	auto multipart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
 
-	addReportFieldPart(qstr("platform"), qstr("Platform:"), multipart);
-	addReportFieldPart(qstr("version"), qstr("Version:"), multipart);
+	{
+		QString version = getReportField(qstr("version"), qstr("Version:"));
+		if (!version.isEmpty()) {
+			const auto sentryVersion = QString("ayugram-desktop@%1").arg(version);
+
+			QHttpPart reportPart;
+			reportPart.setHeader(QNetworkRequest::ContentDispositionHeader,
+			                     QVariant(u"form-data; name=\"%1\""_q.arg("sentry[release]")));
+			reportPart.setBody(sentryVersion.toUtf8());
+			multipart->append(reportPart);
+		}
+	}
+
+	{
+		QString dumpFile = minidumpFileName();
+		if (!dumpFile.isEmpty()) {
+			const auto dumpId = dumpFile.replace(".dmp", "");
+
+			QHttpPart reportPart;
+			reportPart.setHeader(QNetworkRequest::ContentDispositionHeader,
+			                     QVariant(u"form-data; name=\"%1\""_q.arg("sentry[tags][dump-id]")));
+			reportPart.setBody(dumpId.toUtf8());
+			multipart->append(reportPart);
+		}
+	}
 
 	QHttpPart reportPart;
 	reportPart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/octet-stream"));
-	reportPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"report\"; filename=\"report.telegramcrash\""));
+	reportPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"report\"; filename=\"report.txt\""));
 	reportPart.setBody(getCrashReportRaw());
 	multipart->append(reportPart);
 
@@ -655,30 +650,17 @@ void LastCrashedWindow::checkingFinished() {
 			QByteArray minidump = file.readAll();
 			file.close();
 
-			QString zipName = QString(dmpName).replace(qstr(".dmp"), qstr(".zip"));
+			QHttpPart dumpPart;
+			dumpPart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/octet-stream"));
+			dumpPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant(u"form-data; name=\"upload_file_minidump\"; filename=\"%1\""_q.arg(dmpName)));
+			dumpPart.setBody(minidump);
+			multipart->append(dumpPart);
 
-			zlib::FileToWrite minidumpZip;
-
-			zip_fileinfo zfi = { { 0, 0, 0, 0, 0, 0 }, 0, 0, 0 };
-			QByteArray dmpNameUtf = dmpName.toUtf8();
-			minidumpZip.openNewFile(dmpNameUtf.constData(), &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_DEFAULT_COMPRESSION);
-			minidumpZip.writeInFile(minidump.constData(), minidump.size());
-			minidumpZip.closeFile();
-			minidumpZip.close();
-
-			if (minidumpZip.error() == ZIP_OK) {
-				QHttpPart dumpPart;
-				dumpPart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/octet-stream"));
-				dumpPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant(u"form-data; name=\"dump\"; filename=\"%1\""_q.arg(zipName)));
-				dumpPart.setBody(minidumpZip.result());
-				multipart->append(dumpPart);
-
-				_minidump.setText(u"+ %1 (%2 KB)"_q.arg(zipName).arg(minidumpZip.result().size() / 1024));
-			}
+			_minidump.setText(u"+ %1 (%2 KB)"_q.arg(dmpName).arg(minidump.size() / 1024));
 		}
 	}
 
-	_sendReply = _sendManager.post(QNetworkRequest(u"https://tdesktop.com/crash.php?act=report"_q), multipart);
+	_sendReply = _sendManager.post(QNetworkRequest(u"https://sentry.radolyn.com/api/2/minidump/?sentry_key=cad638b2ec4a692e57c3dcc4af1508bf"_q), multipart);
 	multipart->setParent(_sendReply);
 
 	connect(
@@ -912,7 +894,7 @@ void LastCrashedWindow::updateControls() {
 		h += _networkSettings.height() + padding;
 	}
 
-	QSize s(2 * padding + QFontMetrics(_label.font()).horizontalAdvance(u"Last time Telegram Desktop was not closed properly."_q) + padding + _networkSettings.width(), h);
+	QSize s(2 * padding + QFontMetrics(_label.font()).horizontalAdvance(u"Last time Regram Desktop was not closed properly."_q) + padding + _networkSettings.width(), h);
 	if (s == size()) {
 		resizeEvent(0);
 	} else {

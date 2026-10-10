@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/components/promo_suggestions.h"
+#include "regram/nagram/chats/promotions.h"
 
 #include "api/api_text_entities.h"
 #include "apiwrap.h"
@@ -19,6 +20,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 namespace Data {
 namespace {
@@ -131,6 +136,12 @@ void PromoSuggestions::refreshTopPromotion() {
 					|= _dismissedSuggestions.emplace(qs(suggestion)).second;
 			}
 
+			const auto &settings = AyuSettings::getInstance();
+			if (settings.disableAds()) {
+				setTopPromoted(nullptr, QString(), QString());
+				return;
+			}
+
 			if (const auto peer = data.vpeer()) {
 				const auto peerId = peerFromMTP(*peer);
 				const auto history = _session->data().history(peerId);
@@ -194,6 +205,9 @@ void PromoSuggestions::setTopPromoted(
 		History *promoted,
 		const QString &type,
 		const QString &message) {
+	if (Nagram::Chats::HideProxySponsor() && type == u"proxy"_q) {
+		promoted = nullptr;
+	}
 	const auto changed = (_topPromoted != promoted);
 	if (!changed
 		&& (!promoted || promoted->topPromotionMessage() == message)) {
@@ -270,9 +284,7 @@ void PromoSuggestions::dismissSetupEmail(Fn<void()> done) {
 }
 
 void PromoSuggestions::invalidate() {
-	if (_topPromotionRequestId) {
-		_session->api().request(_topPromotionRequestId).cancel();
-	}
+	_session->api().request(base::take(_topPromotionRequestId)).cancel();
 	_topPromotionNextRequestTime = 0;
 	_topPromotionTimer.callOnce(crl::time(200));
 }
@@ -349,6 +361,11 @@ std::optional<UserIds> PromoSuggestions::knownBirthdaysToday() const {
 
 QString PromoSuggestions::SugValidatePassword() {
 	static const auto key = u"VALIDATE_PASSWORD"_q;
+	return key;
+}
+
+QString PromoSuggestions::SugWalletFirstIncomingTransfer() {
+	static const auto key = u"WALLET_FIRST_INCOMING_TRANSFER"_q;
 	return key;
 }
 

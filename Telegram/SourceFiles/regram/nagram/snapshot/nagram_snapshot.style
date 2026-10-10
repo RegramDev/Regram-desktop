@@ -1,0 +1,8 @@
+using "ui/widgets/widgets.style";
+
+nagramSnapshotWidth: 640px;
+nagramSnapshotPadding: 16px;
+nagramSnapshotHeaderHeight: 40px;
+nagramSnapshotAvatarSize: 32px;
+nagramSnapshotPreviewHeight: 200px;
+nagramSnapshotPreviewMinimum: 80px;

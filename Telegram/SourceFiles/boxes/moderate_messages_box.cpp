@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/moderate_messages_box.h"
 
 #include "api/api_blocked_peers.h"
+#include "regram/nagram/privacy/display.h"
 #include "api/api_chat_participants.h"
 #include "api/api_messages_search.h"
 #include "api/api_report.h"
@@ -423,6 +424,7 @@ void CreateModerateMessagesBox(
 	const auto &items = entry.items;
 	const auto reaction = entry.reaction;
 	Expects(!items.empty() || reaction.has_value());
+	Nagram::Privacy::ApplyModerateDefaults(options);
 
 	box->setLayerAnimationDuration(kModerateMessagesBoxAnimationDuration);
 

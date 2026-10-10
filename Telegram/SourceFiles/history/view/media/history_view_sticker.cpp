@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/media/history_view_sticker.h"
+#include "regram/nagram/messages/effects.h"
+#include "regram/nagram/media/options.h"
 
 #include "base/options.h"
 #include "boxes/sticker_set_box.h"
@@ -38,6 +40,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat_helpers.h"
 #include "styles/style_menu_icons.h"
 
+// AyuGram includes
+#include "history/view/media/history_view_media.h"
+#include "ui/chat/message_bubble.h"
+
+
 namespace HistoryView {
 namespace {
 
@@ -51,6 +58,18 @@ base::options::option<int> OptionStickerSize({
 	.id = "sticker-size",
 	.name = "Sticker size",
 });
+
+[[nodiscard]] QSize UnscaledStickerSize() {
+	const auto side = std::min(st::maxStickerSize, kMaxSizeFixed);
+	if (OptionStickerSize.value() > 0) [[unlikely]] {
+		const auto scaled = std::clamp(
+			style::ConvertScale(OptionStickerSize.value()),
+			style::ConvertScale(50),
+			side);
+		return { scaled, scaled };
+	}
+	return { side, side };
+}
 
 [[nodiscard]] QImage CacheDiceImage(
 		const QString &emoji,
@@ -137,7 +156,8 @@ Sticker::~Sticker() {
 }
 
 bool Sticker::hasPremiumEffect() const {
-	return !_skipPremiumEffect && _data->isPremiumSticker();
+	return !_skipPremiumEffect && _data->isPremiumSticker()
+		&& !Nagram::Messages::PremiumStickerEffectDisabled();
 }
 
 bool Sticker::customEmojiPart() const {
@@ -167,7 +187,10 @@ void Sticker::initSize(int customSize) {
 	} else {
 		_size = Size(_data);
 	}
-	_size = DownscaledSize(_size, Size());
+	_size = DownscaledSize(_size,
+		(customSize > 0 || emojiSticker() || _diceIndex >= 0)
+			? UnscaledStickerSize()
+			: Size());
 }
 
 QSize Sticker::countOptimalSize() {
@@ -198,15 +221,9 @@ bool Sticker::readyToDrawAnimationFrame() {
 }
 
 QSize Sticker::Size() {
-	const auto side = std::min(st::maxStickerSize, kMaxSizeFixed);
-	if (OptionStickerSize.value() > 0) [[unlikely]] {
-		const auto scaled = std::clamp(
-			style::ConvertScale(OptionStickerSize.value()),
-			style::ConvertScale(50),
-			side);
-		return { scaled, scaled };
-	}
-	return { side, side };
+	const auto base = UnscaledStickerSize();
+	const auto scale = Nagram::ForDevice().Get(Nagram::Media::kStickerScale);
+	return { base.width() * scale / 100, base.height() * scale / 100 };
 }
 
 QSize Sticker::Size(not_null<DocumentData*> document) {
@@ -344,11 +361,19 @@ void Sticker::paintAnimationFrame(
 	const auto &image = _lastFrameCached.isNull()
 		? frame.image
 		: _lastFrameCached;
-	const auto prepared = (!_lastFrameCached.isNull() && context.selected())
+
+	const auto rounding = Ui::BubbleRounding{
+		.topLeft = Ui::BubbleCornerRounding::Small,
+		.topRight = Ui::BubbleCornerRounding::Small,
+		.bottomLeft = Ui::BubbleCornerRounding::Small,
+		.bottomRight = Ui::BubbleCornerRounding::Small,
+	};
+	auto prepared = (!_lastFrameCached.isNull() && context.selected())
 		? Images::Colored(
 			base::duplicate(image),
 			context.st->msgStickerOverlay()->c)
 		: image;
+	prepared = Images::Round(std::move(prepared), MediaRoundingMask(rounding));
 	const auto size = prepared.size() / style::DevicePixelRatio();
 	p.drawImage(
 		QRect(
@@ -448,6 +473,7 @@ void Sticker::paintPath(
 }
 
 QPixmap Sticker::paintedPixmap(const PaintContext &context) const {
+	const auto roundOptions = Images::RoundOptions(ImageRoundRadius::Large);
 	auto helper = std::optional<style::owned_color>();
 	const auto sticker = _data->sticker();
 	const auto ratio = style::DevicePixelRatio();
@@ -469,7 +495,7 @@ QPixmap Sticker::paintedPixmap(const PaintContext &context) const {
 		? nullptr
 		: _dataMedia->getStickerLarge();
 	if (image) {
-		return image->pix(useSize, { .colored = colored });
+		return image->pix(useSize, { .colored = colored, .options = roundOptions });
 	//
 	// Inline thumbnails can't have alpha channel.
 	//
@@ -478,11 +504,11 @@ QPixmap Sticker::paintedPixmap(const PaintContext &context) const {
 	//		useSize,
 	//		{ .colored = colored, .options = Images::Option::Blur });
 	} else if (good) {
-		return good->pix(useSize, { .colored = colored });
+		return good->pix(useSize, { .colored = colored, .options = roundOptions });
 	} else if (const auto thumbnail = _dataMedia->thumbnail()) {
 		return thumbnail->pix(
 			useSize,
-			{ .colored = colored, .options = Images::Option::Blur });
+			{ .colored = colored, .options = Images::Option::Blur | roundOptions });
 	}
 	return QPixmap();
 }

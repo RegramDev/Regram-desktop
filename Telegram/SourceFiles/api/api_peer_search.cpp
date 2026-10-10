@@ -13,6 +13,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/ui/chat_search_in.h" // IsHashOrCashtagSearchQuery
 #include "main/main_session.h"
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
+
 namespace Api {
 namespace {
 
@@ -94,6 +98,11 @@ void PeerSearch::requestSponsored() {
 	).done([=](
 			const MTPcontacts_SponsoredPeers &result,
 			mtpRequestId requestId) {
+		const auto &settings = AyuSettings::getInstance();
+		if (settings.disableAds()) {
+			finishSponsored(requestId, PeerSearchResult{});
+			return;
+		}
 		result.match([&](const MTPDcontacts_sponsoredPeersEmpty &) {
 			finishSponsored(requestId, PeerSearchResult{});
 		}, [&](const MTPDcontacts_sponsoredPeers &data) {

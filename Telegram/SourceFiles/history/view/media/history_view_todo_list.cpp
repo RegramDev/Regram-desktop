@@ -171,7 +171,8 @@ QSize TodoList::countOptimalSize() {
 }
 
 bool TodoList::canComplete() const {
-	return (_parent->data()->out()
+	return (_parent->context() != Context::MediaEditor)
+		&& (_parent->data()->out()
 		|| _parent->history()->peer->isSelf()
 		|| _todolist->othersCanComplete())
 		&& _parent->data()->isRegular()
@@ -849,6 +850,17 @@ void TodoList::hideSpoilers() {
 	for (auto &task : _tasks) {
 		if (task.text.hasSpoilers()) {
 			task.text.setSpoilerRevealed(false, anim::type::instant);
+		}
+	}
+}
+
+void TodoList::revealSpoilers() {
+	if (_title.hasSpoilers()) {
+		_title.setSpoilerRevealed(true, anim::type::instant);
+	}
+	for (auto &task : _tasks) {
+		if (task.text.hasSpoilers()) {
+			task.text.setSpoilerRevealed(true, anim::type::instant);
 		}
 	}
 }

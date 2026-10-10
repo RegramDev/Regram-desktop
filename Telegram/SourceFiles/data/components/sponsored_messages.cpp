@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/components/sponsored_messages.h"
+#include "regram/nagram/chats/options.h"
+#include "regram/nagram/chats/promotions.h"
 
 #include "api/api_text_entities.h"
 #include "api/api_peer_search.h" // SponsoredSearchResult
@@ -25,6 +27,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "ui/chat/sponsored_message_bar.h"
 #include "ui/text/text_utilities.h" // tr::rich.
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 namespace Data {
 namespace {
@@ -61,6 +67,14 @@ SponsoredMessages::SponsoredMessages(not_null<Main::Session*> session)
 	) | rpl::on_next([=](bool premium) {
 		if (premium) {
 			clear();
+		}
+	}, _lifetime);
+	Nagram::ForDevice().Value(Nagram::Chats::kHideSponsoredMessages
+	) | rpl::skip(1) | rpl::on_next([=](bool hidden) {
+		if (hidden) {
+			for (const auto &entry : _data) {
+				clearItems(entry.first);
+			}
 		}
 	}, _lifetime);
 }
@@ -103,6 +117,9 @@ void SponsoredMessages::clearOldRequests() {
 
 SponsoredMessages::AppendResult SponsoredMessages::append(
 		not_null<History*> history) {
+	if (Nagram::Chats::HideSponsoredMessages()) {
+		return SponsoredMessages::AppendResult::None;
+	}
 	if (isTopBarFor(history)) {
 		return SponsoredMessages::AppendResult::None;
 	}
@@ -272,6 +289,9 @@ auto SponsoredMessages::injectState(not_null<History*> history)
 HistoryItem *SponsoredMessages::injectItem(
 		not_null<History*> history,
 		not_null<HistoryItem*> after) {
+	if (Nagram::Chats::HideSponsoredMessages()) {
+		return nullptr;
+	}
 	const auto it = _data.find(history);
 	if (it == end(_data)) {
 		return nullptr;
@@ -302,6 +322,10 @@ HistoryItem *SponsoredMessages::injectItem(
 }
 
 bool SponsoredMessages::canHaveFor(not_null<History*> history) const {
+	if (Nagram::Chats::HideSponsoredMessages()
+		|| AyuSettings::getInstance().disableAds()) {
+		return false;
+	}
 	if (history->peer->isChannel()) {
 		return true;
 	} else if (const auto user = history->peer->asUser()) {
@@ -311,11 +335,18 @@ bool SponsoredMessages::canHaveFor(not_null<History*> history) const {
 }
 
 bool SponsoredMessages::canHaveFor(not_null<HistoryItem*> item) const {
-	return item->history()->peer->isBroadcast()
+	return !AyuSettings::getInstance().disableAds()
+		&& !Nagram::Chats::HideSponsoredMessages()
+		&& item->history()->peer->isBroadcast()
 		&& item->isRegular();
 }
 
 bool SponsoredMessages::isTopBarFor(not_null<History*> history) const {
+	const auto &settings = AyuSettings::getInstance();
+	if (settings.disableAds()) {
+		return false;
+	}
+
 	if (peerIsUser(history->peer->id)) {
 		if (const auto user = history->peer->asUser()) {
 			return user->isBot();
@@ -499,6 +530,10 @@ void SponsoredMessages::parseForVideo(
 
 SponsoredForVideo SponsoredMessages::prepareForVideo(
 		not_null<PeerData*> peer) {
+	if (Nagram::Chats::HideSponsoredMessages()
+		|| AyuSettings::getInstance().disableAds()) {
+		return {};
+	}
 	const auto i = _dataForVideo.find(peer);
 	if (i == end(_dataForVideo) || i->second.entries.empty()) {
 		return {};

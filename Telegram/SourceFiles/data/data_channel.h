@@ -14,6 +14,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_community.h"
 #include "data/data_peer_bot_commands.h"
 #include "data/data_user_names.h"
+#include "regram/nagram/chats/community.h"
 
 class ChannelData;
 
@@ -90,6 +91,8 @@ enum class ChannelDataFlag : uint64 {
 	Community = (1ULL << 46),
 	CommunityCollapsed = (1ULL << 47),
 	HasWelcomeMessages = (1ULL << 48),
+
+	AyuNoForwards = (1ULL << 63),
 };
 inline constexpr bool is_flag_type(ChannelDataFlag) { return true; };
 using ChannelDataFlags = base::flags<ChannelDataFlag>;
@@ -344,7 +347,8 @@ public:
 		return flags() & Flag::Community;
 	}
 	[[nodiscard]] bool collapsedInDialogs() const {
-		return flags() & Flag::CommunityCollapsed;
+		return (flags() & Flag::CommunityCollapsed)
+			&& !Nagram::Chats::CommunityGroupingDisabled();
 	}
 	[[nodiscard]] bool hasUsername() const {
 		return flags() & Flag::Username;
@@ -414,6 +418,7 @@ public:
 
 	// Like in ChatData.
 	[[nodiscard]] bool allowsForwarding() const;
+	[[nodiscard]] bool isAyuNoForwards() const;
 	[[nodiscard]] bool canEditInformation() const;
 	[[nodiscard]] bool canEditPermissions() const;
 	[[nodiscard]] bool canEditUsername() const;

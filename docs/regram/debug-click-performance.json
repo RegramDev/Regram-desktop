@@ -1,0 +1,227 @@
+{
+  "date": "2026-10-10",
+  "configuration": "Debug; Qt 6.11.2; Apple Silicon; original GUI and animations preserved",
+  "account_chats": 312,
+  "logical_window": [
+    1710,
+    979
+  ],
+  "device_pixel_ratio": 2,
+  "account_files": 940,
+  "original_account_unchanged": true,
+  "before_operations": 27,
+  "after_operations": 27,
+  "repeat_operations": 27,
+  "before_passed": true,
+  "after_passed": true,
+  "repeat_passed": true,
+  "operations": [
+    {
+      "operation": "menu",
+      "before": {
+        "input_or_action_median_ms": 59.284584,
+        "max_event_loop_gap_ms": 468.029167,
+        "max_repaint_dispatch_ms": 353.906958
+      },
+      "after": {
+        "input_or_action_median_ms": 32.522208,
+        "max_event_loop_gap_ms": 52.401917,
+        "max_repaint_dispatch_ms": 27.478791
+      },
+      "repeat": {
+        "input_or_action_median_ms": 39.186958,
+        "max_event_loop_gap_ms": 53.19045900000003,
+        "max_repaint_dispatch_ms": 21.395916
+      }
+    },
+    {
+      "operation": "standard-settings",
+      "before": {
+        "input_or_action_median_ms": 40.739875,
+        "max_event_loop_gap_ms": 285.009208,
+        "max_repaint_dispatch_ms": 234.44325
+      },
+      "after": {
+        "input_or_action_median_ms": 21.320583,
+        "max_event_loop_gap_ms": 50.92775,
+        "max_repaint_dispatch_ms": 25.420584
+      },
+      "repeat": {
+        "input_or_action_median_ms": 32.082,
+        "max_event_loop_gap_ms": 34.975166,
+        "max_repaint_dispatch_ms": 20.973958
+      }
+    },
+    {
+      "operation": "close-standard-settings",
+      "before": {
+        "input_or_action_median_ms": 15.481458,
+        "max_event_loop_gap_ms": 234.718792,
+        "max_repaint_dispatch_ms": 295.282166
+      },
+      "after": {
+        "input_or_action_median_ms": 7.798,
+        "max_event_loop_gap_ms": 35.3828749999999,
+        "max_repaint_dispatch_ms": 27.5605
+      },
+      "repeat": {
+        "input_or_action_median_ms": 12.824875,
+        "max_event_loop_gap_ms": 35.52908400000001,
+        "max_repaint_dispatch_ms": 21.235541
+      }
+    },
+    {
+      "operation": "settings",
+      "before": {
+        "input_or_action_median_ms": 16.041834,
+        "max_event_loop_gap_ms": 218.752958,
+        "max_repaint_dispatch_ms": 214.219708
+      },
+      "after": {
+        "input_or_action_median_ms": 10.63725,
+        "max_event_loop_gap_ms": 76.31295799999998,
+        "max_repaint_dispatch_ms": 31.0225
+      },
+      "repeat": {
+        "input_or_action_median_ms": 14.7055,
+        "max_event_loop_gap_ms": 51.82095899999999,
+        "max_repaint_dispatch_ms": 28.309375
+      }
+    },
+    {
+      "operation": "interface",
+      "before": {
+        "input_or_action_median_ms": 31.680583,
+        "max_event_loop_gap_ms": 130.62375000000003,
+        "max_repaint_dispatch_ms": 126.37175
+      },
+      "after": {
+        "input_or_action_median_ms": 17.617875,
+        "max_event_loop_gap_ms": 41.509792000000004,
+        "max_repaint_dispatch_ms": 21.682875
+      },
+      "repeat": {
+        "input_or_action_median_ms": 28.559334,
+        "max_event_loop_gap_ms": 38.56395799999996,
+        "max_repaint_dispatch_ms": 20.042542
+      }
+    },
+    {
+      "operation": "roundness-box",
+      "before": {
+        "input_or_action_median_ms": 18.149292,
+        "max_event_loop_gap_ms": 278.66162499999996,
+        "max_repaint_dispatch_ms": 304.97475
+      },
+      "after": {
+        "input_or_action_median_ms": 10.146083,
+        "max_event_loop_gap_ms": 44.918791999999996,
+        "max_repaint_dispatch_ms": 22.889625
+      },
+      "repeat": {
+        "input_or_action_median_ms": 17.382167,
+        "max_event_loop_gap_ms": 51.857916999999986,
+        "max_repaint_dispatch_ms": 24.906541
+      }
+    },
+    {
+      "operation": "close-box",
+      "before": {
+        "input_or_action_median_ms": 13.777041,
+        "max_event_loop_gap_ms": 275.55604200000005,
+        "max_repaint_dispatch_ms": 271.357458
+      },
+      "after": {
+        "input_or_action_median_ms": 6.853875,
+        "max_event_loop_gap_ms": 34.45079200000001,
+        "max_repaint_dispatch_ms": 23.397125
+      },
+      "repeat": {
+        "input_or_action_median_ms": 12.877625,
+        "max_event_loop_gap_ms": 47.83729099999999,
+        "max_repaint_dispatch_ms": 23.664042
+      }
+    },
+    {
+      "operation": "close-settings",
+      "before": {
+        "input_or_action_median_ms": 13.7285,
+        "max_event_loop_gap_ms": 48.00379099999998,
+        "max_repaint_dispatch_ms": 249.701708
+      },
+      "after": {
+        "input_or_action_median_ms": 7.619417,
+        "max_event_loop_gap_ms": 30.474041999999997,
+        "max_repaint_dispatch_ms": 30.143167
+      },
+      "repeat": {
+        "input_or_action_median_ms": 14.387,
+        "max_event_loop_gap_ms": 59.10583400000007,
+        "max_repaint_dispatch_ms": 22.351584
+      }
+    }
+  ],
+  "graphics_probe_before": {
+    "blend_frames": 30,
+    "blend_ms": 7793.70875,
+    "pixel_cases": [
+      {
+        "format": 6,
+        "sha256": "3938e7a664a2cfb7917b997e9ba62c92bb474bfcb717d354df84064efe6aa59e"
+      },
+      {
+        "format": 4,
+        "sha256": "9acac660c7a06a4f166564b947997630c46ecf0ea14e9c8a70f3b79d01f7a3df"
+      },
+      {
+        "format": 18,
+        "sha256": "6538c5da4a4f0d1908662cfc98586bd2713da69577853e154707fcf2794701d6"
+      },
+      {
+        "format": 27,
+        "sha256": "7c25f8ce028198f6f5b3409313c46a56f6aac8af8d7aea93d9d3924b238bbb64"
+      }
+    ]
+  },
+  "graphics_probe_after": {
+    "blend_frames": 30,
+    "blend_ms": 301.210333,
+    "pixel_cases": [
+      {
+        "format": 6,
+        "sha256": "3938e7a664a2cfb7917b997e9ba62c92bb474bfcb717d354df84064efe6aa59e"
+      },
+      {
+        "format": 4,
+        "sha256": "9acac660c7a06a4f166564b947997630c46ecf0ea14e9c8a70f3b79d01f7a3df"
+      },
+      {
+        "format": 18,
+        "sha256": "6538c5da4a4f0d1908662cfc98586bd2713da69577853e154707fcf2794701d6"
+      },
+      {
+        "format": 27,
+        "sha256": "7c25f8ce028198f6f5b3409313c46a56f6aac8af8d7aea93d9d3924b238bbb64"
+      }
+    ]
+  },
+  "debug_symbols_and_checks_retained": true,
+  "shared_qt_installation_unchanged": true,
+  "notes": [
+    "Real signed-in data used in independent protected profile copies; read/story receipts disabled in copies before online navigation.",
+    "No messaging, account removal, deletion or modifications to original profile.",
+    "Actual click/event-loop/repaint dispatch measured through the Qt event route, not only offscreen render.",
+    "One additional run overlapped final build and showed a cold-start outlier; retained as after3 evidence but not used for the idle-machine comparison."
+  ],
+  "normal_startup": {
+    "passed": true,
+    "normal_debug": true,
+    "testagent": false,
+    "real_data_copy": true,
+    "window_renderer_ready": true,
+    "stable_after_startup": true,
+    "original_account_used": false
+  },
+  "final_build_log": ".cache/regram/click-final-build.log",
+  "qt_debug_manifest": ".local/regram/qt-debug-pixels/manifest.json"
+}

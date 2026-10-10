@@ -6,6 +6,10 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_list_widget.h"
+#include "regram/nagram/messages/online.h"
+#include "regram/nagram/messages/content.h"
+#include "regram/nagram/messages/reactions.h"
+#include "regram/nagram/privacy/protection.h"
 
 #include "history/view/history_view_about_view.h"
 #include "base/unixtime.h"
@@ -17,6 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h"
 #include "history/history_item_text.h"
 #include "history/history_streamed_drafts.h"
+#include "history/view/media/history_view_gram_transfer.h"
 #include "history/view/media/history_view_media.h"
 #include "history/view/media/history_view_sticker.h"
 #include "history/view/reactions/history_view_reactions.h"
@@ -105,6 +110,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtWidgets/QApplication>
 #include <QtCore/QMimeData>
+
+// AyuGram includes
+#include "regram/ayu/features/filters/filters_cache_controller.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace HistoryView {
 namespace {
@@ -658,10 +668,28 @@ ListWidget::ListWidget(
 		}
 	}, lifetime());
 
+	rpl::merge(
+		_session->changes().peerUpdates(
+			Data::PeerUpdate::Flag::IsBlocked
+		) | rpl::to_empty,
+		FiltersCacheController::updates()
+	) | rpl::on_next([=] {
+		crl::on_main(this, [=] {
+			if (_viewsCapacity.empty()) {
+				for (const auto &view : _items) {
+					view->setPendingResize();
+				}
+				const auto old = _slice;
+				refreshRows(old);
+			}
+		});
+	}, lifetime());
+
 	_session->downloaderTaskFinished(
 	) | rpl::on_next([=] {
 		update();
 	}, lifetime());
+	Nagram::Messages::RepaintOnSenderOnline(this, _session);
 
 	_session->data().peerDecorationsUpdated(
 	) | rpl::on_next([=] {
@@ -1793,6 +1821,10 @@ bool ListWidget::isGoodForSelection(
 bool ListWidget::addToSelection(
 		SelectedMap &applyTo,
 		not_null<HistoryItem*> item) const {
+	if (isMessageHidden(item)) {
+		return false;
+	}
+
 	const auto itemId = item->fullId();
 	auto [iterator, ok] = applyTo.try_emplace(
 		itemId,
@@ -2186,7 +2218,9 @@ bool ListWidget::showCopyMediaRestriction(not_null<HistoryItem*> item) {
 }
 
 bool ListWidget::hasCopyRestrictionForSelected() const {
-	if (hasCopyRestriction()) {
+	if (Nagram::Privacy::ForceCopy()) {
+		return false;
+	} else if (hasCopyRestriction()) {
 		return true;
 	}
 	if (_selected.empty()) {
@@ -2672,6 +2706,14 @@ bool ListWidget::elementHideTopicButton(not_null<const Element*> view) {
 	return _delegate->listElementHideTopicButton(view);
 }
 
+GramReadLine *ListWidget::elementGramReadLine() {
+	if (!_gramReadLine) {
+		_gramReadLine = std::make_unique<GramReadLine>([=] {
+			update();
+		});
+	}
+	return _gramReadLine.get();
+}
 
 void ListWidget::saveState(not_null<ListMemento*> memento) {
 	memento->setAroundPosition(_aroundPosition);
@@ -3270,6 +3312,8 @@ void ListWidget::paintUserpics(
 					view->width(),
 					st::msgPhotoSize,
 					context.paused);
+				Nagram::Messages::PaintSenderOnline(p, from,
+					st::historyPhotoLeft, userpicTop, st::msgPhotoSize);
 			} else if (const auto info = item->displayHiddenSenderInfo()) {
 				if (info->customUserpic.empty()) {
 					info->emptyUserpic.paintCircle(
@@ -3306,7 +3350,7 @@ ListWidget::VideoUserpic *ListWidget::validateVideoUserpic(
 		not_null<PeerData*> peer) {
 	if (!peer->isPremium()
 		|| peer->userpicPhotoUnknown()
-		|| !peer->userpicHasVideo()) {
+		|| !Nagram::Messages::VideoUserpicAllowed(peer)) {
 		_videoUserpics.remove(peer);
 		return nullptr;
 	}
@@ -3949,7 +3993,7 @@ void ListWidget::toggleFavoriteReaction(not_null<Element*> view) const {
 		return;
 	} else if (!ranges::contains(item->chosenReactions(), favorite)) {
 		if (const auto top = itemTop(view); top >= 0) {
-			view->animateReaction({ .id = favorite });
+			view->animateReaction({ .id = favorite, .haptic = true });
 		}
 	}
 	item->toggleReaction(favorite, HistoryReactionSource::Quick);
@@ -4164,11 +4208,11 @@ void ListWidget::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 
 	using namespace HistoryView::Reactions;
 	const auto desiredPosition = e->globalPos();
-	const auto reactItem = (_overElement
-		&& _overState.pointState != PointState::Outside)
+	const auto reactItem = _overElement
 		? _overElement->data().get()
 		: nullptr;
-	const auto attached = reactItem
+	const auto attached = (reactItem
+		&& Nagram::Messages::AllowReactionSelector(hasSelection))
 		? AttachSelectorToMenu(
 			_menu.get(),
 			controller(),
@@ -4219,6 +4263,7 @@ void ListWidget::reactionChosen(ChosenReaction reaction) {
 				.id = reaction.id,
 				.flyIcon = reaction.icon,
 				.flyFrom = geometry.translated(0, -top),
+				.haptic = true,
 			});
 		}
 	}
@@ -5285,7 +5330,7 @@ void ListWidget::mouseActionUpdate() {
 		|| dragState.cursor == CursorState::Forwarded
 		|| dragState.cursor == CursorState::FromPhoto
 		|| dragState.customTooltip) {
-		Ui::Tooltip::Show(1000, this);
+		Ui::Tooltip::Show(350, this);
 	}
 
 	if (_mouseAction == MouseAction::None) {
@@ -5809,6 +5854,10 @@ void ListWidget::itemRemoved(not_null<const HistoryItem*> item) {
 	if (_selectedTextItem == item) {
 		clearTextSelection();
 	}
+	const auto selected = _selected.find(item->fullId());
+	if (selected != end(_selected)) {
+		removeItemSelection(selected);
+	}
 	if (_overItemExact == item) {
 		_overItemExact = nullptr;
 	}
@@ -6162,7 +6211,7 @@ void ListWidget::changeAccessibilitySelection(
 	clearTextSelection();
 	repaintItem(view);
 	pushSelectedItems();
-	accessibilityChildStateChanged(index, { .selected = true });
+	accessibilityChildSelectionChanged(index);
 	accessibilityChildNameChanged(index);
 }
 
@@ -6312,6 +6361,16 @@ QAccessible::State ListWidget::accessibilityChildState(int index) const {
 
 QAccessible::Role ListWidget::accessibilityChildRole() const {
 	return QAccessible::Role::ListItem;
+}
+
+QAccessible::Role ListWidget::accessibilityChildRoleAt(int index) const {
+	// The unread bar divides the read messages from the unread ones, it
+	// is not a message itself - a separator to a screen reader, which also
+	// keeps it out of the selection and the item count.
+	const auto barIndex = accessibilityUnreadBarIndex();
+	return (barIndex >= 0 && index == barIndex)
+		? QAccessible::Role::Separator
+		: accessibilityChildRole();
 }
 
 QRect ListWidget::accessibilityChildRect(int index) const {
@@ -6753,7 +6812,8 @@ void ConfirmSendNowSelectedItems(not_null<ListWidget*> widget) {
 CopyRestrictionType CopyRestrictionTypeFor(
 		not_null<PeerData*> peer,
 		HistoryItem *item) {
-	return (peer->allowsForwarding() && (!item || !item->forbidsForward()))
+	return (Nagram::Privacy::AllowsCopy(peer)
+		&& (!item || !Nagram::Privacy::ForbidsCopy(item)))
 		? CopyRestrictionType::None
 		: peer->isUser()
 		? CopyRestrictionType::User

@@ -38,6 +38,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QMimeType>
 #include <QtCore/QMimeDatabase>
 
+// AyuGram includes
+#include "regram/ayu/ui/boxes/plugin_info_box.h"
+#include <QtCore/QFile>
+
+
 namespace Data {
 namespace {
 
@@ -251,6 +256,33 @@ void ResolveDocument(
 	};
 
 	const auto media = document->createMediaView();
+	const auto openPluginInfo = [&] {
+		if (document->size >= Images::kReadBytesLimit) {
+			return false;
+		}
+		if (controller
+			&& document->filename().endsWith(
+				u".plugin"_q,
+				Qt::CaseInsensitive)
+			&& !document->filepath(true).isEmpty()) {
+			const auto path = document->location(true).name();
+			auto file = QFile(path);
+			if (file.open(QIODevice::ReadOnly)) {
+				const auto data = file.readAll();
+				file.close();
+				auto metadata = Ui::ParsePluginMetadata(data);
+				if (!metadata.id.isEmpty()
+					&& !metadata.name.isEmpty()) {
+					Ui::ShowPluginInfoBox(
+						controller,
+						path,
+						std::move(metadata));
+					return true;
+				}
+			}
+		}
+		return false;
+	};
 	const auto &location = document->location(true);
 	if (document->isTheme() && media->loaded(true)) {
 		showDocument();
@@ -276,6 +308,9 @@ void ResolveDocument(
 		}
 	} else {
 		document->saveFromDataSilent();
+		if (openPluginInfo()) {
+			return;
+		}
 		const auto image = CheckImageOpenInApp(
 			document,
 			media);

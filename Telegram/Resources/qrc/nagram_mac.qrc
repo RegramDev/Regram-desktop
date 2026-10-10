@@ -1,0 +1,13 @@
+<RCC>
+  <qresource prefix="/nagram/icons">
+    <file alias="block_dark.png">../branding/regram.png</file>
+    <file alias="block_black_dark.png">../branding/regram.png</file>
+    <file alias="block_blue_dark.png">../branding/regram.png</file>
+    <file alias="block_niello_dark.png">../branding/regram.png</file>
+    <file alias="block_purple_dark.png">../branding/regram.png</file>
+    <file alias="classic_dark.png">../branding/regram.png</file>
+    <file alias="colorful_dark.png">../branding/regram.png</file>
+    <file alias="cyan_dark.png">../branding/regram.png</file>
+    <file alias="black_dark.png">../branding/regram.png</file>
+  </qresource>
+</RCC>

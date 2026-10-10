@@ -58,6 +58,14 @@ public:
 		return _selected;
 	}
 
+	void nagramSetFolder(FilterId id, bool recent) {
+		_nagramFolderId = id;
+		_nagramRecent = recent;
+	}
+	[[nodiscard]] bool nagramRecentChosen() const {
+		return _nagramRecent;
+	}
+
 	void rowClicked(not_null<PeerListRow*> row) override;
 	void itemDeselectedHook(not_null<PeerData*> peer) override;
 	bool isForeignRow(PeerListRowId itemId) override;
@@ -72,6 +80,8 @@ private:
 	void updateTitle();
 
 	const not_null<Main::Session*> _session;
+	FilterId _nagramFolderId = 0;
+	bool _nagramRecent = false;
 	const Fn<void()> _showLimitReached;
 	rpl::producer<QString> _title;
 	base::flat_set<not_null<History*>> _peers;

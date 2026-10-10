@@ -48,6 +48,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
 
+// AyuGram includes
+#include "regram/ayu/utils/telegram_helpers.h"
+
+
 namespace Api {
 namespace {
 
@@ -440,6 +444,7 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 		const auto id = int32(button->buttonId);
 		const auto chosen = [=](std::vector<not_null<PeerData*>> result) {
 			using Flag = MTPmessages_SendBotRequestedPeer::Flag;
+			markReadAfterAction(item->history());
 			peer->session().api().request(MTPmessages_SendBotRequestedPeer(
 				MTP_flags(Flag::f_msg_id),
 				peer->input(),
@@ -595,6 +600,7 @@ void ActivateBotButton(ClickHandlerContext context, BotButtonLookup lookup) {
 			.suggestedUsername = suggestedUsername,
 			.done = [=](not_null<UserData*> createdBot) {
 				using Flag = MTPmessages_SendBotRequestedPeer::Flag;
+				markReadAfterAction(item->history());
 				peer->session().api().request(
 					MTPmessages_SendBotRequestedPeer(
 						MTP_flags(Flag::f_msg_id),

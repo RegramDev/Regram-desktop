@@ -322,6 +322,7 @@ public:
 		return _notify;
 	}
 
+	[[nodiscard]] bool isAyuNoForwards() const;
 	[[nodiscard]] bool allowsForwarding() const;
 	[[nodiscard]] Data::RestrictionCheckResult amRestricted(
 		ChatRestriction right) const;
@@ -383,6 +384,7 @@ public:
 	[[nodiscard]] const QString &name() const;
 	[[nodiscard]] const QString &shortName() const;
 	[[nodiscard]] const QString &topBarNameText() const;
+	void localNameChanged();
 
 	[[nodiscard]] QString username() const;
 	[[nodiscard]] QString editableUsername() const;
@@ -683,6 +685,11 @@ namespace Data {
 void SetTopPinnedMessageId(
 	not_null<PeerData*> peer,
 	MsgId messageId);
+void ApplyPinnedMessageId(
+	not_null<PeerData*> peer,
+	MsgId messageId,
+	MsgId topicRootId = 0,
+	PeerId monoforumPeerId = 0);
 [[nodiscard]] FullMsgId ResolveTopPinnedId(
 	not_null<PeerData*> peer,
 	MsgId topicRootId,

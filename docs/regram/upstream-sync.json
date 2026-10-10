@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-10",
+  "from": "v7.2.9",
+  "to": "v7.3.0",
+  "upstream_commit": "42f8a36d43b8c805bc821905bea4cfeb3af1d41d",
+  "source": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.3.0",
+  "ui": "Telegram Desktop Qt",
+  "local_workflow_docs": "preserved",
+  "resolved_root_conflicts": 34,
+  "feature_backup": ".cache/regram/preserved-features-20261010/working-features.tar.gz",
+  "dependencies": {
+    "Qt": "6.11.2",
+    "wallet_engine": "e59e0d89d7ee90c388bf36e3334c5b276f396697",
+    "tlottie": "92df98dc20",
+    "rust": "1.96.1",
+    "rust_profile": "dev",
+    "macos_minimum": "12.0"
+  },
+  "validation": {
+    "platform": "macOS arm64",
+    "debug_application": "passed",
+    "isolated_launches": 2,
+    "results": [
+      "write: PASS exit 0",
+      "read: PASS exit 0"
+    ],
+    "evidence": ".cache/regram/restored-qt.mq307j2s/evidence",
+    "test_build_log": ".cache/regram/upstream-730-test-build06.log",
+    "normal_build_log": ".cache/regram/qt-730-normal-build.log",
+    "limits": "Fictional offline account; Windows/Linux, macOS 12 runtime and all M0-M8 features not fully accepted"
+  }
+}

@@ -6,18 +6,26 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/chat/chat_style.h"
+#include "regram/nagram/interface/options.h"
 
 #include "ui/chat/chat_theme.h"
+#include "ui/chat/chat_theme_readability.h"
 #include "ui/image/image_prepare.h" // ImageRoundRadius
 #include "ui/text/text_custom_emoji.h"
 #include "ui/color_contrast.h"
 #include "ui/painter.h"
 #include "ui/ui_utility.h"
+#include "wallet/wallet_card_angle.h"
 #include "styles/style_chat.h"
 #include "styles/style_chat_style.h"
 #include "styles/style_dialogs.h"
 #include "styles/style_polls.h"
 #include "styles/style_widgets.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "styles/style_ayu_icons.h"
+
 
 namespace Ui {
 namespace {
@@ -41,8 +49,14 @@ void EnsureBlockquoteCache(
 	cache = std::make_unique<Text::QuotePaintCache>();
 	const auto &colors = values();
 	cache->bg = colors.bg;
+	cache->bg2 = colors.bg;
 	cache->outlines = colors.outlines;
 	cache->icon = colors.name;
+
+	const auto &settings = AyuSettings::getInstance();
+	if (settings.simpleQuotesAndReplies()) {
+		cache->bg = QColor(0, 0, 0, 0);
+	}
 }
 
 void EnsurePreCache(
@@ -80,6 +94,11 @@ not_null<const MessageImageStyle*> ChatPaintContext::imageStyle() const {
 not_null<Text::QuotePaintCache*> ChatPaintContext::quoteCache(
 		const std::shared_ptr<ColorCollectible> &colorCollectible,
 		uint8 colorIndex) const {
+	if (Nagram::ForDevice().Get(Nagram::Interface::kThemeReplyColors)) {
+		return outbg
+			? messageStyle()->quoteCache[0].get()
+			: st->coloredQuoteCache(selected(), 0).get();
+	}
 	return outbg
 		? messageStyle()->quoteCache[colorCollectible
 			? 2
@@ -368,6 +387,14 @@ ChatStyle::ChatStyle(rpl::producer<ColorIndicesCompressed> colorIndices) {
 		st::historyBubbleTailInRightSelected,
 		st::historyBubbleTailOutRight,
 		st::historyBubbleTailOutRightSelected);
+
+	make(
+		&MessageStyle::channelBadgeIcon,
+		st::inChannelBadgeIcon,
+		st::inChannelBadgeSelectedIcon,
+		st::outChannelBadgeIcon,
+		st::outChannelBadgeSelectedIcon);
+
 	make(
 		&MessageStyle::historyRepliesIcon,
 		st::historyRepliesInIcon,
@@ -500,6 +527,12 @@ ChatStyle::ChatStyle(rpl::producer<ColorIndicesCompressed> colorIndices) {
 		st::historyFileInDocumentSelected,
 		st::historyFileOutDocument,
 		st::historyFileOutDocumentSelected);
+	make(
+		&MessageStyle::historyFilePlugin,
+		st::ayuHistoryFileInPlugin,
+		st::ayuHistoryFileInPluginSelected,
+		st::ayuHistoryFileOutPlugin,
+		st::ayuHistoryFileOutPluginSelected);
 	make(
 		&MessageStyle::historyAudioDownload,
 		st::historyAudioInDownload,
@@ -694,6 +727,7 @@ void ChatStyle::clearColorIndexCaches() {
 	for (auto &cache : _coloredQuoteCaches) {
 		cache = nullptr;
 	}
+	_collectibleCaches.clear();
 }
 
 void ChatStyle::assignPalette(not_null<const style::palette*> palette) {
@@ -891,7 +925,12 @@ ColorIndexValues ChatStyle::computeColorIndexValues(
 	};
 	result.bg = result.outlines[0];
 	result.bg.setAlpha(kDefaultBgOpacity * 255);
-	result.name = result.outlines[0];
+	result.name = selected
+		? EnsurePeerNameReadable(
+			result.outlines[0],
+			msgInBgSelected()->c,
+			_dark)
+		: result.outlines[0];
 	return result;
 }
 
@@ -929,10 +968,22 @@ const ColorIndexValues &ChatStyle::coloredValues(
 }
 
 QColor ChatStyle::collectibleNameColor(
-		const std::shared_ptr<ColorCollectible> &collectible) const {
-	return (_dark && collectible->darkAccentColor.alpha() > 0)
+		const std::shared_ptr<ColorCollectible> &collectible,
+		bool selected) const {
+	const auto result = (_dark && collectible->darkAccentColor.alpha() > 0)
 		? collectible->darkAccentColor
 		: collectible->accentColor;
+	if (!selected) {
+		return result;
+	}
+	auto &entry = resolveCollectibleCaches(collectible);
+	if (!entry.nameSelected.isValid()) {
+		entry.nameSelected = EnsurePeerNameReadable(
+			result,
+			msgInBgSelected()->c,
+			_dark);
+	}
+	return entry.nameSelected;
 }
 
 const style::TextPalette &ChatStyle::coloredTextPalette(
@@ -961,7 +1012,7 @@ const style::TextPalette &ChatStyle::collectibleTextPalette(
 	auto &entry = resolveCollectibleCaches(collectible);
 	auto &result = selected ? entry.paletteSelected : entry.palette;
 	if (!result.linkFg) {
-		result.linkFg.emplace(collectibleNameColor(collectible));
+		result.linkFg.emplace(collectibleNameColor(collectible, selected));
 		make(
 			result.data,
 			(selected
@@ -978,6 +1029,13 @@ not_null<BackgroundEmojiData*> ChatStyle::backgroundEmojiData(
 		const std::shared_ptr<ColorCollectible> &collectible) const {
 	const auto id = collectible ? collectible->collectibleId : emojiId;
 	return &_backgroundEmojis[id];
+}
+
+not_null<Wallet::CardAngle*> ChatStyle::gramCardAngle() const {
+	if (!_gramCardAngle) {
+		_gramCardAngle = std::make_unique<Wallet::CardAngle>();
+	}
+	return _gramCardAngle.get();
 }
 
 not_null<Text::QuotePaintCache*> ChatStyle::coloredQuoteCache(
@@ -998,7 +1056,8 @@ not_null<Text::QuotePaintCache*> ChatStyle::collectibleQuoteCache(
 	auto &entry = resolveCollectibleCaches(collectible);
 	return collectibleCache(
 		selected ? entry.quoteSelected : entry.quote,
-		collectible);
+		collectible,
+		selected);
 }
 
 not_null<Text::QuotePaintCache*> ChatStyle::collectibleReplyCache(
@@ -1007,7 +1066,8 @@ not_null<Text::QuotePaintCache*> ChatStyle::collectibleReplyCache(
 	auto &entry = resolveCollectibleCaches(collectible);
 	return collectibleCache(
 		selected ? entry.replySelected : entry.reply,
-		collectible);
+		collectible,
+		selected);
 }
 
 not_null<Text::QuotePaintCache*> ChatStyle::coloredCache(
@@ -1026,9 +1086,10 @@ not_null<Text::QuotePaintCache*> ChatStyle::coloredCache(
 
 not_null<Text::QuotePaintCache*> ChatStyle::collectibleCache(
 		std::unique_ptr<Text::QuotePaintCache> &cache,
-		const std::shared_ptr<ColorCollectible> &collectible) const {
+		const std::shared_ptr<ColorCollectible> &collectible,
+		bool selected) const {
 	EnsureBlockquoteCache(cache, [&] {
-		const auto name = collectibleNameColor(collectible);
+		const auto name = collectibleNameColor(collectible, selected);
 		auto bg = name;
 		bg.setAlpha(kDefaultBgOpacity * 255);
 
@@ -1481,9 +1542,7 @@ QColor FromNameFg(
 		const std::shared_ptr<Ui::ColorCollectible> &colorCollectible) {
 	return !colorCollectible
 		? st->coloredValues(selected, colorIndex).name
-		: (st->dark() && (colorCollectible->darkAccentColor.alpha() > 0))
-		? colorCollectible->darkAccentColor
-		: colorCollectible->accentColor;
+		: st->collectibleNameColor(colorCollectible, selected);
 }
 
 void FillComplexOverlayRect(

@@ -219,6 +219,8 @@ public:
 	void setRealShortcutId(BusinessShortcutId id);
 	void setCustomServiceLink(ClickHandlerPtr link);
 
+	[[nodiscard]] bool isAyuNoForwards() const;
+
 	void addLogEntryOriginal(
 		WebPageId localId,
 		const QString &label,
@@ -276,6 +278,7 @@ public:
 	void setHasUnreadPollVote();
 	[[nodiscard]] bool hasUnwatchedEffect() const;
 	bool markEffectWatched();
+	bool markEmojiInteractionWatched();
 	[[nodiscard]] bool isUnreadMedia() const;
 	[[nodiscard]] bool isIncomingUnreadMedia() const;
 	[[nodiscard]] bool hasUnreadMediaFlag() const;
@@ -354,6 +357,12 @@ public:
 	[[nodiscard]] bool isEphemeral() const {
 		return _flags & MessageFlag::Ephemeral;
 	}
+	[[nodiscard]] bool isFakeHistoryItem() const {
+		return _flags & MessageFlag::FakeHistoryItem;
+	}
+	[[nodiscard]] bool isLegacyMessage() const {
+		return _flags & MessageFlag::Legacy;
+	}
 	[[nodiscard]] bool canBeSelected() const;
 	[[nodiscard]] bool isFakeAboutView() const {
 		return _flags & MessageFlag::FakeAboutView;
@@ -407,6 +416,7 @@ public:
 		const TextWithEntities &textWithEntities,
 		const MTPMessageMedia *media,
 		const MTPRichMessage *richMessage);
+	void applyStreamedDraftFinish(const MTPDmessage &data);
 	void applySentMessage(const MTPDmessage &data);
 	void applySentMessage(
 		const QString &text,
@@ -466,6 +476,13 @@ public:
 		MsgId replyToTop,
 		bool isForumPost);
 	void setPostAuthor(const QString &author);
+	void setDeleted();
+	[[nodiscard]] bool isDeleted() const;
+	[[nodiscard]] bool isBurnt() const;
+	[[nodiscard]] bool wasDeletedAnimated() const;
+	void markDeletedAnimated();
+	void applyTTL(TimeId destroyAt);
+	void setAyuHint(const QString &hint);
 	void setRealId(MsgId newId);
 	void markEphemeralSent();
 	void markTextAppearingStarted();
@@ -502,6 +519,8 @@ public:
 	[[nodiscard]] Data::SendError errorTextForForwardIgnoreRights(
 		not_null<Data::Thread*> to) const;
 	[[nodiscard]] const HistoryMessageTranslation *translation() const;
+	[[nodiscard]] bool nagramOriginalShown() const { return _nagramOriginalShown; }
+	void nagramToggleOriginalShown();
 	[[nodiscard]] bool translationShowRequiresCheck(LanguageId to) const;
 	bool translationShowRequiresRequest(LanguageId to);
 	void translationDone(LanguageId to, TextWithEntities result);
@@ -671,6 +690,9 @@ public:
 		return _ttlDestroyAt;
 	}
 
+	[[nodiscard]] int unsupportedTTL() const;
+	void removeTranslationBit();
+
 	[[nodiscard]] int boostsApplied() const {
 		return _boostsApplied;
 	}
@@ -697,9 +719,6 @@ private:
 	void detectTextLinks(const TextWithEntities &textWithEntities);
 	void setTextValue(TextWithEntities text, bool force = false);
 	[[nodiscard]] bool isTooOldForEdit(TimeId now) const;
-	[[nodiscard]] bool isLegacyMessage() const {
-		return _flags & MessageFlag::Legacy;
-	}
 
 	[[nodiscard]] bool checkDiscussionLink(ChannelId id) const;
 	void updateSentContent(
@@ -738,6 +757,9 @@ private:
 	void clearDependencyMessage();
 	void setupChatThemeChange();
 	void setupTTLChange();
+	void setupTonConnectRequest();
+	void armTonConnectRequestExpiry();
+	void updateTonConnectRequestText();
 
 	void translationToggle(
 		not_null<HistoryMessageTranslation*> translation,
@@ -775,8 +797,6 @@ private:
 	void applyTTL(const MTPDmessage &data);
 	void applyTTL(const MTPDmessageService &data);
 
-	void applyTTL(TimeId destroyAt);
-
 	// For an invoice button we replace the button text with a "Receipt" key.
 	// It should show the receipt for the payed invoice. Still let mobile apps do that.
 	void replaceBuyWithReceiptInMarkup();
@@ -784,6 +804,9 @@ private:
 	[[nodiscard]] PreparedServiceText preparePinnedText();
 	[[nodiscard]] PreparedServiceText prepareGameScoreText();
 	[[nodiscard]] PreparedServiceText preparePaymentSentText();
+	[[nodiscard]] PreparedServiceText prepareGramTransferText(
+		bool includeComment = true);
+	[[nodiscard]] PreparedServiceText prepareTonConnectRequestText();
 	[[nodiscard]] PreparedServiceText prepareStoryMentionText();
 	[[nodiscard]] PreparedServiceText prepareInvitedToCallText(
 		const std::vector<not_null<UserData*>> &users,
@@ -813,10 +836,14 @@ private:
 	mutable MessageFlags _flags = 0;
 
 	TextWithEntities _text;
+	bool _nagramOriginalShown = false;
 
 	std::unique_ptr<Data::Media> _media;
 	std::unique_ptr<Data::MessageReactions> _reactions;
 	crl::time _reactionsLastRefreshed = 0;
+
+	bool _deleted = false;
+	bool _deletedAnimated = false;
 
 	TimeId _date = 0;
 	TimeId _ttlDestroyAt = 0;

@@ -28,6 +28,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "menu/menu_mark_as_read.h"
+#include "regram/nagram/chats/options.h"
 #include "storage/storage_shared_media.h"
 #include "support/support_preload.h"
 #include "ui/chat/chat_style.h"
@@ -783,6 +784,13 @@ PullToNextChannel::PullToNextChannel(
 			Ui::ElasticScrollMovement movement) {
 		handleOverscroll(position, movement);
 	}, _lifetime);
+	rpl::combine(
+		Nagram::ForDevice().Value(Nagram::Chats::kDisableScrollToNextChannel),
+		Nagram::ForDevice().Value(Nagram::Chats::kDisableScrollToNextTopic)
+	) | rpl::skip(1) | rpl::on_next([=](bool, bool) {
+		reset(anim::type::instant);
+		updatePullCurve();
+	}, _lifetime);
 
 	_dwellTimer.setCallback([=] {
 		if (_pulling && _pull >= float64(PullThreshold())) {
@@ -832,6 +840,8 @@ bool PullToNextChannel::active() const {
 	case Mode::History: {
 		const auto history = _history.get();
 		return Core::App().settings().pullToNextChannel()
+			&& !Nagram::ForDevice().Get(
+				Nagram::Chats::kDisableScrollToNextChannel)
 			&& history
 			&& history->peer->isBroadcast()
 			&& atBottom()
@@ -840,6 +850,8 @@ bool PullToNextChannel::active() const {
 	}
 	case Mode::Topic:
 		return Core::App().settings().pullToNextChannel()
+			&& !Nagram::ForDevice().Get(
+				Nagram::Chats::kDisableScrollToNextTopic)
 			&& _topic
 			&& atBottom();
 	case Mode::None:
@@ -1061,6 +1073,8 @@ void PullToNextChannel::updateGeometry() {
 	if (bottom > top) {
 		_hint->setGeometry(_scroll->x(), top, _scroll->width(), bottom - top);
 		_hint->raise();
+	} else {
+		_hint->hideNow();
 	}
 }
 
@@ -1068,7 +1082,13 @@ void PullToNextChannel::jumpWhenReady(
 		base::weak_ptr<History> weak,
 		crl::time waited) {
 	const auto next = weak.get();
-	if (!next) {
+	if (!_jumping
+		|| _mode != Mode::History
+		|| !next
+		|| _next.get() != next
+		|| Nagram::ForDevice().Get(
+			Nagram::Chats::kDisableScrollToNextChannel)) {
+		reset(anim::type::instant);
 		return;
 	}
 	constexpr auto kInterval = crl::time(100);

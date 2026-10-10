@@ -1,0 +1,88 @@
+using "ui/basic.style";
+using "ui/widgets/widgets.style";
+
+nagramFilterTypeRecent: icon {{ "folders/folders_type_recent", historyPeerUserpicFg }};
+nagramFoldersArchive: icon {{ "folders/svg/folders_archive-36x36", sideBarIconFg }};
+nagramFoldersArchiveActive: icon {{ "folders/svg/folders_archive-36x36", sideBarIconFgActive }};
+nagramFoldersTabsArchive: icon {{ "folders/svg/folders_archive-18x18", windowSubTextFg }};
+nagramFoldersSaved: icon {{ "folders/svg/folders_saved-36x36", sideBarIconFg }};
+nagramFoldersSavedActive: icon {{ "folders/svg/folders_saved-36x36", sideBarIconFgActive }};
+nagramFoldersTabsSaved: icon {{ "folders/svg/folders_saved-18x18", windowSubTextFg }};
+
+nagramFormatButtonSize: 32px;
+nagramFormatButton: IconButton(defaultIconButton) {
+	width: nagramFormatButtonSize;
+	height: nagramFormatButtonSize;
+	iconPosition: point(-1px, -1px);
+	rippleAreaPosition: point(0px, 0px);
+	rippleAreaSize: nagramFormatButtonSize;
+	ripple: defaultRippleAnimationBgOver;
+}
+nagramFormatPadding: margins(4px, 4px, 4px, 4px);
+nagramFormatRadius: 8px;
+nagramFormatSkip: 6px;
+
+nagramFormatBold: icon {{ "menu/rich/bold-24x24", menuIconColor }};
+nagramFormatItalic: icon {{ "menu/rich/italic-24x24", menuIconColor }};
+nagramFormatUnderline: icon {{ "menu/rich/underline-24x24", menuIconColor }};
+nagramFormatStrikeOut: icon {{ "menu/rich/strikeout-24x24", menuIconColor }};
+nagramFormatCode: icon {{ "menu/rich/code-24x24", menuIconColor }};
+nagramFormatSpoiler: icon {{ "menu/rich/spoiler-24x24", menuIconColor }};
+nagramFormatQuote: icon {{ "menu/rich/blockquote-24x24", menuIconColor }};
+nagramFormatLink: icon {{ "menu/rich/link-24x24", menuIconColor }};
+nagramFormatClear: icon {{ "menu/rich/plain_text-24x24", menuIconColor }};
+
+nagramFormatBoldActive: icon {{ "menu/rich/bold-24x24", windowActiveTextFg }};
+nagramFormatItalicActive: icon {{ "menu/rich/italic-24x24", windowActiveTextFg }};
+nagramFormatUnderlineActive: icon {{ "menu/rich/underline-24x24", windowActiveTextFg }};
+nagramFormatStrikeOutActive: icon {{ "menu/rich/strikeout-24x24", windowActiveTextFg }};
+nagramFormatCodeActive: icon {{ "menu/rich/code-24x24", windowActiveTextFg }};
+nagramFormatSpoilerActive: icon {{ "menu/rich/spoiler-24x24", windowActiveTextFg }};
+nagramFormatQuoteActive: icon {{ "menu/rich/blockquote-24x24", windowActiveTextFg }};
+
+nagramChatToolsPhoto: icon {{ "menu/image", menuIconFg }};
+nagramChatToolsPhotoOver: icon {{ "menu/image", menuIconFgOver }};
+nagramChatToolsPin: icon {{ "menu/pin", menuIconFg }};
+nagramChatToolsPinOver: icon {{ "menu/pin", menuIconFgOver }};
+nagramChatToolsStart: icon {{ "history_down_arrow-flip_vertical", menuIconFg }};
+nagramChatToolsStartOver: icon {{ "history_down_arrow-flip_vertical", menuIconFgOver }};
+nagramChatToolsMute: icon {{ "menu/mute", menuIconFg }};
+nagramChatToolsMuteOver: icon {{ "menu/mute", menuIconFgOver }};
+nagramChatToolsUnmute: icon {{ "menu/unmute", menuIconFg }};
+nagramChatToolsUnmuteOver: icon {{ "menu/unmute", menuIconFgOver }};
+nagramChatToolsButton: IconButton(defaultIconButton) {
+	width: 36px;
+	height: 54px;
+	iconPosition: point(-1px, -1px);
+	rippleAreaPosition: point(0px, 9px);
+	rippleAreaSize: 36px;
+	ripple: defaultRippleAnimationBgOver;
+}
+
+nagramCompactPopupMenu: PopupMenu(popupMenuWithIcons) {
+	scrollPadding: margins(0px, 3px, 0px, 3px);
+	menu: Menu(menuWithIcons) {
+		itemIconPosition: point(15px, 2px);
+		itemPadding: margins(54px, 5px, 17px, 5px);
+	}
+}
+
+nagramCompactFiltersTabs: SettingsSlider(defaultSettingsSlider) {
+	padding: 5px;
+	height: 33px;
+	barTop: 30px;
+	barSkip: 0px;
+	barStroke: 6px;
+	barRadius: 2px;
+	barFg: transparent;
+	barSnapToLabel: true;
+	strictSkip: 10px;
+	labelTop: 7px;
+	labelStyle: semiboldTextStyle;
+	labelFg: windowSubTextFg;
+	labelFgActive: lightButtonFg;
+	rippleBottomSkip: 0px;
+	rippleBg: windowBgOver;
+	rippleBgActive: lightButtonBgOver;
+	ripple: defaultRippleAnimation;
+}

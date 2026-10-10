@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/media/info_media_provider.h"
+#include "regram/nagram/privacy/protection.h"
 
 #include "apiwrap.h"
 #include "info/media/info_media_widget.h"
@@ -29,6 +30,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_facade.h"
 #include "storage/storage_shared_media.h"
 #include "styles/style_overview.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace Info::Media {
 namespace {
@@ -72,6 +78,14 @@ Provider::Provider(not_null<AbstractController*> controller)
 			}
 		}
 	}, _lifetime);
+
+	Nagram::Privacy::SensitiveRevealed(
+		&_controller->session()
+	) | rpl::on_next([=] {
+		for (auto &[id, layout] : _layouts) {
+			layout.item->maybeClearSensitiveSpoiler();
+		}
+	}, _lifetime);
 }
 
 Type Provider::type() {
@@ -81,7 +95,7 @@ Type Provider::type() {
 bool Provider::hasSelectRestriction() {
 	if (_peer->session().frozen()) {
 		return true;
-	} else if (_peer->allowsForwarding()) {
+	} else if (Nagram::Privacy::AllowsCopy(_peer)) {
 		return false;
 	} else if (const auto chat = _peer->asChat()) {
 		return !chat->canDeleteMessages();
@@ -358,11 +372,17 @@ void Provider::jumpToMessage(
 	_viewerLifetime.destroy();
 
 	const auto peer = _controller->session().data().peer(_peer->id);
-	const auto request = Api::PrepareSearchRequest(
-		peer,
+	const auto key = SharedMediaLoadableKey(Storage::SharedMediaKey(
+		peer->id,
 		_topicRootId,
 		_monoforumPeerId,
 		_type,
+		messageId));
+	const auto request = Api::PrepareSearchRequest(
+		peer,
+		key.topicRootId,
+		key.monoforumPeerId,
+		key.type,
 		QString(),
 		messageId,
 		Data::LoadDirection::Around);
@@ -383,10 +403,10 @@ void Provider::jumpToMessage(
 
 	_controller->session().api().request(
 		std::move(*request)
-	).done([=](const Api::SearchRequestResult &result) {
+	).done(crl::guard(this, [=](const Api::SearchRequestResult &result) {
 		auto parsed = Api::ParseSearchResult(
 			peer,
-			_type,
+			key.type,
 			messageId,
 			Data::LoadDirection::Around,
 			result);
@@ -394,17 +414,17 @@ void Provider::jumpToMessage(
 		if (!parsed.messageIds.empty()) {
 			peer->session().storage().add(Storage::SharedMediaAddSlice(
 				peer->id,
-				_topicRootId,
-				_monoforumPeerId,
-				_type,
+				key.topicRootId,
+				key.monoforumPeerId,
+				key.type,
 				std::move(parsed.messageIds),
 				parsed.noSkipRange,
 				parsed.fullCount));
 		}
 		finish();
-	}).fail([=] {
+	})).fail(crl::guard(this, [=] {
 		finish();
-	}).send();
+	})).send();
 }
 
 bool Provider::anchorWhileAtTop() {
@@ -489,6 +509,11 @@ std::unique_ptr<BaseLayout> Provider::createLayout(
 	if (!item) {
 		return nullptr;
 	}
+
+	if (isMessageHidden(item)) {
+		return nullptr;
+	}
+
 	const auto getPhoto = [&]() -> PhotoData* {
 		if (const auto media = item->media()) {
 			return media->photo();

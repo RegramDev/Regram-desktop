@@ -20,6 +20,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/image/image_prepare.h"
 #include "base/unixtime.h"
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
+
 namespace Data {
 namespace {
 
@@ -63,7 +67,7 @@ std::optional<QString> OnlineTextSpecial(not_null<UserData*> user) {
 				lt_count_decimal,
 				count);
 		}
-		return tr::lng_status_bot(tr::now);
+		return BotStatusText(user);
 	} else if (user->isServiceUser()) {
 		return tr::lng_status_support(tr::now);
 	}
@@ -433,6 +437,30 @@ rpl::producer<bool> AmPremiumValue(not_null<Main::Session*> session) {
 	return PeerPremiumValue(session->user());
 }
 
+QString BotStatusText(not_null<UserData*> user) {
+	struct Suffix {
+		QStringView text;
+		tr::phrase<> phrase;
+	};
+	static constexpr auto kSuffixes = std::array{
+		Suffix{ u"app", tr::lng_status_bot_app },
+		Suffix{ u"agent", tr::lng_status_bot_agent },
+		Suffix{ u"ai", tr::lng_status_bot_ai },
+		Suffix{ u"game", tr::lng_status_bot_game },
+		Suffix{ u"gay", tr::lng_status_bot_gay },
+	};
+	const auto &usernames = user->usernames();
+	if (!usernames.empty()) {
+		const auto &username = usernames.front();
+		for (const auto &suffix : kSuffixes) {
+			if (username.endsWith(suffix.text, Qt::CaseInsensitive)) {
+				return suffix.phrase(tr::now);
+			}
+		}
+	}
+	return tr::lng_status_bot(tr::now);
+}
+
 TimeId SortByOnlineValue(not_null<UserData*> user, TimeId now) {
 	if (user->isServiceUser() || user->isBot()) {
 		return -1;
@@ -510,19 +538,20 @@ QString OnlineTextFull(not_null<UserData*> user, TimeId now) {
 	} else if (const auto common = OnlineTextCommon(user->lastseen(), now)) {
 		return *common;
 	}
+	const auto &settings = AyuSettings::getInstance();
 	const auto till = user->lastseen().onlineTill();
 	const auto onlineFull = base::unixtime::parse(till);
 	const auto nowFull = base::unixtime::parse(now);
 	const auto locale = QLocale();
 	if (onlineFull.date() == nowFull.date()) {
-		const auto onlineTime = locale.toString(onlineFull.time(), QLocale::ShortFormat);
+		const auto onlineTime = locale.toString(onlineFull.time(), settings.showMessageSeconds() ? QLocale::LongFormat : QLocale::ShortFormat);
 		return tr::lng_status_lastseen_today(tr::now, lt_time, onlineTime);
 	} else if (onlineFull.date().addDays(1) == nowFull.date()) {
-		const auto onlineTime = locale.toString(onlineFull.time(), QLocale::ShortFormat);
+		const auto onlineTime = locale.toString(onlineFull.time(), settings.showMessageSeconds() ? QLocale::LongFormat : QLocale::ShortFormat);
 		return tr::lng_status_lastseen_yesterday(tr::now, lt_time, onlineTime);
 	}
 	const auto date = locale.toString(onlineFull.date(), QLocale::ShortFormat);
-	const auto time = locale.toString(onlineFull.time(), QLocale::ShortFormat);
+	const auto time = locale.toString(onlineFull.time(), settings.showMessageSeconds() ? QLocale::LongFormat : QLocale::ShortFormat);
 	return tr::lng_status_lastseen_date_time(tr::now, lt_date, date, lt_time, time);
 }
 

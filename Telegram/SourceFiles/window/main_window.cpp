@@ -7,6 +7,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/main_window.h"
 
+#include "regram/nagram/interface/options.h"
+#include "regram/nagram/interface/appearance.h"
+#include "regram/nagram/interface/app_icon.h"
+#include "regram/nagram/privacy/options.h"
+
 #include "api/api_updates.h"
 #include "storage/localstorage.h"
 #include "platform/platform_specific.h"
@@ -29,6 +34,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "data/data_session.h"
 #include "data/data_forum_topic.h"
+#include "data/data_saved_sublist.h"
 #include "data/data_user.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
@@ -59,6 +65,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QDrag>
 
 #include <kurlmimedata.h>
+
+// AyuGram includes
+#include "regram/ayu/ui/ayu_logo.h"
+
 
 namespace Window {
 namespace {
@@ -122,11 +132,13 @@ base::options::toggle OptionDisableTouchbar({
 	}
 	const auto thread = id.thread;
 	const auto topic = thread->asTopic();
+	const auto sublist = thread->asSublist();
+	const auto peer = sublist ? sublist->sublistPeer() : thread->peer();
 	const auto name = topic
 		? topic->title()
-		: thread->peer()->isSelf()
+		: peer->isSelf()
 		? tr::lng_saved_messages(tr::now)
-		: thread->peer()->name();
+		: peer->name();
 	const auto wrapped = st::wrap_rtl(name);
 	return name + u" @ "_q + result;
 }
@@ -136,12 +148,23 @@ base::options::toggle OptionDisableTouchbar({
 const char kOptionNewWindowsSizeAsFirst[] = "new-windows-size-as-first";
 const char kOptionDisableTouchbar[] = "touchbar-disabled";
 
-const QImage &Logo() {
+QImage Logo() {
+	if (const auto custom = Nagram::Interface::CustomLogo()) {
+		return *custom;
+	}
 	static const auto result = QImage(u":/gui/art/logo_256.png"_q);
 	return result;
 }
 
-const QImage &LogoNoMargin() {
+QImage LogoNoMargin() {
+	if (const auto custom = Nagram::Interface::CustomLogo()) {
+		return *custom;
+	}
+	static const auto result = QImage(u":/gui/art/logo_256_no_margin.png"_q);
+	return result;
+}
+
+const QImage &LogoTelegramDefault() {
 	static const auto result = QImage(u":/gui/art/logo_256_no_margin.png"_q);
 	return result;
 }
@@ -211,13 +234,22 @@ QIcon CreateSupportIcon(Main::Session *session) {
 }
 
 QIcon CreateIcon(Main::Session *session, bool returnNullIfDefault) {
+	if (auto custom = Nagram::Interface::CustomAppIcon(); !custom.isNull()) {
+		return custom;
+	}
 	const auto supportIcon = CreateSupportIcon(session);
-	if (!supportIcon.isNull() || returnNullIfDefault) {
+	if (!supportIcon.isNull()) {
 		return supportIcon;
 	}
 
+	if (returnNullIfDefault) {
+		return QIcon();
+	}
 	const auto officialIcon = QIcon(
 		Ui::PixmapFromImage(base::duplicate(Logo())));
+	if (!officialIcon.isNull() || returnNullIfDefault) {
+		return officialIcon;
+	}
 
 	if constexpr (!Platform::IsLinux()) {
 		return officialIcon;
@@ -419,6 +451,14 @@ MainWindow::MainWindow(not_null<Controller*> controller)
 		updateTitle();
 		unreadCounterChangedHook();
 		Core::App().tray().updateIconCounters();
+	}, lifetime());
+	Nagram::ForDevice().changes(
+	) | rpl::filter([](auto key) {
+		return key == Nagram::Interface::kHideAppIconBadge.key
+			|| key == Nagram::Interface::kAccountNameInTitle.key;
+	}) | rpl::on_next([=] {
+		updateTitle();
+		unreadCounterChangedHook();
 	}, lifetime());
 
 	Core::App().settings().workModeChanges(
@@ -887,6 +927,10 @@ void MainWindow::updateTitle() {
 	}
 
 	const auto suffix = nativeTitleSuffix();
+	if (Nagram::Privacy::DemoMode()) {
+		setTitle(u"Regram"_q + suffix);
+		return;
+	}
 	const auto settings = Core::App().settings().windowTitleContent();
 	const auto locked = Core::App().passcodeLocked();
 	const auto counter = settings.hideTotalUnread
@@ -896,7 +940,8 @@ void MainWindow::updateTitle() {
 	const auto session = locked ? nullptr : _controller->sessionController();
 	const auto user = (session
 		&& !settings.hideAccountName
-		&& Core::App().domain().accountsAuthedCount() > 1)
+		&& (Core::App().domain().accountsAuthedCount() > 1
+			|| Nagram::Interface::AccountNameInTitle()))
 		? st::wrap_rtl(session->authedName())
 		: QString();
 	const auto separateSharedMediaTitle = session
@@ -911,7 +956,7 @@ void MainWindow::updateTitle() {
 		: Dialogs::Key();
 	const auto thread = key ? key.thread() : nullptr;
 	if (!thread) {
-		setTitle((user.isEmpty() ? u"Telegram"_q : user) + added + suffix);
+		setTitle((user.isEmpty() ? u"Regram"_q : user) + added + suffix);
 		return;
 	}
 	const auto history = thread->owningHistory();

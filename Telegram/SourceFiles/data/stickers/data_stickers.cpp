@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/stickers/data_stickers.h"
+#include "regram/nagram/media/local_faved.h"
 
 #include "api/api_hash.h"
 #include "chat_helpers/compose/compose_show.h"
@@ -40,7 +41,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace Data {
 namespace {
 
-constexpr auto kPremiumToastDuration = 5 * crl::time(1000);
+constexpr auto kPremiumToastDuration = 3 * crl::time(1000);
 
 using SetFlag = StickersSetFlag;
 
@@ -508,7 +509,9 @@ void Stickers::undoInstallLocally(uint64 setId) {
 bool Stickers::isFaved(not_null<const DocumentData*> document) const {
 	const auto &sets = this->sets();
 	const auto it = sets.find(FavedSetId);
-	if (it == sets.cend()) {
+	if (Nagram::Media::LocalFaved(document)) {
+		return true;
+	} else if (it == sets.cend()) {
 		return false;
 	}
 	for (const auto sticker : std::as_const(it->second->stickers)) {
@@ -539,6 +542,9 @@ void Stickers::checkFavedLimit(
 			}
 		}
 		++i;
+	}
+	if (Nagram::Media::KeepOverflowFaved(session, removing)) {
+		return;
 	}
 	MaybeShowPremiumToast(
 		std::move(show),
@@ -664,6 +670,7 @@ void Stickers::removeFromRecentSet(not_null<DocumentData*> document) {
 
 void Stickers::setIsNotFaved(not_null<DocumentData*> document) {
 	RemoveFromSet(setsRef(), document, FavedSetId);
+	Nagram::Media::RemoveLocalFaved(document);
 	session().local().writeFavedStickers();
 	notifyUpdated(StickersType::Stickers);
 }

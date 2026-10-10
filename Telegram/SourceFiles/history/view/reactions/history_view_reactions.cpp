@@ -32,6 +32,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat.h"
 #include "styles/style_chat_helpers.h"
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/message_shot/message_shot.h"
+#include "regram/ayu/ui/ayu_userpic.h"
+#include "regram/ayu/features/filters/filters_controller.h"
+
+
 namespace HistoryView::Reactions {
 namespace {
 
@@ -148,9 +155,12 @@ std::vector<ReactionId> InlineList::computeTagsList() const {
 	if (!areTags()) {
 		return {};
 	}
-	return _buttons | ranges::views::transform(
-		&Button::id
-	) | ranges::to_vector;
+	auto result = std::vector<ReactionId>();
+	result.reserve(_buttons.size());
+	for (const auto &button : _buttons) {
+		result.push_back(button.id);
+	}
+	return result;
 }
 
 bool InlineList::hasCustomEmoji() const {
@@ -179,11 +189,11 @@ void InlineList::layoutButtons() {
 		_buttons.clear();
 		return;
 	}
-	auto sorted = ranges::views::all(
-		_data.reactions
-	) | ranges::views::transform([](const MessageReaction &reaction) {
-		return not_null{ &reaction };
-	}) | ranges::to_vector;
+	auto sorted = std::vector<not_null<const MessageReaction*>>();
+	sorted.reserve(_data.reactions.size());
+	for (const auto &reaction : _data.reactions) {
+		sorted.push_back(&reaction);
+	}
 	const auto tags = areTags();
 	if (!tags) {
 		const auto &list = _owner->list(::Data::Reactions::Type::All);
@@ -627,7 +637,8 @@ void InlineList::paint(
 			p.setOpacity(1.);
 		}
 	}
-	if (!animations.empty() && context.reactionInfo) {
+	if (!animations.empty() && context.reactionInfo
+		&& !AyuFeatures::MessageShot::isTakingShot()) {
 		const auto now = context.now;
 		context.reactionInfo->effectPaint = [
 			now,
@@ -713,7 +724,7 @@ void InlineList::paintSingleBg(
 		float64 opacity) const {
 	p.setOpacity(opacity);
 	if (!areTags()) {
-		const auto radius = fill.height() / 2.;
+		const auto radius = AyuUserpic::ComputeRadiusF(fill.height());
 		p.setBrush(color);
 		p.drawRoundedRect(fill, radius, radius);
 		return;
@@ -913,10 +924,24 @@ void InlineList::continueAnimations(base::flat_map<
 InlineListData InlineListDataFromMessage(not_null<Element*> view) {
 	using Flag = InlineListData::Flag;
 	const auto item = view->data();
+	const auto &settings = AyuSettings::getInstance();
+	if (!settings.showChannelReactions()
+		&& item->history()->peer->isChannel()
+		&& !item->history()->peer->isMegagroup()) {
+		return InlineListData();
+	}
+	if (!settings.showGroupReactions()
+		&& item->history()->peer->isMegagroup()) {
+		return InlineListData();
+	}
+	if (!settings.showPrivateChatReactions()
+		&& item->history()->peer->isUser()) {
+		return InlineListData();
+	}
 	auto result = InlineListData();
 	result.reactions = item->reactionsWithLocal();
 
-	const auto shouldAddEmptyPaidButton = [&] {
+	/*const auto shouldAddEmptyPaidButton = [&] {
 		if (view->context() == Context::ChatPreview) {
 			return false;
 		}
@@ -941,7 +966,7 @@ InlineListData InlineListDataFromMessage(not_null<Element*> view) {
 		result.reactions.insert(
 			result.reactions.begin(),
 			MessageReaction{ .id = ReactionId::Paid(), .count = 0 });
-	}
+	}*/
 	if (const auto user = item->history()->peer->asUser()) {
 		// Always show userpics, we have all information.
 		result.recent.reserve(result.reactions.size());
@@ -977,9 +1002,34 @@ InlineListData InlineListDataFromMessage(not_null<Element*> view) {
 		if (showUserpics) {
 			result.recent.reserve(recent.size());
 			for (const auto &[id, list] : recent) {
-				result.recent.emplace(id).first->second = list
-					| ranges::views::transform(&Data::RecentReaction::peer)
-					| ranges::to_vector;
+				auto &out = result.recent.emplace(id).first->second;
+				out.reserve(list.size());
+				for (const auto &r : list) {
+					out.push_back(r.peer);
+				}
+			}
+		}
+	}
+	if (AyuSettings::getInstance().filtersEnabled()) {
+		for (auto &[id, peers] : result.recent) {
+			peers.erase(ranges::remove_if(peers, [](not_null<PeerData*> peer) {
+				return FiltersController::isBlocked(peer);
+			}), end(peers));
+		}
+		for (auto i = result.reactions.begin(); i != result.reactions.end();) {
+			const auto j = result.recent.find(i->id);
+			if (j == end(result.recent)) {
+				++i;
+				continue;
+			}
+			if (const auto hidden = i->count - int(j->second.size()); hidden > 0) {
+				i->count -= hidden;
+			}
+			if (i->count > 0) {
+				++i;
+			} else {
+				result.recent.erase(j);
+				i = result.reactions.erase(i);
 			}
 		}
 	}

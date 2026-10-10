@@ -12,6 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_account.h"
 #include "main/main_domain.h"
 #include "mtproto/facade.h"
+#include "regram/nagram/network/runtime.h"
 
 #include <algorithm>
 
@@ -250,7 +251,7 @@ void ProxyRotationManager::startNextCheck() {
 		MTP::StartProxyCheck(
 			&accountForChecks()->mtp(),
 			proxy,
-			settings.tryIPv6(),
+			Nagram::Network::UseIPv6(settings.tryIPv6()),
 			entry.v4,
 			entry.v6,
 			[=](MTP::details::AbstractConnection *raw, int ping) {

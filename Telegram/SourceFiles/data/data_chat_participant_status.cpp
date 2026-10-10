@@ -26,6 +26,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/toast/toast.h"
 #include "window/window_session_controller.h"
 
+// AyuGram includes
+#include "regram/ayu/features/forward/ayu_forward.h"
+
+
 namespace {
 
 [[nodiscard]] ChatAdminRights ChatAdminRightsFlags(
@@ -235,6 +239,9 @@ bool CanSendAnyOf(
 		not_null<const PeerData*> peer,
 		ChatRestrictions rights,
 		bool forbidInForums) {
+	if (AyuForward::isForwarding(peer->id)) {
+		return false;
+	}
 	if (peer->session().frozen()
 		&& !peer->isFreezeAppealChat()) {
 		return false;
@@ -296,6 +303,11 @@ bool CanSendAnyOf(
 SendError RestrictionError(
 		not_null<PeerData*> peer,
 		ChatRestriction restriction) {
+	if (AyuForward::isForwarding(peer->id)) {
+		return SendError({
+			.text = AyuForward::stateName(peer->id).first + "\n" + AyuForward::stateName(peer->id).second,
+		});
+	}
 	using Flag = ChatRestriction;
 	if (peer->session().frozen()
 		&& !peer->isFreezeAppealChat()) {
@@ -504,7 +516,9 @@ SendError FileRestrictionError(
 	}
 	switch (file.type) {
 	case Type::Photo:
-		if (compress == true && photos) {
+		if (compress == true && videos && file.hasAudioEditScene()) {
+			return videos;
+		} else if (compress == true && photos) {
 			return photos;
 		} else if (const auto other = file.isSticker() ? stickers : files) {
 			if ((compress == false || photos) && other) {

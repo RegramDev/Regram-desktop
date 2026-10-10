@@ -101,6 +101,27 @@ defaultDialogRow: DialogRow {
 	textLeft: 68px;
 	textTop: 34px;
 }
+compactDialogRow: DialogRow(defaultDialogRow) {
+	height: 54px;
+	padding: margins(10px, 6px, 10px, 6px);
+	photoSize: 40px;
+	nameLeft: 62px;
+	nameTop: 6px;
+	textLeft: 62px;
+	textTop: 28px;
+}
+twoLineDialogRow: DialogRow(defaultDialogRow) {
+	height: 82px;
+}
+threeLineDialogRow: DialogRow(defaultDialogRow) {
+	height: 102px;
+}
+compactTwoLineDialogRow: DialogRow(compactDialogRow) {
+	height: 74px;
+}
+compactThreeLineDialogRow: DialogRow(compactDialogRow) {
+	height: 94px;
+}
 communityRequestableListItem: PeerListItem(defaultPeerListItem) {
 	height: dialogsRowHeight;            // == st::defaultDialogRow.height (62px)
 	photoSize: 46px;                     // == st::defaultDialogRow.photoSize
@@ -182,9 +203,9 @@ forumDialogJumpArrowPosition: point(3px, 3px);
 forumDialogJumpPadding: margins(8px, 3px, 8px, 3px);
 forumDialogJumpRadius: 11px;
 
-dialogsOnlineBadgeStroke: 2px;
-dialogsOnlineBadgeSize: 10px;
-dialogsOnlineBadgeSkip: point(0px, 2px);
+dialogsOnlineBadgeStroke: 3px;
+dialogsOnlineBadgeSize: 12px;
+dialogsOnlineBadgeSkip: point(0px, 0px);
 dialogsOnlineBadgeDuration: 150;
 
 dialogsCallBadgeSize: 16px;

@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/translate_box.h"
 #include "boxes/translate_box_content.h"
 #include "lang/translate_provider.h"
+#include "regram/nagram/services/translation.h"
 
 #include "base/weak_ptr.h"
 #include "core/application.h"
@@ -408,9 +409,6 @@ void SetupRichArticleBody(
 	std::move(to) | rpl::on_next(send, box->lifetime());
 
 	box->addLeftButton(tr::lng_settings_language(), [=] {
-		if (loading->toggled()) {
-			return;
-		}
 		box->uiShow()->showBox(ChooseTranslateToBox(
 			state->to.current(),
 			crl::guard(box, [=](LanguageId id) { state->to = id; })));
@@ -427,14 +425,23 @@ void TranslateBox(
 		TextWithEntities text,
 		bool hasCopyRestriction) {
 	struct State {
-		State(not_null<Main::Session*> session)
-		: provider(CreateTranslateProvider(session)) {
+		State(
+			not_null<PeerData*> peer,
+			MsgId msgId,
+			bool restricted,
+			not_null<GenericBox*> box)
+		: provider(Nagram::CreateMessageTranslateProvider(peer, msgId, restricted,
+			crl::guard(box, [=](QString error) { box->showToast(error); }))) {
 		}
 
 		std::unique_ptr<TranslateProvider> provider;
 		rpl::variable<LanguageId> to;
 	};
-	const auto state = box->lifetime().make_state<State>(&peer->session());
+	const auto state = box->lifetime().make_state<State>(
+		peer,
+		msgId,
+		hasCopyRestriction,
+		box);
 	if (IsServerMsgId(msgId) && state->provider->supportsMessageId()) {
 		if (const auto item = peer->owner().message(peer->id, msgId)) {
 			if (const auto page = item->richPage()) {

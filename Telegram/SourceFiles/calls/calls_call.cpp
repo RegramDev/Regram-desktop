@@ -877,7 +877,7 @@ bool Call::handleUpdate(const MTPPhoneCall &call) {
 				)).send();
 			}
 		}
-		if (data.is_need_rating() && _id && _accessHash) {
+		if (false && data.is_need_rating() && _id && _accessHash) {
 			_ratingRequested = true;
 		}
 		if (const auto duration = data.vduration()) {

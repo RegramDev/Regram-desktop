@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "media/audio/media_audio_capture.h"
 
+#include "regram/nagram/media/audio.h"
 #include "media/audio/media_audio_capture_common.h"
 #include "media/audio/media_audio_ffmpeg_loader.h"
 #include "media/audio/media_audio_track.h"
@@ -89,7 +90,8 @@ public:
 		Webrtc::DeviceResolvedId id,
 		Fn<void(Update)> updated,
 		Fn<void()> error,
-		Fn<void(Chunk)> externalProcessing);
+		Fn<void(Chunk)> externalProcessing,
+		int bitrate);
 	void stop(Fn<void(Result&&)> callback = nullptr);
 	void pause(bool value, Fn<void(Result&&)> callback);
 
@@ -116,6 +118,7 @@ private:
 	QByteArray _captured;
 
 	bool _paused = false;
+	int _bitrate = 0;
 
 };
 
@@ -137,6 +140,7 @@ Instance::Instance() : _inner(std::make_unique<Inner>(&_thread)) {
 void Instance::start(Fn<void(Chunk)> externalProcessing) {
 	_updates.fire_done();
 	const auto id = Audio::Current().captureDeviceId();
+	const auto bitrate = Nagram::Media::VoiceRecordBitrate(32000);
 	InvokeQueued(_inner.get(), [=] {
 		_inner->start(id, [=](Update update) {
 			crl::on_main(this, [=] {
@@ -146,7 +150,7 @@ void Instance::start(Fn<void(Chunk)> externalProcessing) {
 			crl::on_main(this, [=] {
 				_updates.fire_error(Error::Other);
 			});
-		}, externalProcessing);
+		}, externalProcessing, bitrate);
 		crl::on_main(this, [=] {
 			_started = true;
 		});
@@ -312,7 +316,9 @@ void Instance::Inner::start(
 		Webrtc::DeviceResolvedId id,
 		Fn<void(Update)> updated,
 		Fn<void()> error,
-		Fn<void(Chunk)> externalProcessing) {
+		Fn<void(Chunk)> externalProcessing,
+		int bitrate) {
+	_bitrate = bitrate;
 	_externalProcessing = std::move(externalProcessing);
 	_updated = std::move(updated);
 	_error = std::move(error);
@@ -399,7 +405,7 @@ bool Instance::Inner::initializeFFmpeg() {
 	av_opt_set_int(d->codecContext, "refcounted_frames", 1, 0);
 
 	d->codecContext->sample_fmt = AV_SAMPLE_FMT_FLTP;
-	d->codecContext->bit_rate = 32000;
+	d->codecContext->bit_rate = _bitrate;
 	d->codecContext->ch_layout = AV_CHANNEL_LAYOUT_MONO;
 	d->channels = d->codecContext->ch_layout.nb_channels;
 	d->codecContext->sample_rate = kCaptureFrequency;

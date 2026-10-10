@@ -34,6 +34,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "history/history_item_helpers.h"
 #include "history/view/controls/history_view_forward_panel.h"
+#include "regram/nagram/compose/options.h"
+#include "regram/nagram/chats/recent_chats.h"
 #include "history/view/history_view_element.h"
 #include "history/view/history_view_context_menu.h" // CopyPostLink.
 #include "settings/sections/settings_premium.h"
@@ -66,6 +68,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
+
+// AyuGram includes
+#include "regram/ayu/features/forward/ayu_forward.h"
+
 
 class ShareBox::Inner final : public Ui::RpWidget {
 public:
@@ -369,6 +375,7 @@ void ShareBox::prepare() {
 			_descriptor.session,
 			[this](FilterId id) {
 				_inner->applyChatFilter(id);
+				searchByUsername(true);
 				scrollToY(0);
 			},
 			Window::GifPauseReason::Layer,
@@ -851,10 +858,19 @@ ShareBox::Inner::Inner(
 	if (_descriptor.filterCallback(selfHistory)) {
 		_defaultChatsIndexed->addToEnd(selfHistory);
 	}
+	Nagram::Chats::ForEachRecentShareTarget(
+		_descriptor.session,
+		[&](not_null<History*> history) {
+			if (!_defaultChatsIndexed->getRow(history)
+				&& _descriptor.filterCallback(history)) {
+				_defaultChatsIndexed->addToEnd(history);
+			}
+		});
 	const auto addList = [&](not_null<Dialogs::IndexedList*> list) {
 		for (const auto &row : list->all()) {
 			if (const auto history = row->history()) {
 				if (!history->peer->isSelf()
+					&& !_defaultChatsIndexed->getRow(history)
 					&& (history->asForum()
 						|| JoinedCommunityChats(history->peer)
 						|| _descriptor.filterCallback(history))) {
@@ -884,6 +900,20 @@ ShareBox::Inner::Inner(
 		_defaultChatsIndexed->peerNameChanged(
 			update.peer,
 			update.oldFirstLetters);
+	}, lifetime());
+
+	_descriptor.session->data().dialogsRowReplacements(
+	) | rpl::on_next([=](Data::Session::DialogsRowReplacement r) {
+		for (auto i = begin(_filtered); i != end(_filtered);) {
+			if (*i != r.old) {
+				++i;
+			} else if (r.now) {
+				*i = r.now;
+				++i;
+			} else {
+				i = _filtered.erase(i);
+			}
+		}
 	}, lifetime());
 
 	_descriptor.session->downloaderTaskFinished(
@@ -1667,6 +1697,17 @@ void ShareBox::Inner::applyChatFilter(FilterId id) {
 		const auto &data = _descriptor.session->data();
 		addList(data.chatsFilters().chatsList(id)->indexed());
 	}
+	if (!_filter.isEmpty()) {
+		// Rows in _filtered may belong to the just destroyed list.
+		_filtered = _chatsIndexed->filtered(
+			_filter.split(' ', Qt::SkipEmptyParts));
+
+		// Global results are deduplicated against the list, refill them.
+		_byUsernameFiltered.clear();
+		d_byUsernameFiltered.clear();
+		setActive(-1);
+		refresh();
+	}
 	update();
 }
 
@@ -1861,6 +1902,44 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 		const auto showRecentForwardsToSelf = result.size() == 1
 			&& result.front()->peer()->isSelf()
 			&& history->session().premium();
+
+		// AyuGram-changed
+		const auto dismiss = [=]
+		{
+			if (show->valid()) {
+				show->hideLayer();
+			}
+		};
+
+		if (AyuForward::isFullAyuForwardNeeded(items.front())) {
+			crl::async([=]{
+				for (const auto thread : result) {
+					AyuForward::forwardMessages(
+					&history->owner().session(),
+					Api::SendAction(thread, options),
+					false,
+					Data::ResolvedForwardDraft(items, forwardOptions));
+				}
+			});
+
+			dismiss();
+			return;
+		} else if (AyuForward::isAyuForwardNeeded(items)) {
+			crl::async([=]
+			{
+				for (const auto thread : result) {
+					AyuForward::intelligentForward(
+						&history->owner().session(),
+						Api::SendAction(thread, options),
+						Data::ResolvedForwardDraft(items, forwardOptions));
+				}
+			});
+
+			dismiss();
+			return;
+		}
+		// AyuGram-changed
+
 		for (const auto &thread : result) {
 			const auto peer = thread->peer();
 			const auto threadHistory = thread->owningHistory();
@@ -1878,12 +1957,21 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 				return thread;
 			}();
 
-			if (!comment.text.isEmpty()) {
+			const auto commentOptions = options;
+			const auto sendComment = [&] {
+				if (comment.text.isEmpty()) {
+					return;
+				}
 				auto message = Api::MessageToSend(
-					Api::SendAction(effectiveThread, options));
+					Api::SendAction(effectiveThread, commentOptions));
 				message.textWithTags = comment;
 				message.action.clearDraft = false;
 				api.sendMessage(std::move(message));
+			};
+			const auto forwardFirst = Nagram::ForDevice().Get(
+				Nagram::Compose::kForwardBeforeComment);
+			if (!forwardFirst) {
+				sendComment();
 			}
 
 			const auto topicRootId = effectiveThread->topicRootId();
@@ -2024,6 +2112,9 @@ ShareBox::SubmitCallback ShareBox::DefaultForwardCallback(
 							const MTP::Response &) {
 						requestFail(error, requestKey);
 					});
+			}
+			if (forwardFirst) {
+				sendComment();
 			}
 		}
 		if (state->requests.empty()) {

@@ -10,13 +10,27 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "core/application.h"
 #include "core/core_settings.h"
+#include "core/version.h"
 #include "platform/platform_notifications_manager.h"
 #include "platform/platform_specific.h"
 #include "lang/lang_keys.h"
 
 #include <QtWidgets/QApplication>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "window/window_controller.h"
+#include "lang_auto.h"
+
+
 namespace Core {
+
+QString TrayIconToolTip() {
+	const auto counter = Core::App().unreadBadge();
+	return (counter > 0)
+		? u"%1 (%2)"_q.arg(AppName.utf16()).arg(counter)
+		: AppName.utf16();
+}
 
 Tray::Tray() {
 }
@@ -79,7 +93,7 @@ void Tray::rebuildMenu() {
 			_activeForTrayIconAction = Core::App().isActiveForTrayMenu();
 			return _activeForTrayIconAction
 				? tr::lng_minimize_to_tray(tr::now)
-				: tr::lng_open_from_tray(tr::now);
+				: tr::lng_nagram_open_from_tray(tr::now);
 		});
 
 		_tray.addAction(
@@ -100,7 +114,51 @@ void Tray::rebuildMenu() {
 			[=] { toggleSoundNotifications(); });
 	}
 
-	_tray.addAction(tr::lng_quit_from_tray(), [] { Core::Quit(); });
+	const auto &settings = AyuSettings::getInstance();
+
+	if (settings.showGhostToggleInTray()) {
+		auto ghostActiveChanges = AyuSettings::getInstance().useGlobalGhostModeValue()
+			| rpl::map([](bool) {
+				return AyuSettings::ghost().ghostModeActiveValue();
+			})
+			| rpl::flatten_latest();
+
+		auto turnGhostModeText = rpl::combine(
+			_textUpdates.events_starting_with({}),
+			std::move(ghostActiveChanges)
+		) | rpl::map([=](auto, bool active) {
+			return active
+				? tr::ayu_DisableGhostModeTray(tr::now)
+				: tr::ayu_EnableGhostModeTray(tr::now);
+		});
+		_tray.addAction(
+			std::move(turnGhostModeText),
+			[=]
+			{
+				auto &ghost = AyuSettings::ghost();
+				ghost.setGhostModeEnabled(!ghost.isGhostModeActive());
+			});
+	}
+
+	if (settings.showStreamerToggleInTray()) {
+		auto turnStreamerModeText = rpl::combine(
+			_textUpdates.events_starting_with({}),
+			AyuSettings::getInstance().streamerModeValue()
+		) | rpl::map([=](auto, bool enabled) {
+			return enabled
+					   ? tr::ayu_DisableStreamerModeTray(tr::now)
+					   : tr::ayu_EnableStreamerModeTray(tr::now);
+		});
+		_tray.addAction(
+			std::move(turnStreamerModeText),
+			[]
+			{
+				auto &ayuSettings = AyuSettings::getInstance();
+				ayuSettings.setStreamerMode(!ayuSettings.streamerMode());
+			});
+	}
+
+	_tray.addAction(tr::lng_nagram_quit_from_tray(), [] { Core::Quit(); });
 
 	TrayAccountsMenu::Fill(_tray);
 

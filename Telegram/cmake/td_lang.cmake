@@ -10,7 +10,21 @@ add_library(tdesktop::td_lang ALIAS td_lang)
 
 include(cmake/generate_lang.cmake)
 
-generate_lang(td_lang ${res_loc}/langs/lang.strings ${src_loc})
+set(nagram_lang_sources
+    ${res_loc}/langs/lang.strings
+    ${res_loc}/langs/nagram/nagram.strings
+)
+set(nagram_lang_merged ${CMAKE_CURRENT_BINARY_DIR}/gen/lang_merged.strings)
+set(nagram_lang_content "")
+foreach (nagram_lang_source ${nagram_lang_sources})
+    file(READ ${nagram_lang_source} nagram_lang_part)
+    string(APPEND nagram_lang_content "${nagram_lang_part}\n")
+endforeach()
+file(WRITE ${nagram_lang_merged}.tmp "${nagram_lang_content}")
+configure_file(${nagram_lang_merged}.tmp ${nagram_lang_merged} COPYONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${nagram_lang_sources})
+
+generate_lang(td_lang ${nagram_lang_merged} ${src_loc})
 
 target_precompile_headers(td_lang PRIVATE ${src_loc}/lang/lang_pch.h)
 nice_target_sources(td_lang ${src_loc}

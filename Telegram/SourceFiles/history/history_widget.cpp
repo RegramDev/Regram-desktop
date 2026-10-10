@@ -35,6 +35,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/file_utilities.h"
 #include "core/mime_type.h"
 #include "history/view/history_view_draw_to_reply.h"
+#include "history/view/controls/history_view_compose_stash.h"
+#include "history/view/controls/history_view_compose_stash_hint.h"
 #include "history/view/controls/history_view_rich_draft_preview.h"
 #include "ui/emoji_config.h"
 #include "ui/chat/attach/attach_prepare.h"
@@ -78,6 +80,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/components/sponsored_messages.h"
 #include "data/notify/data_notify_settings.h"
 #include "data/data_changes.h"
+#include "data/data_compose_stash.h"
 #include "data/data_drafts.h"
 #include "data/data_session.h"
 #include "data/data_todo_list.h"
@@ -123,6 +126,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_voice_record_bar.h"
 #include "history/view/controls/history_view_webpage_processor.h"
 #include "history/view/reactions/history_view_reactions_button.h"
+#include "regram/nagram/compose/buttons.h"
+#include "regram/nagram/compose/channel.h"
+#include "regram/nagram/compose/confirm.h"
+#include "regram/nagram/compose/format_toolbar.h"
+#include "regram/nagram/compose/placeholder.h"
+#include "regram/nagram/links/inline_bot.h"
+#include "regram/nagram/chats/reading_position.h"
 #include "history/view/history_view_chat_section.h"
 #include "history/view/history_view_cursor_state.h"
 #include "history/view/history_view_service_message.h"
@@ -217,6 +227,15 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QWindow>
 #include <QtCore/QMimeData>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/filters/filters_cache_controller.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "regram/ayu/features/message_shot/message_shot.h"
+#include "regram/ayu/features/forward/ayu_forward.h"
+#include "boxes/abstract_box.h"
+
+
 namespace {
 
 constexpr auto kMessagesPerPageFirst = 30;
@@ -257,6 +276,13 @@ const auto kPsaAboutPrefix = "cloud_lng_about_psa_";
 	}
 	return QString();
 }
+
+#define SWITCH_BUTTON(button, show_v) \
+	if (show_v) { \
+		(button)->show(); \
+	} else { \
+		(button)->hide(); \
+	}
 
 } // namespace
 
@@ -316,9 +342,14 @@ HistoryWidget::HistoryWidget(
 	this,
 	tr::lng_channel_mute(tr::now).toUpper(),
 	st::historyComposeButton)
+, _discuss(this,
+	tr::ayu_ChannelBottomButtonDiscuss(tr::now).toUpper(),
+	st::historyComposeButton)
 , _reportMessages(this, QString(), st::historyComposeButton)
 , _attachToggle(this, st::historyAttach)
-, _tabbedSelectorToggle(this, st::historyAttachEmoji)
+, _tabbedSelectorToggle(
+	this,
+	st::historyAttachEmoji)
 , _botKeyboardShow(this, st::historyBotKeyboardShow)
 , _botKeyboardHide(this, st::historyBotKeyboardHide)
 , _botCommandStart(this, st::historyBotCommandStart)
@@ -454,9 +485,27 @@ HistoryWidget::HistoryWidget(
 		}
 	});
 	_unblock->addClickHandler([=] { unblockUser(); });
-	_botStart->addClickHandler([=] { sendBotStartCommand(); });
+	_botStart->setAcceptBoth(true);
+	_botStart->clicks() | rpl::on_next(
+		[=](Qt::MouseButton button)
+		{
+			if (button == Qt::LeftButton) {
+				sendBotStartCommand();
+			} else if (button == Qt::RightButton && isBotStart() && !_peer->asUser()->botInfo->startToken.isEmpty()) {
+				_peer->asUser()->botInfo->startToken = QString();
+				session().changes().peerUpdated(
+					_peer,
+					Data::PeerUpdate::Flag::BotStartToken);
+			}
+		},
+		_botStart->lifetime());
 	_joinChannel->addClickHandler([=] { joinChannel(); });
-	_muteUnmute->addClickHandler([=] { toggleMuteUnmute(); });
+	_muteUnmute->addClickHandler([=] {
+		if (!Nagram::Compose::OpenDiscussion(controller, _peer)) {
+			toggleMuteUnmute();
+		}
+	});
+	_discuss->addClickHandler([=] { goToDiscussionGroup(); });
 	setupGiftToChannelButton();
 	setupDirectMessageButton();
 	_reportMessages->addClickHandler([=] { reportSelectedMessages(); });
@@ -490,6 +539,16 @@ HistoryWidget::HistoryWidget(
 	) | rpl::filter(rpl::mappers::_1) | rpl::on_next([=] {
 		fieldFocused();
 	}, _field->lifetime());
+	if (session().settings().shouldShowStashHint()) {
+		using StashHintManager = HistoryView::Controls::StashHintManager;
+		_stashHintManager = std::make_unique<StashHintManager>(
+			HistoryView::Controls::StashHintDescriptor{
+				.session = &session(),
+				.toastParent = [=]() -> QWidget* { return _scroll.data(); },
+				.fieldText = [=] { return _field->getTextWithTags().text; },
+				.canUse = [=] { return canUseComposeStash(); },
+			});
+	}
 	_field->changes(
 	) | rpl::on_next([=] {
 		fieldChanged();
@@ -566,6 +625,7 @@ HistoryWidget::HistoryWidget(
 		return false;
 	});
 	InitMessageFieldFade(_field, st::historyComposeField.textBg);
+	Nagram::Compose::SetupFormatToolbar(_field, this);
 
 	setupFastButtonMode();
 	initAiButton();
@@ -575,15 +635,16 @@ HistoryWidget::HistoryWidget(
 
 	_fieldCharsCountManager.limitExceeds(
 	) | rpl::on_next([=] {
+		const auto &settings = AyuSettings::getInstance();
 		const auto hide = _fieldCharsCountManager.isLimitExceeded();
 		if (_silent) {
 			_silent->setVisible(!hide);
 		}
 		if (_ttlInfo) {
-			_ttlInfo->setVisible(!hide);
+			_ttlInfo->setVisible(!hide && settings.showAutoDeleteButtonInMessageField());
 		}
 		if (_giftToUser) {
-			_giftToUser->setVisible(!hide);
+			_giftToUser->setVisible(!hide && settings.showGiftButtonInMessageField());
 		}
 		if (_scheduled) {
 			_scheduled->setVisible(!hide);
@@ -650,6 +711,7 @@ HistoryWidget::HistoryWidget(
 	_botStart->hide();
 	_joinChannel->hide();
 	_muteUnmute->hide();
+	_discuss->hide();
 	_reportMessages->hide();
 
 	initVoiceRecordBar();
@@ -663,6 +725,8 @@ HistoryWidget::HistoryWidget(
 	session().attachWebView().requestBots();
 	rpl::merge(
 		session().attachWebView().attachBotsUpdates(),
+		Nagram::ForDevice().Value(Nagram::Compose::kDisableAttachHover
+		) | rpl::skip(1) | rpl::to_empty,
 		session().changes().peerUpdates(
 			Data::PeerUpdate::Flag::Rights
 			| Data::PeerUpdate::Flag::StarsPerMessage
@@ -678,6 +742,18 @@ HistoryWidget::HistoryWidget(
 	_botCommandStart->addClickHandler([=] { startBotCommand(); });
 
 	_topShadow->hide();
+	Nagram::Compose::ButtonsChanged(
+	) | rpl::on_next([=] {
+		updateNotifyControls();
+		updateCmdStartShown();
+		refreshSendGiftToggle();
+		checkMessagesTTL();
+		updateSendButtonType();
+		updateControlsVisibility();
+		updateFieldSize();
+		updateControlsGeometry();
+		updateAiButtonVisibility();
+	}, lifetime());
 
 	_attachDragAreas = DragArea::SetupDragAreaToContainer(
 		this,
@@ -767,6 +843,44 @@ HistoryWidget::HistoryWidget(
 	}) | rpl::on_next([=](not_null<HistoryItem*> item) {
 		item->mainView()->itemDataChanged();
 	}, lifetime());
+
+	rpl::merge(
+		session().changes().peerUpdates(
+			Data::PeerUpdate::Flag::IsBlocked
+		) | rpl::to_empty,
+		FiltersCacheController::updates()
+	) | rpl::on_next(
+		[=]
+		{
+			crl::on_main(
+				this,
+				[=]
+				{
+					if (_history) {
+						_history->forceFullResize();
+						if (_migrated) {
+							_migrated->forceFullResize();
+						}
+						updateHistoryGeometry();
+						update();
+
+						for (const auto &item : _history->blocks) {
+							if (!item) {
+								continue;
+							}
+							for (const auto &msg : item->messages) {
+								if (!msg) {
+									continue;
+								}
+
+								_history->owner().requestViewResize(msg.get());
+								_history->owner().requestItemViewRefresh(msg->data());
+							}
+						}
+					}
+				});
+		},
+		lifetime());
 
 	Core::App().settings().largeEmojiChanges(
 	) | rpl::on_next([=] {
@@ -867,6 +981,42 @@ HistoryWidget::HistoryWidget(
 			updateControlsVisibility();
 			updateControlsGeometry();
 			this->update();
+		}
+	}, lifetime());
+
+	rpl::merge(
+		AyuSettings::getInstance().showAttachButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showCommandsButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showEmojiButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showMicrophoneButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showAutoDeleteButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showGiftButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showAiEditorButtonInMessageFieldChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showAttachPopupChanges() | rpl::to_empty,
+		AyuSettings::getInstance().showEmojiPopupChanges() | rpl::to_empty,
+		AyuSettings::getInstance().channelBottomButtonChanges() | rpl::to_empty,
+		AyuSettings::getInstance().removeMessageTailChanges() | rpl::to_empty
+	) | rpl::on_next([=] {
+		refreshSendGiftToggle();
+		refreshAttachBotsMenu();
+		updateHistoryGeometry();
+		updateControlsVisibility();
+		updateControlsGeometry();
+		this->update();
+	}, lifetime());
+
+	AyuSettings::getInstance().translationProviderChanges(
+	) | rpl::on_next([=](TranslationProvider) {
+		if (_history) {
+			for (const auto &block : _history->blocks) {
+				for (const auto &view : block->messages) {
+					const auto item = view->data();
+					if (item->Has<HistoryMessageTranslation>()) {
+						item->removeTranslationBit();
+						_history->owner().requestItemTextRefresh(item);
+					}
+				}
+			}
 		}
 	}, lifetime());
 
@@ -998,7 +1148,8 @@ HistoryWidget::HistoryWidget(
 		if (flags & PeerUpdateFlag::Migration) {
 			handlePeerMigration();
 		}
-		if (flags & PeerUpdateFlag::Notifications) {
+		if (flags & (PeerUpdateFlag::Notifications
+				| PeerUpdateFlag::DiscussionLink)) {
 			updateNotifyControls();
 		}
 		if (flags & PeerUpdateFlag::UnavailableReason) {
@@ -1115,6 +1266,10 @@ HistoryWidget::HistoryWidget(
 	) | rpl::on_next([=] {
 		confirmDeleteSelected();
 	}, _topBar->lifetime());
+	_topBar->messageShotSelectionRequest(
+	) | rpl::on_next([=] {
+		messageShotSelected();
+	}, _topBar->lifetime());
 	_topBar->clearSelectionRequest(
 	) | rpl::on_next([=] {
 		clearSelected();
@@ -1160,10 +1315,14 @@ HistoryWidget::HistoryWidget(
 		if (action.replaceMediaOf) {
 		} else if (action.options.scheduled) {
 			cancelReplyOrSuggest(lastKeyboardUsed);
-			crl::on_main(this, [=, history = action.history] {
-				controller->showSection(
-					std::make_shared<HistoryView::ScheduledMemento>(history));
-			});
+			const auto &ghost = AyuSettings::ghost(&controller->session());
+			if (!ghost.isUseScheduledMessages()) {
+				crl::on_main(this, [=, history = action.history]
+				{
+					controller->showSection(
+						std::make_shared<HistoryView::ScheduledMemento>(history));
+				});
+			}
 		} else {
 			fastShowAtEnd(action.history);
 			if (!_justMarkingAsRead
@@ -1199,6 +1358,7 @@ HistoryWidget::HistoryWidget(
 	setupScheduledToggle();
 	setupSendAsToggle();
 	orderWidgets();
+	setupComposeStash();
 	setupShortcuts();
 
 	_attachToggle->setAccessibleName(tr::lng_attach(tr::now));
@@ -1251,10 +1411,13 @@ void HistoryWidget::refreshGiftToChannelShown() {
 	if (!_giftToChannel || !_peer) {
 		return;
 	}
+	// AyuGram: hide gift button almost everywhere
+	// still accessible via the menu in peer window
 	const auto channel = _peer->asChannel();
 	_giftToChannel->setVisible(channel
 		&& channel->isBroadcast()
-		&& channel->stargiftsAvailable());
+		&& channel->stargiftsAvailable()
+		&& isExteraPeer(getBareID(channel)));
 }
 
 void HistoryWidget::refreshDirectMessageShown() {
@@ -1358,6 +1521,9 @@ void HistoryWidget::initVoiceRecordBar() {
 	) | rpl::on_next([=] {
 		_cornerButtons.updateJumpDownVisibility();
 		_cornerButtons.updateUnreadThingsVisibility();
+		if (_stash) {
+			_stash->updateButton();
+		}
 	}, lifetime());
 
 	_voiceRecordBar->errors(
@@ -1413,6 +1579,9 @@ void HistoryWidget::initVoiceRecordBar() {
 		updateAiButtonVisibility();
 		updateSendAsFileVisibility();
 		updateExpandButtonVisibility();
+		if (_stash) {
+			_stash->updateButton();
+		}
 	}, lifetime());
 
 	_voiceRecordBar->hideFast();
@@ -1479,9 +1648,15 @@ void HistoryWidget::offerRichPaste(not_null<const QMimeData*> data) {
 	const auto cursor = _field->textCursor();
 	const auto position = cursor.position();
 	const auto anchor = cursor.anchor();
+	const auto from = std::min(position, anchor);
+	const auto till = std::max(position, anchor);
+	const auto textFrom = int(_field->getTextWithTagsPart(0, from).text.size());
+	const auto textTill = int(_field->getTextWithTagsPart(0, till).text.size());
+	const auto tail = cursor.document()->characterCount() - till;
 	crl::on_main(this, [=] {
 		const auto now = _field->getTextWithTags();
-		if (now == was) {
+		if (now == was
+			|| !_richPasteOfferThrottle.take()) {
 			return;
 		}
 		ChatHelpers::ShowRichPasteToast({
@@ -1495,15 +1670,14 @@ void HistoryWidget::offerRichPaste(not_null<const QMimeData*> data) {
 					if (!unchanged) {
 						return;
 					}
-					const auto &markdown = decision->markdown;
-					const auto from = std::min(position, anchor);
 					_field->setTextWithTags(ChatHelpers::TextWithTagsReplaced(
 						was,
-						from,
-						std::max(position, anchor),
-						markdown));
+						textFrom,
+						textTill,
+						decision->markdown));
 					_field->setCursorPosition(
-						from + int(markdown.text.size()));
+						_field->textCursor().document()->characterCount()
+							- tail);
 					return;
 				}
 				if (unchanged) {
@@ -1609,6 +1783,11 @@ void HistoryWidget::sendTextAsFile(
 		}
 		sendingFilesConfirmed(std::move(bundle), options);
 	}));
+	box->setStashCallbacks(
+		crl::guard(this, [=] { return _stash->canTakeFromBox(); }),
+		crl::guard(this, [=](SendFilesStashed &&stashed) {
+			_stash->takeFromBox(std::move(stashed));
+		}));
 	box->setCancelledCallback(crl::guard(this, [=] {
 		_field->setTextWithTags(restoreText);
 		auto cursor = _field->textCursor();
@@ -2093,6 +2272,8 @@ void HistoryWidget::applyInlineBotQuery(UserData *bot, const QString &query) {
 			_inlineBot = bot;
 			_inlineLookingUpBot = false;
 			inlineBotChanged();
+		} else if (Nagram::Links::AutoInlineBotEnabled()) {
+			inlineBotChanged();
 		}
 		if (!_inlineResults) {
 			_inlineResults.create(this, controller());
@@ -2251,6 +2432,13 @@ bool HistoryWidget::suppressSendAction() const {
 }
 
 void HistoryWidget::fieldChanged() {
+	if (_stashHintManager) {
+		const auto save = bool(
+			_textUpdateEvents & TextUpdateEvent::SaveDraft);
+		const auto sendTyping = bool(
+			_textUpdateEvents & TextUpdateEvent::SendTyping);
+		_stashHintManager->trackChange(save && sendTyping);
+	}
 	const auto updateTyping = (_textUpdateEvents
 		& TextUpdateEvent::SendTyping);
 
@@ -2492,14 +2680,16 @@ void HistoryWidget::fileChosen(ChatHelpers::FileChosen &&data) {
 							options);
 						return;
 					}
-					controller()->sendingAnimation().appendSending(from);
+					const auto effectiveFrom = options.scheduled
+						? Ui::MessageSendingAnimationFrom() : from;
+					controller()->sendingAnimation().appendSending(effectiveFrom);
 					auto messageToSend = Api::MessageToSend(
 						prepareSendAction(options));
 					messageToSend.textWithTags = std::move(caption);
 					sendExistingDocument(
 						document,
 						std::move(messageToSend),
-						from.localId);
+						effectiveFrom.localId);
 				}));
 			return;
 		}
@@ -2711,6 +2901,13 @@ void HistoryWidget::setupShortcuts() {
 				}
 				return true;
 			});
+		_stash
+			&& _stash->canExchange()
+			&& request->check(Command::StashMessage, 1)
+			&& request->handle([=] {
+				_stash->exchange();
+				return true;
+			});
 		if (showRecordButton()
 			&& _canSendMessages
 			&& _joinChannel->isHidden()
@@ -2745,6 +2942,131 @@ void HistoryWidget::setupShortcuts() {
 			});
 		}
 	}, lifetime());
+}
+
+void HistoryWidget::setupComposeStash() {
+	using namespace HistoryView::Controls;
+	_stash = std::make_unique<StashManager>(StashManagerDescriptor{
+		.session = &session(),
+		.buttons = &_cornerButtons,
+		.show = controller()->uiShow(),
+		.history = [=] { return _history; },
+		.key = [] { return Data::DraftKey::Local(MsgId(), PeerId()); },
+		.allowed = [=] { return canUseComposeStash(); },
+		.hasContent = [=] { return hasStashableContent(); },
+		.canSendTexts = [=] { return _canSendTexts; },
+		.take = [=] { return takeComposeStash(); },
+		.apply = [=](Data::ComposeStash &&stash) {
+			applyComposeStash(std::move(stash));
+		},
+		.suggest = [=] { return suggestOptions(); },
+		.clearComposer = [=] {
+			cancelReplyOrSuggest();
+			updateForwarding();
+			saveDraftWithTextNow();
+		},
+		.openFiles = [=](Ui::PreparedList &list) -> SendFilesBox* {
+			if (showSendingFilesError(list)) {
+				return nullptr;
+			}
+			return confirmSendingFiles(std::move(list), QString())
+				? _sendFilesBox.data()
+				: nullptr;
+		},
+		.filesError = [=](const Ui::PreparedList &list) {
+			return showSendingFilesError(list);
+		},
+		.menuDetails = [=] { return sendMenuDetails(); },
+		.send = [=](Api::SendOptions options) { send(options); },
+	});
+}
+
+bool HistoryWidget::canUseComposeStash() const {
+	return canWriteMessage()
+		&& !_editMsgId
+		&& !_chooseTheme
+		&& !_voiceRecordBar->isActive();
+}
+
+bool HistoryWidget::hasStashableContent() const {
+	return _history
+		&& (!_field->empty()
+			|| _replyTo
+			|| _suggestOptions
+			|| readyToForward()
+			|| shownRichMessage());
+}
+
+std::unique_ptr<Data::ComposeStash> HistoryWidget::takeComposeStash() {
+	Expects(_history != nullptr);
+
+	if (!hasStashableContent()) {
+		return nullptr;
+	}
+	auto result = std::make_unique<Data::ComposeStash>();
+	if (const auto draft = shownRichMessage() ? cloudDraft() : nullptr) {
+		result->draft = *draft;
+		result->draft.saveRequestId = 0;
+		clearRichDraft();
+	} else {
+		result->draft = Data::Draft(
+			_field,
+			_replyTo,
+			suggestOptions(),
+			_preview ? _preview->draft() : Data::WebPageDraft());
+		clearFieldText();
+		if (_preview) {
+			_preview->apply({ .removed = true });
+		}
+	}
+	cancelReplyOrSuggest();
+	result->forward = _history->forwardDraft(MsgId(), PeerId());
+	if (!result->forward.ids.empty()) {
+		_history->setForwardDraft(MsgId(), PeerId(), {});
+		updateForwarding();
+	}
+	saveDraftWithTextNow();
+	saveCloudDraft();
+	if (_stashHintManager) {
+		_stashHintManager->markUsed();
+	}
+	return result;
+}
+
+void HistoryWidget::applyComposeStash(Data::ComposeStash &&stash) {
+	Expects(_history != nullptr);
+
+	if (stash.draft.hasRichMessage()) {
+		_history->clearLocalDraft(MsgId(), PeerId());
+		const auto cloud = _history->createCloudDraft(
+			MsgId(),
+			PeerId(),
+			&stash.draft);
+		applyDraft();
+		if (cloud) {
+			session().api().saveDraftToCloud(not_null{ _history }, *cloud);
+		}
+	} else {
+		const auto reply = stash.draft.reply;
+		_history->setDraft(
+			Data::DraftKey::Local(MsgId(), PeerId()),
+			std::make_unique<Data::Draft>(std::move(stash.draft)));
+		if (!applyDraft() && reply) {
+			replyToMessage(reply);
+		}
+		saveDraftWithTextNow();
+		saveCloudDraft();
+	}
+	if (!stash.forward.ids.empty()) {
+		_history->setForwardDraft(
+			MsgId(),
+			PeerId(),
+			std::move(stash.forward));
+		updateForwarding();
+	}
+	if (_stashHintManager) {
+		_stashHintManager->markUsed();
+	}
 }
 
 void HistoryWidget::setupGiftToChannelButton() {
@@ -3185,6 +3507,7 @@ void HistoryWidget::showHistory(
 		destroyUnreadBarOnClose();
 		_sponsoredMessageBar = nullptr;
 		_pinnedBar = nullptr;
+		_hidingPinnedBar = nullptr;
 		_translateBar = nullptr;
 		_pinnedTracker = nullptr;
 		_groupCallBar = nullptr;
@@ -3330,6 +3653,9 @@ void HistoryWidget::showHistory(
 		refreshSendGiftToggle();
 		refreshSendAsToggle();
 
+		_showAtMsgId = Nagram::Chats::RestoreReadingPosition(
+			_history,
+			_showAtMsgId);
 		if (_showAtMsgId == ShowAtUnreadMsgId) {
 			if (_history->scrollTopItem) {
 				_showAtMsgId = _history->showAtMsgId;
@@ -3507,12 +3833,14 @@ void HistoryWidget::setHistory(History *history) {
 	}
 	_pullToNext->setHistory(history);
 
+	const auto &settings = AyuSettings::getInstance();
+
 	const auto was = _attachBotsMenu && _history && _history->peer->isUser();
-	const auto now = _attachBotsMenu && history && history->peer->isUser();
+	const auto now = _attachBotsMenu && history && history->peer->isUser() && settings.showAttachPopup();
 	if (was && !now) {
 		_attachToggle->removeEventFilter(_attachBotsMenu.get());
 		_attachBotsMenu->hideFast();
-	} else if (now && !was && !ChatHelpers::ShowPanelOnClick()) {
+	} else if (now && !was) {
 		_attachToggle->installEventFilter(_attachBotsMenu.get());
 	}
 
@@ -3596,6 +3924,9 @@ void HistoryWidget::refreshAttachBotsMenu() {
 	if (!_history) {
 		return;
 	}
+
+	const auto &settings = AyuSettings::getInstance();
+
 	_attachBotsMenu = InlineBots::MakeAttachBotsMenu(
 		this,
 		controller(),
@@ -3614,7 +3945,10 @@ void HistoryWidget::refreshAttachBotsMenu() {
 	}
 	_attachBotsMenu->setOrigin(
 		Ui::PanelAnimation::Origin::BottomLeft);
-	if (!ChatHelpers::ShowPanelOnClick()) {
+	if (settings.showAttachPopup()
+		&& !ChatHelpers::ShowPanelOnClick()
+		&& !Nagram::Compose::Hidden(
+			Nagram::Compose::kDisableAttachHover)) {
 		_attachToggle->installEventFilter(_attachBotsMenu.get());
 	}
 	_attachBotsMenu->heightValue(
@@ -3799,7 +4133,7 @@ void HistoryWidget::updateNotifyControls() {
 		return;
 	}
 
-	_muteUnmute->setText((_history->muted()
+	_muteUnmute->setText(Nagram::Compose::ChannelBottomText(_peer, _history->muted()
 		? tr::lng_channel_unmute(tr::now)
 		: tr::lng_channel_mute(tr::now)).toUpper());
 	if (!session().data().notifySettings().silentPostsUnknown(_peer)) {
@@ -3896,6 +4230,8 @@ void HistoryWidget::refreshScheduledToggle() {
 
 void HistoryWidget::refreshSendGiftToggle() {
 	using Type = Api::DisallowedGiftType;
+
+	const auto &settings = AyuSettings::getInstance();
 	const auto user = _peer ? _peer->asUser() : nullptr;
 	const auto disallowed = user ? user->disallowedGiftTypes() : Type();
 	const auto all = Type::Premium
@@ -3903,10 +4239,12 @@ void HistoryWidget::refreshSendGiftToggle() {
 		| Type::Limited
 		| Type::Unique;
 	const auto has = user
+		&& !Nagram::Compose::Hidden(Nagram::Compose::kHideGiftButton)
 		&& _canSendMessages
 		&& !user->isServiceUser()
 		&& !user->isSelf()
 		&& !user->isBot()
+		&& settings.showGiftButtonInMessageField()
 		&& ((disallowed & Type::SendHide)
 			|| (session().user()->disallowedGiftTypes() & Type::SendHide)
 			|| Data::IsBirthdayToday(user->birthday()))
@@ -4023,6 +4361,8 @@ bool HistoryWidget::canWriteMessage() const {
 }
 
 void HistoryWidget::updateControlsVisibility() {
+	const auto &settings = AyuSettings::getInstance();
+
 	auto fieldDisabledRemoved = (_fieldDisabled != nullptr);
 	auto fieldVisibilityChanged = false;
 	const auto hideExtra = hideExtraButtons();
@@ -4070,6 +4410,9 @@ void HistoryWidget::updateControlsVisibility() {
 	}
 	_cornerButtons.updateJumpDownVisibility();
 	_cornerButtons.updateUnreadThingsVisibility();
+	if (_stash) {
+		_stash->updateButton();
+	}
 	if (!_history || _showAnimation) {
 		hideChildWidgets();
 		return;
@@ -4125,12 +4468,32 @@ void HistoryWidget::updateControlsVisibility() {
 			toggle(_reportMessages);
 		} else if (isBlocked()) {
 			toggle(_unblock);
+			_discuss->hide();
 		} else if (isJoinChannel()) {
 			toggle(_joinChannel);
+			_discuss->hide();
 		} else if (isMuteUnmute()) {
 			toggle(_muteUnmute);
+			if (hasDiscussionGroup()) {
+				if (_discuss->isHidden()) {
+					_discuss->clearState();
+					_discuss->show();
+				}
+			} else {
+				_discuss->hide();
+			}
 		} else if (isBotStart()) {
 			toggle(_botStart);
+			_discuss->hide();
+
+			const auto startToken = _peer->asUser()->botInfo->startToken;
+			if (!startToken.isEmpty()) {
+				const auto shortened = startToken.left(20);
+				const auto s = QString("%1 (%2)").arg(tr::lng_bot_start(tr::now).toUpper()).arg(shortened);
+				_botStart->setText(s);
+			} else {
+				_botStart->setText(tr::lng_bot_start(tr::now).toUpper());
+			}
 		}
 		_kbShown = false;
 		if (_autocomplete) {
@@ -4193,6 +4556,7 @@ void HistoryWidget::updateControlsVisibility() {
 		_botStart->hide();
 		_joinChannel->hide();
 		_muteUnmute->hide();
+		_discuss->hide();
 		_reportMessages->hide();
 		_send->show();
 		updateSendButtonType();
@@ -4228,27 +4592,33 @@ void HistoryWidget::updateControlsVisibility() {
 			_botCommandStart->hide();
 		} else if (_kbReplyTo) {
 			_kbScroll->hide();
-			_tabbedSelectorToggle->show();
+			_tabbedSelectorToggle->setVisible(settings.showEmojiButtonInMessageField()
+				&& !Nagram::Compose::Hidden(
+				Nagram::Compose::kHideEmojiButton));
 			_botKeyboardHide->hide();
 			_botKeyboardShow->hide();
 			_botCommandStart->hide();
 		} else {
 			_kbScroll->hide();
-			_tabbedSelectorToggle->show();
+			_tabbedSelectorToggle->setVisible(settings.showEmojiButtonInMessageField()
+				&& !Nagram::Compose::Hidden(
+				Nagram::Compose::kHideEmojiButton));
 			_botKeyboardHide->hide();
 			if (_keyboard->hasMarkup()) {
 				_botKeyboardShow->show();
 				_botCommandStart->hide();
 			} else {
 				_botKeyboardShow->hide();
-				_botCommandStart->setVisible(_cmdStartShown);
+				_botCommandStart->setVisible(_cmdStartShown && settings.showCommandsButtonInMessageField());
 			}
 		}
 		if (_replaceMedia) {
 			_replaceMedia->show();
 			_attachToggle->hide();
 		} else {
-			_attachToggle->show();
+			_attachToggle->setVisible(settings.showAttachButtonInMessageField()
+				&& !Nagram::Compose::Hidden(
+				Nagram::Compose::kHideAttachButton));
 		}
 		if (_botMenu.button) {
 			_botMenu.button->show();
@@ -4284,7 +4654,9 @@ void HistoryWidget::updateControlsVisibility() {
 			}
 			if (_giftToUser) {
 				const auto was = _giftToUser->isVisible();
-				const auto now = (!_editMsgId) && (!hideExtra);
+				const auto now = (!_editMsgId)
+					&& (!hideExtra)
+					&& settings.showGiftButtonInMessageField();
 				if (was != now) {
 					_giftToUser->setVisible(now);
 					rightButtonsChanged = true;
@@ -4292,7 +4664,9 @@ void HistoryWidget::updateControlsVisibility() {
 			}
 			if (_ttlInfo) {
 				const auto was = _ttlInfo->isVisible();
-				const auto now = (!_editMsgId) && (!hideExtra);
+				const auto now = (!_editMsgId)
+					&& (!hideExtra)
+					&& settings.showAutoDeleteButtonInMessageField();
 				if (was != now) {
 					_ttlInfo->setVisible(now);
 					rightButtonsChanged = true;
@@ -4303,7 +4677,8 @@ void HistoryWidget::updateControlsVisibility() {
 			}
 		}
 		if (_sendAs) {
-			_sendAs->show();
+			_sendAs->setVisible(!Nagram::Compose::Hidden(
+				Nagram::Compose::kHideSendAsButton));
 		}
 		updateFieldPlaceholder();
 
@@ -4333,6 +4708,7 @@ void HistoryWidget::updateControlsVisibility() {
 		_botStart->hide();
 		_joinChannel->hide();
 		_muteUnmute->hide();
+		_discuss->hide();
 		_reportMessages->hide();
 		_attachToggle->hide();
 		if (_silent) {
@@ -4637,7 +5013,10 @@ void HistoryWidget::messagesReceived(
 		not_null<PeerData*> peer,
 		const MTPmessages_Messages &messages,
 		int requestId) {
-	Expects(_history != nullptr);
+	// Expects(_history != nullptr);
+	if (!_history || !_peer) {
+		return; // AyuGram: fix crash when using `saveDeletedMessages`
+	}
 
 	const auto toMigrated = (peer == _peer->migrateFrom());
 	if (peer != _peer && !toMigrated) {
@@ -5667,6 +6046,12 @@ void HistoryWidget::send(Api::SendOptions options) {
 	if (_voiceRecordBar->isListenState()) {
 		_voiceRecordBar->requestToSendWithOptions(options);
 		return;
+	} else if (Nagram::Compose::TranslateBeforeSend(
+			controller()->uiShow(),
+			_history->peer,
+			_field,
+			crl::guard(this, [=] { send(options); }))) {
+		return;
 	}
 
 	sendTextWithTags(
@@ -6022,6 +6407,27 @@ void HistoryWidget::toggleMuteUnmute() {
 		.forever = !wasMuted,
 	};
 	session().data().notifySettings().update(_peer, muteForSeconds);
+}
+
+void HistoryWidget::goToDiscussionGroup() {
+	const auto channel = _peer ? _peer->asChannel() : nullptr;
+	const auto chat = channel ? channel->discussionLink() : nullptr;
+	if (!chat) {
+		return;
+	}
+	controller()->showPeerHistory(chat, Window::SectionShow::Way::Forward);
+}
+
+bool HistoryWidget::hasDiscussionGroup() const {
+	const auto &settings = AyuSettings::getInstance();
+	if (settings.channelBottomButton() != ChannelBottomButton::DiscussWithFallback) {
+		return false;
+	}
+
+	const auto channel = _peer ? _peer->asChannel() : nullptr;
+	return channel
+		&& channel->isBroadcast()
+		&& (channel->flags() & ChannelDataFlag::HasLink);
 }
 
 void HistoryWidget::reportSelectedMessages() {
@@ -6441,6 +6847,14 @@ void HistoryWidget::sendBotCommand(
 	if (_peer != request.peer.get()) {
 		return;
 	}
+	if (!request.replyTo
+		&& _canSendTexts
+		&& Nagram::ForDevice().Get(Nagram::Compose::kBotCommandsToDraft)) {
+		insertBotCommand(Bot::WrapCommandInChat(
+			_peer, request.command, request.context));
+		setInnerFocus();
+		return;
+	}
 
 	const auto action = prepareSendAction(options);
 
@@ -6684,7 +7098,13 @@ bool HistoryWidget::isChoosingTheme() const {
 }
 
 bool HistoryWidget::isMuteUnmute() const {
+	const auto &settings = AyuSettings::getInstance();
+	if (settings.channelBottomButton() == ChannelBottomButton::Hidden) {
+		return false;
+	}
+
 	return _peer
+		&& Nagram::Compose::ChannelBottomVisible(_peer)
 		&& ((_peer->isBroadcast() && !_peer->asChannel()->canPostMessages())
 			|| (_peer->isGigagroup() && !Data::CanSendAnything(_peer))
 			|| _peer->isRepliesChat()
@@ -6696,7 +7116,9 @@ bool HistoryWidget::isSearching() const {
 }
 
 bool HistoryWidget::showRecordButton() const {
-	return (_recordAvailability != Webrtc::RecordAvailability::None)
+	return AyuSettings::getInstance().showMicrophoneButtonInMessageField()
+		&& !Nagram::Compose::Hidden(Nagram::Compose::kHideRecordingButton)
+		&& (_recordAvailability != Webrtc::RecordAvailability::None)
 		&& !_voiceRecordBar->isListenState()
 		&& !_voiceRecordBar->isRecordingByAnotherBar()
 		&& !hasSendableContent()
@@ -6706,7 +7128,9 @@ bool HistoryWidget::showRecordButton() const {
 }
 
 bool HistoryWidget::showInlineBotCancel() const {
-	return _inlineBot && !_inlineLookingUpBot;
+	return _inlineBot
+		&& !_inlineLookingUpBot
+		&& !Nagram::Links::AutomaticInlineQuery(_field);
 }
 
 bool HistoryWidget::showStopButton() const {
@@ -6799,7 +7223,8 @@ bool HistoryWidget::updateCmdStartShown() {
 		? _peer->asUser()
 		: nullptr;
 	auto cmdStartShown = false;
-	if (_history
+	if (!Nagram::Compose::Hidden(Nagram::Compose::kHideBotCommandButton)
+		&& _history
 		&& _peer
 		&& (false
 			|| (_peer->isChat() && !_peer->asChat()->botCommands().empty())
@@ -6818,7 +7243,8 @@ bool HistoryWidget::updateCmdStartShown() {
 	constexpr auto kSmallMenuAfter = 10;
 	const auto commandsChanged = (_cmdStartShown != cmdStartShown);
 	auto buttonChanged = false;
-	if (!bot
+	if (Nagram::Compose::Hidden(Nagram::Compose::kHideBotMenu)
+		|| !bot
 		|| (bot->botInfo->botMenuButtonUrl.isEmpty()
 			&& bot->botInfo->commands.empty())) {
 		buttonChanged = (_botMenu.button != nullptr);
@@ -6988,6 +7414,8 @@ void HistoryWidget::showKeyboardHideButton() {
 }
 
 void HistoryWidget::toggleKeyboard(bool manual) {
+	const auto &settings = AyuSettings::getInstance();
+
 	const auto fieldEnabled = canWriteMessage() && !_showAnimation;
 	if (_kbShown || _kbReplyTo) {
 		_botKeyboardHide->hide();
@@ -7024,7 +7452,7 @@ void HistoryWidget::toggleKeyboard(bool manual) {
 		_botKeyboardHide->hide();
 		_botKeyboardShow->hide();
 		if (fieldEnabled) {
-			_botCommandStart->show();
+			SWITCH_BUTTON(_botCommandStart, settings.showCommandsButtonInMessageField());
 		}
 		_kbScroll->hide();
 		_kbShown = false;
@@ -7077,8 +7505,10 @@ void HistoryWidget::toggleKeyboard(bool manual) {
 	updateFieldPlaceholder();
 	if (_botKeyboardHide->isHidden()
 		&& canWriteMessage()
-		&& !_showAnimation) {
-		_tabbedSelectorToggle->show();
+		&& !_showAnimation
+		&& settings.showEmojiButtonInMessageField()) {
+		_tabbedSelectorToggle->setVisible(!Nagram::Compose::Hidden(
+			Nagram::Compose::kHideEmojiButton));
 	} else {
 		_tabbedSelectorToggle->hide();
 	}
@@ -7253,7 +7683,8 @@ bool HistoryWidget::textExceedsMaxSize() const {
 }
 
 void HistoryWidget::updateAiButtonVisibility() {
-	const auto hidden = !hasEnoughLinesForAi()
+	const auto hidden = Nagram::Compose::Hidden(Nagram::Compose::kHideAiButton)
+		|| !hasEnoughLinesForAi()
 		|| !_send->isVisible()
 		|| !_field->isVisible();
 	if (_aiButton->isHidden() == hidden) {
@@ -7393,6 +7824,8 @@ void HistoryWidget::updateSendAsFileGeometry() {
 }
 
 void HistoryWidget::moveFieldControls() {
+	const auto &settings = AyuSettings::getInstance();
+
 	auto keyboardHeight = 0;
 	auto bottom = height();
 	auto maxKeyboardHeight = computeMaxFieldHeight() - fieldHeight();
@@ -7418,10 +7851,14 @@ void HistoryWidget::moveFieldControls() {
 		_replaceMedia->moveToLeft(left, buttonsBottom);
 	}
 	_attachToggle->moveToLeft(left, buttonsBottom);
-	left += _attachToggle->width();
+	if (_replaceMedia || !_attachToggle->isHidden()) {
+		left += _attachToggle->width();
+	}
 	if (_sendAs) {
 		_sendAs->moveToLeft(left, buttonsBottom);
-		left += _sendAs->width();
+		if (!_sendAs->isHidden()) {
+			left += _sendAs->width();
+		}
 	}
 	const auto fieldTop = bottom - fieldHeight() - st::historySendPadding;
 	_field->moveToLeft(left, fieldTop);
@@ -7432,18 +7869,21 @@ void HistoryWidget::moveFieldControls() {
 			bottom - fieldHeight() - st::historySendPadding);
 	}
 	auto right = st::historySendRight;
-	_send->moveToRight(right, buttonsBottom); right += _send->width();
+	_send->moveToRight(right, buttonsBottom);
+	right += _send->width();
 	_voiceRecordBar->moveToLeft(0, bottom - _voiceRecordBar->height());
 	_tabbedSelectorToggle->moveToRight(right, buttonsBottom);
 	_botKeyboardHide->moveToRight(right, buttonsBottom);
-	right += _botKeyboardHide->width();
+	if (_kbShown || !_tabbedSelectorToggle->isHidden()) {
+		right += _botKeyboardHide->width();
+	}
 	_botKeyboardShow->moveToRight(right, buttonsBottom);
 	_botCommandStart->moveToRight(right, buttonsBottom);
 	if (_silent) {
 		_silent->moveToRight(right, buttonsBottom);
 	}
 	const auto kbShowShown = _history && !_kbShown && _keyboard->hasMarkup();
-	if (kbShowShown || _cmdStartShown || _silent) {
+	if (kbShowShown || (_cmdStartShown && settings.showCommandsButtonInMessageField()) || _silent) {
 		right += _botCommandStart->width();
 	}
 	if (_toggleSuggestPost) {
@@ -7490,6 +7930,7 @@ void HistoryWidget::moveFieldControls() {
 	_unblock->setGeometry(fullWidthButtonRect);
 	_joinChannel->setGeometry(fullWidthButtonRect);
 	_muteUnmute->setGeometry(fullWidthButtonRect);
+	_discuss->setGeometry(fullWidthButtonRect);
 	_reportMessages->setGeometry(fullWidthButtonRect);
 	if (_sendRestriction) {
 		_sendRestriction->setGeometry(fullWidthButtonRect);
@@ -7497,22 +7938,26 @@ void HistoryWidget::moveFieldControls() {
 }
 
 void HistoryWidget::updateFieldSize() {
+	const auto &settings = AyuSettings::getInstance();
+
 	const auto kbShowShown = _history && !_kbShown && _keyboard->hasMarkup();
 	auto fieldWidth = width()
-		- _attachToggle->width()
+		- ((_replaceMedia || !_attachToggle->isHidden())
+			? _attachToggle->width() : 0)
 		- st::historySendRight
 		- _send->width()
-		- _tabbedSelectorToggle->width();
+		- ((_kbShown || !_tabbedSelectorToggle->isHidden())
+			? _tabbedSelectorToggle->width() : 0);
 	if (_botMenu.button) {
 		fieldWidth -= st::historyBotMenuSkip + _botMenu.button->width();
 	}
-	if (_sendAs) {
+	if (_sendAs && !_sendAs->isHidden()) {
 		fieldWidth -= _sendAs->width();
 	}
 	if (kbShowShown) {
 		fieldWidth -= _botKeyboardShow->width();
 	}
-	if (_cmdStartShown) {
+	if (_cmdStartShown && settings.showCommandsButtonInMessageField()) {
 		fieldWidth -= _botCommandStart->width();
 	}
 	if (_silent && !_silent->isHidden()) {
@@ -7527,7 +7972,7 @@ void HistoryWidget::updateFieldSize() {
 	if (_scheduled && !_scheduled->isHidden()) {
 		fieldWidth -= _scheduled->width();
 	}
-	if (_ttlInfo && _ttlInfo->isVisible()) {
+	if (_ttlInfo && _ttlInfo->isVisible() && settings.showAutoDeleteButtonInMessageField()) {
 		fieldWidth -= _ttlInfo->width();
 	}
 
@@ -7589,7 +8034,7 @@ void HistoryWidget::updateFieldPlaceholder() {
 	_voiceRecordBar->setPauseInsteadSend(_history
 		&& _history->peer->starsPerMessageChecked() > 0);
 
-	if (!_editMsgId && _inlineBot && !_inlineLookingUpBot) {
+	if (!_editMsgId && showInlineBotCancel()) {
 		_field->setPlaceholder(
 			rpl::single(_inlineBot->botInfo->inlinePlaceholder.mid(1)),
 			_inlineBotUsername.size() + 2);
@@ -7645,7 +8090,7 @@ void HistoryWidget::updateFieldPlaceholder() {
 			} else if (channel->adminRights() & ChatAdminRight::Anonymous) {
 				return tr::lng_send_anonymous_ph();
 			} else {
-				return tr::lng_message_ph();
+				return Nagram::Compose::InputPlaceholder(peer);
 			}
 		} else if (const auto user = peer->asUser()) {
 			if (const auto &info = user->botInfo) {
@@ -7653,9 +8098,9 @@ void HistoryWidget::updateFieldPlaceholder() {
 					return tr::lng_bot_off_thread_ph();
 				}
 			}
-			return tr::lng_message_ph();
+			return Nagram::Compose::InputPlaceholder(peer);
 		} else {
-			return tr::lng_message_ph();
+			return Nagram::Compose::InputPlaceholder(peer);
 		}
 	}());
 	updateSendButtonType();
@@ -7829,8 +8274,10 @@ bool HistoryWidget::confirmSendingFiles(
 		text,
 		_peer,
 		Api::SendType::Normal,
-		sendMenuDetails());
+		sendMenuDetails(),
+		[=](const TextWithTags &text) { _field->setTextWithTags(text); });
 	box->setReplyTo(replyTo());
+	_sendFilesBox = box.data();
 	_field->setTextWithTags({});
 	box->setConfirmedCallback(crl::guard(this, [=](
 			std::shared_ptr<Ui::PreparedBundle> bundle,
@@ -7841,6 +8288,11 @@ bool HistoryWidget::confirmSendingFiles(
 		}
 		sendingFilesConfirmed(std::move(bundle), options);
 	}));
+	box->setStashCallbacks(
+		crl::guard(this, [=] { return _stash->canTakeFromBox(); }),
+		crl::guard(this, [=](SendFilesStashed &&stashed) {
+			_stash->takeFromBox(std::move(stashed));
+		}));
 	box->setCancelledCallback(crl::guard(this, [=] {
 		_field->setTextWithTags(text);
 		auto cursor = _field->textCursor();
@@ -8021,6 +8473,7 @@ void HistoryWidget::handleHistoryChange(not_null<const History*> history) {
 			const auto botStart = isBotStart();
 			const auto joinChannel = isJoinChannel();
 			const auto muteUnmute = isMuteUnmute();
+			const auto discuss = muteUnmute && hasDiscussionGroup();
 			const auto reportMessages = isReportMessages();
 			const auto update = false
 				|| (_reportMessages->isHidden() == reportMessages)
@@ -8036,7 +8489,7 @@ void HistoryWidget::handleHistoryChange(not_null<const History*> history) {
 					&& !unblock
 					&& !botStart
 					&& !joinChannel
-					&& _muteUnmute->isHidden() == muteUnmute);
+					&& (_muteUnmute->isHidden() == muteUnmute || _discuss->isHidden() == discuss));
 			if (update) {
 				updateControlsVisibility();
 				updateControlsGeometry();
@@ -8101,19 +8554,20 @@ void HistoryWidget::resizeEvent(QResizeEvent *e) {
 void HistoryWidget::updateControlsGeometry() {
 	const auto width = this->width();
 
-	_topBar->resizeToWidth(width);
-	_topBar->moveToLeft(0, 0);
+	const auto inset = 0;
+	_topBar->resizeToWidth(std::max(width - 2 * inset, 0));
+	_topBar->moveToLeft(inset, inset);
 
 	const auto tabsLeftSkip = _subsectionTabs
 		? _subsectionTabs->leftSkip()
 		: 0;
-	const auto innerWidth = width - tabsLeftSkip;
+	const auto innerWidth = width - tabsLeftSkip - 2 * inset;
 
 	_voiceRecordBar->resizeToWidth(width);
 
 	moveFieldControls();
 
-	_topBars->move(tabsLeftSkip, _topBar->bottomNoMargins()
+	_topBars->move(tabsLeftSkip + inset, _topBar->bottomNoMargins() + inset
 		+ (_subsectionTabs ? _subsectionTabs->topSkip() : 0));
 	const auto groupCallTop = 0;
 	if (_groupCallBar) {
@@ -8128,12 +8582,13 @@ void HistoryWidget::updateControlsGeometry() {
 	}
 	const auto pinnedBarTop = requestsTop
 		+ (_requestsBar ? _requestsBar->height() : 0);
-	if (_pinnedBar) {
-		_pinnedBar->move(0, pinnedBarTop);
-		_pinnedBar->resizeToWidth(innerWidth);
+	const auto pinnedBar = visiblePinnedBar();
+	if (pinnedBar) {
+		pinnedBar->move(0, pinnedBarTop);
+		pinnedBar->resizeToWidth(innerWidth);
 	}
 	const auto sponsoredMessageBarTop = pinnedBarTop
-		+ (_pinnedBar ? _pinnedBar->height() : 0);
+		+ (pinnedBar ? pinnedBar->height() : 0);
 	if (_sponsoredMessageBar) {
 		_sponsoredMessageBar->move(0, sponsoredMessageBarTop);
 		_sponsoredMessageBar->resizeToWidth(innerWidth);
@@ -8371,7 +8826,9 @@ void HistoryWidget::updateSendRestriction() {
 		return;
 	}
 	_sendRestrictionKey = restriction.text;
-	if (!restriction) {
+	if (AyuForward::isForwarding(_peer->id)) {
+		_sendRestriction = AyuForwardWriteRestriction(this, _peer->id, session());
+	} else if (!restriction) {
 		_sendRestriction = nullptr;
 	} else if (restriction.frozen) {
 		const auto show = controller()->uiShow();
@@ -8430,8 +8887,8 @@ void HistoryWidget::updateHistoryGeometry(
 	if (_sponsoredMessageBar) {
 		newScrollHeight -= _sponsoredMessageBar->height();
 	}
-	if (_pinnedBar) {
-		newScrollHeight -= _pinnedBar->height();
+	if (const auto pinnedBar = visiblePinnedBar()) {
+		newScrollHeight -= pinnedBar->height();
 	}
 	if (_groupCallBar) {
 		newScrollHeight -= _groupCallBar->height();
@@ -8460,7 +8917,7 @@ void HistoryWidget::updateHistoryGeometry(
 		newScrollHeight -= _unblock->height();
 	} else {
 		if (editingMessage() || _canSendMessages) {
-			newScrollHeight -= (fieldHeight() + 2 * st::historySendPadding);
+			newScrollHeight -= fieldHeight() + 2 * st::historySendPadding;
 		} else if (_sendRestriction) {
 			newScrollHeight -= _sendRestriction->height();
 		}
@@ -8748,6 +9205,8 @@ void HistoryWidget::updateBotKeyboard(History *h, bool force) {
 		return;
 	}
 
+	const auto &settings = AyuSettings::getInstance();
+
 	const auto wasVisible = _kbShown || _kbReplyTo;
 	const auto wasMsgId = _keyboard->forMsgId();
 	auto changed = false;
@@ -8798,7 +9257,9 @@ void HistoryWidget::updateBotKeyboard(History *h, bool force) {
 					showKeyboardHideButton();
 				} else {
 					_kbScroll->hide();
-					_tabbedSelectorToggle->show();
+					_tabbedSelectorToggle->setVisible(settings.showEmojiButtonInMessageField()
+				&& !Nagram::Compose::Hidden(
+						Nagram::Compose::kHideEmojiButton));
 					_botKeyboardHide->hide();
 				}
 				_botKeyboardShow->hide();
@@ -8822,7 +9283,9 @@ void HistoryWidget::updateBotKeyboard(History *h, bool force) {
 		} else {
 			if (!_showAnimation) {
 				_kbScroll->hide();
-				_tabbedSelectorToggle->show();
+				_tabbedSelectorToggle->setVisible(settings.showEmojiButtonInMessageField()
+				&& !Nagram::Compose::Hidden(
+					Nagram::Compose::kHideEmojiButton));
 				_botKeyboardHide->hide();
 				_botKeyboardShow->show();
 				_botCommandStart->hide();
@@ -8841,10 +9304,12 @@ void HistoryWidget::updateBotKeyboard(History *h, bool force) {
 	} else {
 		if (!_scroll->isHidden()) {
 			_kbScroll->hide();
-			_tabbedSelectorToggle->show();
+			_tabbedSelectorToggle->setVisible(settings.showEmojiButtonInMessageField()
+				&& !Nagram::Compose::Hidden(
+				Nagram::Compose::kHideEmojiButton));
 			_botKeyboardHide->hide();
 			_botKeyboardShow->hide();
-			_botCommandStart->setVisible(!_editMsgId);
+			_botCommandStart->setVisible(!_editMsgId && settings.showCommandsButtonInMessageField());
 		}
 		_field->setMaxHeight(computeMaxFieldHeight());
 		_kbShown = false;
@@ -8889,13 +9354,14 @@ void HistoryWidget::botCallbackSent(not_null<HistoryItem*> item) {
 }
 
 int HistoryWidget::computeMaxFieldHeight() const {
+	const auto pinnedBar = visiblePinnedBar();
 	const auto available = height()
 		- _topBar->height()
 		- (_paysStatus ? _paysStatus->bar().height() : 0)
 		- (_contactStatus ? _contactStatus->bar().height() : 0)
 		- (_businessBotStatus ? _businessBotStatus->bar().height() : 0)
 		- (_sponsoredMessageBar ? _sponsoredMessageBar->height() : 0)
-		- (_pinnedBar ? _pinnedBar->height() : 0)
+		- (pinnedBar ? pinnedBar->height() : 0)
 		- (_groupCallBar ? _groupCallBar->height() : 0)
 		- (_requestsBar ? _requestsBar->height() : 0)
 		- ((_editMsgId
@@ -9326,6 +9792,12 @@ void HistoryWidget::sendInlineResult(InlineBots::ResultSelected result) {
 	if (!checked) {
 		return;
 	}
+	if (Nagram::Compose::ConfirmBeforeSend(
+			controller()->uiShow(),
+			result.result->document(),
+			crl::guard(this, [=] { sendInlineResult(result); }))) {
+		return;
+	}
 
 	controller()->sendingAnimation().appendSending(
 		result.messageSendingFrom);
@@ -9634,8 +10106,13 @@ void HistoryWidget::clearHidingPinnedBar() {
 	_hidingPinnedBar = nullptr;
 }
 
+Ui::PinnedBar *HistoryWidget::visiblePinnedBar() const {
+	return _pinnedBar ? _pinnedBar.get() : _hidingPinnedBar.get();
+}
+
 void HistoryWidget::checkMessagesTTL() {
-	if (!_peer || !_peer->messagesTTL()) {
+	if (Nagram::Compose::Hidden(Nagram::Compose::kHideAutoDeleteButton)
+		|| !_peer || !_peer->messagesTTL()) {
 		if (_ttlInfo) {
 			_ttlInfo = nullptr;
 			updateControlsGeometry();
@@ -9982,6 +10459,14 @@ bool HistoryWidget::sendExistingDocument(
 		if (!checked) {
 			return false;
 		}
+	}
+	if (Nagram::Compose::ConfirmBeforeSend(
+			controller()->uiShow(),
+			document,
+			crl::guard(this, [=] {
+				sendExistingDocument(document, messageToSend, localId);
+			}))) {
+		return false;
 	}
 
 	Api::SendExistingDocument(
@@ -10724,8 +11209,8 @@ void HistoryWidget::handlePeerUpdate() {
 	if (!_showAnimation) {
 		const auto blockChanged = (_unblock->isHidden() == isBlocked());
 		if (blockChanged
-			|| (!isBlocked()
-				&& (_joinChannel->isHidden() == isJoinChannel()))) {
+			|| ((!isBlocked() && _joinChannel->isHidden() == isJoinChannel())
+				|| (isMuteUnmute() && _discuss->isHidden() == hasDiscussionGroup()))) {
 			resize = true;
 		}
 		if (updateCanSendMessage()) {
@@ -10825,6 +11310,16 @@ void HistoryWidget::confirmDeleteSelected() {
 		}));
 		controller()->show(std::move(box));
 	}
+}
+
+void HistoryWidget::messageShotSelected() {
+	if (!_list) {
+		return;
+	}
+
+	AyuFeatures::MessageShot::Wrapper(
+		_list.data(),
+		[=] { clearSelected(); });
 }
 
 void HistoryWidget::escape() {
@@ -11132,6 +11627,7 @@ void HistoryWidget::drawField(Painter &p, const QRect &rect) {
 	p.setInactive(
 		controller()->isGifPausedAtLeastFor(Window::GifPauseReason::Any));
 	p.fillRect(myrtlrect(0, backy, width(), backh), st::historyReplyBg);
+
 
 	const auto media = (!_previewDrawPreview && drawMsgText)
 		? drawMsgText->media()

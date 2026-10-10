@@ -38,6 +38,7 @@ struct ComposeAiBoxArgs {
 	std::shared_ptr<const Iv::RichPage> richSource;
 	Fn<void(std::shared_ptr<const Iv::RichPage>)> applyRich;
 	bool allowPrompt = false;
+	Fn<bool()> canApply;
 };
 
 void ComposeAiBox(not_null<Ui::GenericBox*> box, ComposeAiBoxArgs &&args);

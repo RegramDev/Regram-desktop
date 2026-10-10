@@ -20,7 +20,7 @@ enum {
 
 	PreloadHeightsCount = 3, // when 3 screens to scroll left make a preload request
 
-	SearchPeopleLimit = 5,
+	SearchPeopleLimit = 20,
 
 	WebPageUserId = 701000,
 
@@ -34,29 +34,13 @@ enum {
 
 inline const char *cGUIDStr() {
 #ifndef OS_MAC_STORE
-	static const char *gGuidStr = "{87A94AB0-E370-4cde-98D3-ACC110C5967D}";
+	static const char *gGuidStr = "{07396520-8667-55C3-AFAA-1FCC7EA0EF1C}";
 #else // OS_MAC_STORE
-	static const char *gGuidStr = "{E51FB841-8C0B-4EF9-9E9E-5A0078567627}";
+	static const char *gGuidStr = "{0EFD5A02-7439-59EE-94BB-67478CF9BACA}";
 #endif // OS_MAC_STORE
 
 	return gGuidStr;
 }
-
-static const char *UpdatesPublicKey = "\
------BEGIN RSA PUBLIC KEY-----\n\
-MIGJAoGBAMA4ViQrjkPZ9xj0lrer3r23JvxOnrtE8nI69XLGSr+sRERz9YnUptnU\n\
-BZpkIfKaRcl6XzNJiN28cVwO1Ui5JSa814UAiDHzWUqCaXUiUEQ6NmNTneiGx2sQ\n\
-+9PKKlb8mmr3BB9A45ZNwLT6G9AK3+qkZLHojeSA+m84/a6GP4svAgMBAAE=\n\
------END RSA PUBLIC KEY-----\
-";
-
-static const char *UpdatesPublicBetaKey = "\
------BEGIN RSA PUBLIC KEY-----\n\
-MIGJAoGBALWu9GGs0HED7KG7BM73CFZ6o0xufKBRQsdnq3lwA8nFQEvmdu+g/I1j\n\
-0LQ+0IQO7GW4jAgzF/4+soPDb6uHQeNFrlVx1JS9DZGhhjZ5rf65yg11nTCIHZCG\n\
-w/CVnbwQOw0g5GBwwFV3r0uTTvy44xx8XXxk+Qknu4eBCsmrAFNnAgMBAAE=\n\
------END RSA PUBLIC KEY-----\
-";
 
 #if defined TDESKTOP_API_ID && defined TDESKTOP_API_HASH
 

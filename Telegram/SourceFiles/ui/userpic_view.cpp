@@ -6,12 +6,17 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/userpic_view.h"
+#include "regram/nagram/interface/roundness.h"
 
 #include "ui/empty_userpic.h"
 #include "ui/painter.h"
 #include "ui/image/image_prepare.h"
 
 #include <cmath>
+
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+
 
 namespace Ui {
 namespace {
@@ -49,16 +54,19 @@ void PaintCommunityUserpicEffect(
 	const auto version = style::PaletteVersion();
 	const auto rgba = color.rgba();
 	const auto peek = size * kPeek;
+	const auto ayuState = AyuUserpic::PackedState();
 	const auto regenerate = cache.image.isNull()
 		|| (cache.size != size)
 		|| (cache.color != rgba)
 		|| (cache.paletteVersion != version)
-		|| (cache.dpr != dpr);
+		|| (cache.dpr != dpr)
+		|| (cache.ayuState != ayuState);
 	if (regenerate) {
 		cache.size = size;
 		cache.color = rgba;
 		cache.paletteVersion = version;
 		cache.dpr = dpr;
+		cache.ayuState = ayuState;
 
 		const auto imageW = int(std::ceil((peek + size * kCover) * dpr));
 		const auto imageH = int(std::ceil(size * dpr));
@@ -73,7 +81,10 @@ void PaintCommunityUserpicEffect(
 		auto q = QPainter(&cache.image);
 		auto hq = PainterHighQualityEnabler(q);
 		const auto gap = size * kGap;
-		const auto rounding = Ui::ForumUserpicRadiusMultiplier();
+		const auto rounding = AyuUserpic::ShouldOverrideShape(
+			Ui::PeerUserpicShape::Forum)
+			? AyuUserpic::ComputeRadiusF(size)
+			: size * Ui::ForumUserpicRadiusMultiplier();
 
 		// The userpic and every card share a pivot on the userpic's left edge
 		// where its bottom-left rounding starts; each card is pinned there and
@@ -121,8 +132,8 @@ void PaintCommunityUserpicEffect(
 		q.setBrush(Qt::transparent);
 		q.drawRoundedRect(
 			QRectF(peek - gap, -gap, size + 2 * gap, size + 2 * gap),
-			size * rounding + gap,
-			size * rounding + gap);
+			rounding + gap,
+			rounding + gap);
 	}
 	p.drawImage(QPointF(x - peek, y), cache.image);
 }
@@ -142,8 +153,10 @@ void ValidateUserpicCache(
 	const auto full = QSize(size, size);
 	const auto version = style::PaletteVersion();
 	const auto shapeValue = static_cast<uint32>(shape) & 3;
+	const auto ayuState = AyuUserpic::PackedState();
 	const auto regenerate = (view.cached.size() != QSize(size, size))
 		|| (view.shape != shapeValue)
+		|| (view.ayuState != ayuState)
 		|| (cloud && !view.empty.null())
 		|| (empty && empty != view.empty.get())
 		|| (empty && view.paletteVersion != version);
@@ -153,14 +166,29 @@ void ValidateUserpicCache(
 	view.empty = empty;
 	view.shape = shapeValue;
 	view.paletteVersion = version;
+	const auto customRadius = Nagram::Interface::AvatarRadius(size, shape);
+	view.ayuState = ayuState;
+
+	const auto ayuOverride = AyuUserpic::ShouldOverrideShape(shape)
+		&& !customRadius;
 
 	if (cloud) {
 		view.cached = cloud->scaled(
 			full,
 			Qt::IgnoreAspectRatio,
 			Qt::SmoothTransformation);
-		if (shape == PeerUserpicShape::Monoforum) {
+		if (ayuOverride) {
+			view.cached = Images::Round(
+				std::move(view.cached),
+				ImageRoundRadius::AyuUserpic);
+		} else if (shape == PeerUserpicShape::Monoforum && !customRadius) {
 			view.cached = Ui::ApplyMonoforumShape(std::move(view.cached));
+		} else if (customRadius && *customRadius >= size / 2) {
+			view.cached = Images::Circle(std::move(view.cached));
+		} else if (customRadius) {
+			view.cached = Images::Round(
+				std::move(view.cached),
+				Images::CornersMask(*customRadius / style::DevicePixelRatio()));
 		} else if (shape == PeerUserpicShape::Forum) {
 			view.cached = Images::Round(
 				std::move(view.cached),
@@ -177,8 +205,14 @@ void ValidateUserpicCache(
 		view.cached.fill(Qt::transparent);
 
 		auto p = QPainter(&view.cached);
-		if (shape == PeerUserpicShape::Monoforum) {
+		if (ayuOverride) {
+			empty->paintCircle(p, 0, 0, size, size);
+		} else if (shape == PeerUserpicShape::Monoforum && !customRadius) {
 			empty->paintMonoforum(p, 0, 0, size, size);
+		} else if (customRadius && *customRadius >= size / 2) {
+			empty->paintCircle(p, 0, 0, size, size);
+		} else if (customRadius) {
+			empty->paintRounded(p, 0, 0, size, size, *customRadius);
 		} else if (shape == PeerUserpicShape::Forum) {
 			empty->paintRounded(
 				p,

@@ -1,0 +1,491 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c48a77a..720e817 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -36,6 +36,9 @@ PRIVATE
+     fonts/fonts.qrc
+     qt_conf/win.qrc
+ 
++    ayu/ayu_ui_settings.cpp
++    ayu/ayu_ui_settings.h
++
+     ui/accessible/ui_accessible_factory.cpp
+     ui/accessible/ui_accessible_factory.h
+     ui/accessible/ui_accessible_item.cpp
+diff --git a/ui/colors.palette b/ui/colors.palette
+index e2ba0d6..de66484 100644
+--- a/ui/colors.palette
++++ b/ui/colors.palette
+@@ -168,9 +168,9 @@ introBg: windowBg; // login background
+ introTitleFg: windowBoldFg; // login title text
+ introDescriptionFg: windowSubTextFg; // login description text
+ 
+-introCoverTopBg: #0f89d0; // intro gradient top (from)
+-introCoverBottomBg: #39b0f0; // intro gradient bottom (to)
+-introCoverIconsFg: #5ec6ff; // intro cloud graphics
++introCoverTopBg: #2B2242; // intro gradient top (from)
++introCoverBottomBg: #2B2242; // intro gradient bottom (to)
++introCoverIconsFg: #FFFFFF; // intro cloud graphics
+ introCoverPlaneTrace: #5ec6ff69; // intro plane traces
+ introCoverPlaneInner: #c6d8e8; // intro plane part
+ introCoverPlaneOuter: #a1bed4; // intro plane part
+diff --git a/ui/effects/panel_animation.cpp b/ui/effects/panel_animation.cpp
+index fd2a4d4..c841480 100644
+--- a/ui/effects/panel_animation.cpp
++++ b/ui/effects/panel_animation.cpp
+@@ -309,10 +309,12 @@ void PanelAnimation::setAlphaDuration() {
+ void PanelAnimation::start() {
+ 	Assert(!_finalImage.isNull());
+ 	RoundShadowAnimation::start(_finalWidth, _finalHeight, _finalImage.devicePixelRatio());
+-	auto checkCorner = [this](const Corner &corner) {
++	auto maxCornerWidth = 0;
++	auto maxCornerHeight = 0;
++	auto checkCorner = [&](const Corner &corner) {
+ 		if (!corner.valid()) return;
+-		if (_startWidth >= 0) Assert(corner.width <= _startWidth);
+-		if (_startHeight >= 0) Assert(corner.height <= _startHeight);
++		maxCornerWidth = std::max(maxCornerWidth, corner.width);
++		maxCornerHeight = std::max(maxCornerHeight, corner.height);
+ 		Assert(corner.width <= _finalInnerWidth);
+ 		Assert(corner.height <= _finalInnerHeight);
+ 	};
+@@ -320,6 +322,12 @@ void PanelAnimation::start() {
+ 	checkCorner(_topRight);
+ 	checkCorner(_bottomLeft);
+ 	checkCorner(_bottomRight);
++	if (_startWidth >= 0 && maxCornerWidth > _startWidth) {
++		_startWidth = -1;
++	}
++	if (_startHeight >= 0 && maxCornerHeight > _startHeight) {
++		_startHeight = -1;
++	}
+ }
+ 
+ auto PanelAnimation::computeState(float64 dt, float64 opacity) const
+diff --git a/ui/image/image_prepare.cpp b/ui/image/image_prepare.cpp
+index 03d3de4..0ad54f1 100644
+--- a/ui/image/image_prepare.cpp
++++ b/ui/image/image_prepare.cpp
+@@ -16,6 +16,7 @@
+ #include "base/bytes.h"
+ #include "styles/palette.h"
+ #include "styles/style_basic.h"
++#include "ayu/ayu_ui_settings.h"
+ 
+ #include <zlib.h>
+ #include <QtCore/QFile>
+@@ -543,7 +544,8 @@ ReadResult Read(ReadArgs &&args) {
+ 		? Option::RoundLarge
+ 		: (radius == ImageRoundRadius::Small)
+ 		? Option::RoundSmall
+-		: (radius == ImageRoundRadius::Ellipse)
++		: (radius == ImageRoundRadius::Ellipse
++			|| radius == ImageRoundRadius::AyuUserpic)
+ 		? Option::RoundCircle
+ 		: Option::None);
+ }
+@@ -1123,6 +1125,19 @@ QImage Round(
+ 		QRect target) {
+ 	if (!static_cast<int>(corners)) {
+ 		return std::move(image);
++	} else if (radius == ImageRoundRadius::AyuUserpic) {
++		const auto corners_val = AyuUiSettings::getAvatarCorners();
++		if (corners_val >= AyuUiSettings::kMaxAvatarCorners) {
++			return Circle(std::move(image), target);
++		} else if (corners_val <= 0) {
++			return std::move(image);
++		}
++		const auto size = target.isEmpty()
++			? std::min(image.width(), image.height())
++			: std::min(target.width(), target.height());
++		const auto r = int(double(corners_val) / AyuUiSettings::kMaxAvatarCorners * size / 2.0)
++			/ style::DevicePixelRatio();
++		return Round(std::move(image), CornersMask(r), corners, target);
+ 	} else if (radius == ImageRoundRadius::Ellipse) {
+ 		Assert((corners & RectPart::AllCorners) == RectPart::AllCorners);
+ 		return Circle(std::move(image), target);
+diff --git a/ui/image/image_prepare.h b/ui/image/image_prepare.h
+index 23555c3..f3db34c 100644
+--- a/ui/image/image_prepare.h
++++ b/ui/image/image_prepare.h
+@@ -21,6 +21,7 @@ enum class ImageRoundRadius {
+ 	Large,
+ 	Small,
+ 	Ellipse,
++	AyuUserpic,
+ };
+ 
+ namespace Images {
+diff --git a/ui/integration.cpp b/ui/integration.cpp
+index 29b59a4..f5e561f 100644
+--- a/ui/integration.cpp
++++ b/ui/integration.cpp
+@@ -96,6 +96,9 @@ rpl::producer<> Integration::forcePopupMenuHideRequests() {
+ 	return rpl::never<rpl::empty_value>();
+ }
+ 
++void Integration::preparePopupMenu(not_null<QWidget*>) {
++}
++
+ QString Integration::phraseContextCopyText() {
+ 	return "Copy text";
+ }
+diff --git a/ui/integration.h b/ui/integration.h
+index 07b8779..a96e04e 100644
+--- a/ui/integration.h
++++ b/ui/integration.h
+@@ -70,6 +70,7 @@ public:
+ 	// 	const ClickContext &context);
+ 
+ 	[[nodiscard]] virtual rpl::producer<> forcePopupMenuHideRequests();
++	virtual void preparePopupMenu(not_null<QWidget*> widget);
+ 
+ 	[[nodiscard]] virtual QString phraseContextCopyText();
+ 	[[nodiscard]] virtual QString phraseContextCopyEmail();
+diff --git a/ui/layers/layer_widget.cpp b/ui/layers/layer_widget.cpp
+index ec3171e..6c646f0 100644
+--- a/ui/layers/layer_widget.cpp
++++ b/ui/layers/layer_widget.cpp
+@@ -20,6 +20,7 @@
+ #include "styles/palette.h"
+ 
+ #include <QtGui/QtEvents>
++#include <QtWidgets/private/qwidget_p.h>
+ 
+ namespace Ui {
+ 
+@@ -230,6 +231,14 @@ void LayerStackWidget::BackgroundWidget::setLayerBoxes(const QRect &specialLayer
+ 
+ void LayerStackWidget::BackgroundWidget::paintEvent(QPaintEvent *e) {
+ 	Painter p(this);
++	const auto opaque = _bodyCache.isNull()
++		? QWidgetPrivate::get(parentWidget())->getOpaqueChildren().translated(-pos())
++		: QRegion();
++	const auto fillDimmed = [&](const QRegion &region) {
++		for (const auto &rect : region.intersected(e->region()).subtracted(opaque)) {
++			p.fillRect(rect, st::layerBg);
++		}
++	};
+ 
+ 	_inPaintEvent = true;
+ 	auto guard = gsl::finally([this] {
+@@ -300,14 +309,12 @@ void LayerStackWidget::BackgroundWidget::paintEvent(QPaintEvent *e) {
+ 		// in the transparent special layer cache corners after filling special layer
+ 		// rect above its cache with alpha_current opacity.
+ 		const auto region = QRegion(bg) - specialLayerBox;
+-		for (const auto &rect : region) {
+-			p.fillRect(rect, st::layerBg);
+-		}
++		fillDimmed(region);
+ 		p.setOpacity((bgOpacity - overSpecialOpacity) / (1. - (overSpecialOpacity * st::layerBg->c.alphaF())));
+-		p.fillRect(specialLayerBox, st::layerBg);
++		fillDimmed(specialLayerBox);
+ 		p.setOpacity(bgOpacity);
+ 	} else {
+-		p.fillRect(bg, st::layerBg);
++		fillDimmed(bg);
+ 	}
+ 
+ 	if (!_specialLayerCache.isNull() && specialLayerOpacity > 0) {
+diff --git a/ui/style/style_core_font.cpp b/ui/style/style_core_font.cpp
+index 46b65c4..771e463 100644
+--- a/ui/style/style_core_font.cpp
++++ b/ui/style/style_core_font.cpp
+@@ -21,6 +21,11 @@
+ #include <glib.h>
+ #endif // __has_include(<glib.h>)
+ 
++
++// AyuGram includes
++#include "ayu/ayu_ui_settings.h"
++
++
+ void style_InitFontsResource() {
+ #ifdef Q_OS_MAC // Use resources from the .app bundle on macOS.
+ 
+@@ -147,7 +152,9 @@ bool LoadCustomFont(const QString &filePath) {
+ }
+ 
+ [[nodiscard]] QString ManualMonospaceFont() {
++	const auto monoFont = AyuUiSettings::getMonoFont().isEmpty() ? "Cascadia Mono"_q : AyuUiSettings::getMonoFont();
+ 	const auto kTryFirst = std::initializer_list<QString>{
++		monoFont,
+ 		u"Cascadia Mono"_q,
+ 		u"Consolas"_q,
+ 		u"Liberation Mono"_q,
+diff --git a/ui/text/text.h b/ui/text/text.h
+index 92ce9ec..3570ca4 100644
+--- a/ui/text/text.h
++++ b/ui/text/text.h
+@@ -226,6 +226,7 @@ struct QuotePaintCache {
+ 	std::array<QColor, kMaxQuoteOutlines> outlines;
+ 	QColor header;
+ 	QColor bg;
++	QColor bg2;
+ 	QColor icon;
+ };
+ 
+diff --git a/ui/text/text_entity.h b/ui/text/text_entity.h
+index ca2631d..457b866 100644
+--- a/ui/text/text_entity.h
++++ b/ui/text/text_entity.h
+@@ -119,6 +119,12 @@ public:
+ 	[[nodiscard]] QString data() const {
+ 		return _data;
+ 	}
++	void setLocal() {
++		_local = true;
++	}
++	[[nodiscard]] bool isLocal() const {
++		return _local;
++	}
+ 	[[nodiscard]] bool validForText(int textLength) const {
+ 		return _offset >= 0
+ 			&& _length > 0
+@@ -172,6 +178,7 @@ public:
+ 
+ private:
+ 	EntityType _type = EntityType::Invalid;
++	bool _local = false;
+ 	int _offset = 0;
+ 	int _length = 0;
+ 	QString _data;
+diff --git a/ui/text/text_utilities.cpp b/ui/text/text_utilities.cpp
+index da33345..fcae6a0 100644
+--- a/ui/text/text_utilities.cpp
++++ b/ui/text/text_utilities.cpp
+@@ -123,6 +123,10 @@ TextWithEntities StrikeOut(const QString &text) {
+ 	return WithSingleEntity(text, EntityType::StrikeOut);
+ }
+ 
++TextWithEntities Code(const QString &text) {
++    return WithSingleEntity(text, EntityType::Code);
++}
++
+ TextWithEntities Link(const QString &text, const QString &url) {
+ 	return WithSingleEntity(text, EntityType::CustomUrl, url);
+ }
+diff --git a/ui/text/text_utilities.h b/ui/text/text_utilities.h
+index ce0777b..58ac477 100644
+--- a/ui/text/text_utilities.h
++++ b/ui/text/text_utilities.h
+@@ -21,6 +21,7 @@ class CustomEmoji;
+ [[nodiscard]] TextWithEntities Italic(const QString &text);
+ [[nodiscard]] TextWithEntities Underline(const QString &text);
+ [[nodiscard]] TextWithEntities StrikeOut(const QString &text);
++[[nodiscard]] TextWithEntities Code(const QString &text);
+ [[nodiscard]] TextWithEntities Link(
+ 	const QString &text,
+ 	const QString &url = u"internal:action"_q);
+diff --git a/ui/widgets/checkbox.cpp b/ui/widgets/checkbox.cpp
+index df0dc58..8515f13 100644
+--- a/ui/widgets/checkbox.cpp
++++ b/ui/widgets/checkbox.cpp
+@@ -16,7 +16,28 @@
+ #include <QtGui/QtEvents>
+ #include <QtCore/QtMath>
+ 
++#include "ayu/ayu_ui_settings.h"
++
+ namespace Ui {
++namespace {
++
++int SwitchShift(not_null<const style::Toggle *> st) {
++	return AyuUiSettings::isMaterialSwitches() ? st->shift : st::defaultToggleShift;
++}
++
++int SwitchDiameter(not_null<const style::Toggle *> st) {
++	return AyuUiSettings::isMaterialSwitches() ? st->diameter : st::defaultToggleDiameter;
++}
++
++int SwitchDiameter(not_null<const style::Check *> st) {
++	return AyuUiSettings::isMaterialSwitches() ? st->diameter : st::defaultToggleDiameter;
++}
++
++int SwitchDiameter(not_null<const style::Radio *> st) {
++	return AyuUiSettings::isMaterialSwitches() ? st->diameter : st::defaultToggleDiameter;
++}
++
++} // namespace
+ 
+ AbstractCheckView::AbstractCheckView(int duration, bool checked, Fn<void()> updateCallback)
+ : _duration(duration)
+@@ -37,7 +58,8 @@ void AbstractCheckView::setChecked(bool checked, anim::type animated) {
+ 			[=] { if (_updateCallback) _updateCallback(); },
+ 			_checked ? 0. : 1.,
+ 			_checked ? 1. : 0.,
+-			_duration);
++			AyuUiSettings::isMaterialSwitches() ? _duration : st::defaultToggleDuration,
++			AyuUiSettings::isMaterialSwitches() ? anim::easeOutCubic : anim::linear);
+ 	}
+ 	checkedChangedHook(animated);
+ 	if (changed) {
+@@ -76,7 +98,7 @@ ToggleView::ToggleView(
+ }
+ 
+ QSize ToggleView::getSize() const {
+-	return QSize(2 * _st->border + _st->diameter + _st->width, 2 * _st->border + _st->diameter);
++	return QSize(2 * _st->border + SwitchDiameter(_st) + _st->width, 2 * _st->border + SwitchDiameter(_st));
+ }
+ 
+ void ToggleView::setStyle(const style::Toggle &st) {
+@@ -89,14 +111,20 @@ void ToggleView::paint(QPainter &p, int left, int top, int outerWidth) {
+ 
+ 	PainterHighQualityEnabler hq(p);
+ 	auto toggled = currentAnimationValue();
+-	auto fullWidth = _st->diameter + _st->width;
+-	auto innerDiameter = _st->diameter - 2 * _st->shift;
++	auto fullWidth = SwitchDiameter(_st) + _st->width;
++	auto innerDiameter = SwitchDiameter(_st) - 2 * SwitchShift(_st);
+ 	auto innerRadius = float64(innerDiameter) / 2.;
+-	auto toggleLeft = left + anim::interpolate(0, fullWidth - _st->diameter, toggled);
+-	auto bgRect = style::rtlrect(left + _st->shift, top + _st->shift, fullWidth - 2 * _st->shift, innerDiameter, outerWidth);
+-	auto fgRect = style::rtlrect(toggleLeft, top, _st->diameter, _st->diameter, outerWidth);
++	auto toggleLeft = left + anim::interpolate(0, fullWidth - SwitchDiameter(_st), toggled);
++	auto bgRect = style::rtlrect(left + SwitchShift(_st), top + SwitchShift(_st), fullWidth - 2 * SwitchShift(_st), innerDiameter, outerWidth);
++	auto fgRect = style::rtlrect(toggleLeft, top, SwitchDiameter(_st), SwitchDiameter(_st), outerWidth);
+ 	auto fgBrush = anim::brush(_st->untoggledFg, _st->toggledFg, toggled);
+ 
++	auto fgRectF = QRectF(fgRect);
++	if (AyuUiSettings::isMaterialSwitches()) {
++		const auto ayuToggleAnim = anim::interpolateToF(_st->animPadding, 0, toggled);
++		fgRectF.setRect(fgRectF.x() + ayuToggleAnim / 2., fgRectF.y() + ayuToggleAnim / 2., fgRectF.width() - ayuToggleAnim, fgRectF.height() - ayuToggleAnim);
++	}
++
+ 	p.setPen(Qt::NoPen);
+ 	p.setBrush(fgBrush);
+ 	p.drawRoundedRect(bgRect, innerRadius, innerRadius);
+@@ -105,7 +133,7 @@ void ToggleView::paint(QPainter &p, int left, int top, int outerWidth) {
+ 	pen.setWidth(_st->border);
+ 	p.setPen(pen);
+ 	p.setBrush(anim::brush(_st->untoggledBg, _st->toggledBg, toggled));
+-	p.drawEllipse(fgRect);
++	p.drawEllipse(fgRectF);
+ 
+ 	if (_locked || _st->xsize > 0) {
+ 		p.setPen(Qt::NoPen);
+@@ -127,8 +155,8 @@ void ToggleView::paintXV(QPainter &p, int left, int top, int outerWidth, float64
+ 	if (toggled < 1) {
+ 		// Just X or X->V.
+ 		const auto xSize = 0. + _st->xsize;
+-		const auto xLeft = left + (_st->diameter - xSize) / 2.;
+-		const auto xTop = top + (_st->diameter - xSize) / 2.;
++		const auto xLeft = left + (SwitchDiameter(_st) - xSize) / 2.;
++		const auto xTop = top + (SwitchDiameter(_st) - xSize) / 2.;
+ 		QPointF pathX[] = {
+ 			{ xLeft, xTop + stroke },
+ 			{ xLeft + stroke, xTop },
+@@ -150,7 +178,7 @@ void ToggleView::paintXV(QPainter &p, int left, int top, int outerWidth, float64
+ 			// X->V.
+ 			const auto vSize = 0. + _st->vsize;
+ 			const auto fSize = (xSize + vSize - 2. * stroke);
+-			const auto vLeft = left + (_st->diameter - fSize) / 2.;
++			const auto vLeft = left + (SwitchDiameter(_st) - fSize) / 2.;
+ 			const auto vTop = 0. + xTop + _st->vshift;
+ 			QPointF pathV[] = {
+ 				{ vLeft, vTop + xSize - vSize + stroke },
+@@ -177,10 +205,10 @@ void ToggleView::paintXV(QPainter &p, int left, int top, int outerWidth, float64
+ 	} else {
+ 		// Just V.
+ 		const auto xSize = 0. + _st->xsize;
+-		const auto xTop = top + (_st->diameter - xSize) / 2.;
++		const auto xTop = top + (SwitchDiameter(_st) - xSize) / 2.;
+ 		const auto vSize = 0. + _st->vsize;
+ 		const auto fSize = (xSize + vSize - 2. * stroke);
+-		const auto vLeft = left + (_st->diameter - (_st->xsize + _st->vsize - 2. * stroke)) / 2.;
++		const auto vLeft = left + (SwitchDiameter(_st) - (_st->xsize + _st->vsize - 2. * stroke)) / 2.;
+ 		const auto vTop = 0. + xTop + _st->vshift;
+ 		QPointF pathV[] = {
+ 			{ vLeft, vTop + xSize - vSize + stroke },
+diff --git a/ui/widgets/popup_menu.cpp b/ui/widgets/popup_menu.cpp
+index cb2983e..03da8e0 100644
+--- a/ui/widgets/popup_menu.cpp
++++ b/ui/widgets/popup_menu.cpp
+@@ -814,6 +814,7 @@ void PopupMenu::showStarted() {
+ 		show();
+ 		if (weak) {
+ 			startShowAnimation();
++			Integration::Instance().preparePopupMenu(this);
+ 		}
+ 		return;
+ 	} else if (!_hiding) {
+@@ -1137,6 +1138,7 @@ bool PopupMenu::prepareGeometryFor(
+ 
+ void PopupMenu::showPrepared(TriggeredSource source) {
+ 	startShowAnimation();
++	Integration::Instance().preparePopupMenu(this);
+ 
+ 	if (::Platform::IsWindows()) {
+ 		ForceFullRepaintSync(this);
+diff --git a/ui/widgets/widgets.style b/ui/widgets/widgets.style
+index 8d0e271..0df8797 100644
+--- a/ui/widgets/widgets.style
++++ b/ui/widgets/widgets.style
+@@ -124,6 +124,7 @@ Toggle {
+ 	shift: pixels;
+ 	diameter: pixels;
+ 	width: pixels;
++	animPadding: pixels;
+ 	xsize: pixels;
+ 	vsize: pixels;
+ 	vshift: pixels;
+@@ -796,7 +797,7 @@ defaultTable: Table {
+ 	headerBg: windowBgOver;
+ 	borderFg: inputBorderFg;
+ 	border: 1px;
+-	radius: 6px;
++	radius: 8px;
+ 	labelMaxWidth: 0.5;
+ 	smallButton: defaultTableSmallButton;
+ 	defaultLabel: defaultTableLabel;
+@@ -858,16 +859,20 @@ defaultRadio: Radio {
+ 	duration: universalDuration;
+ 	rippleAreaPadding: 8px;
+ }
++defaultToggleDuration: universalDuration;
++defaultToggleShift: 1px;
++defaultToggleDiameter: 16px;
+ defaultToggle: Toggle {
+ 	toggledBg: windowBg;
+ 	toggledFg: windowBgActive;
+ 	untoggledBg: windowBg;
+ 	untoggledFg: checkboxFg;
+-	duration: universalDuration;
++    duration: 150;
+ 	border: 2px;
+-	shift: 1px;
+-	diameter: 16px;
++	shift: -2px;
++	diameter: 14px;
+ 	width: 14px;
++	animPadding: 2px;
+ 	xsize: 0px;
+ 	vsize: 0px;
+ 	vshift: 0px;
+diff --git a/ui/wrap/slide_wrap.cpp b/ui/wrap/slide_wrap.cpp
+index 0c868a8..a70eeda 100644
+--- a/ui/wrap/slide_wrap.cpp
++++ b/ui/wrap/slide_wrap.cpp
+@@ -65,7 +65,7 @@ SlideWrap<RpWidget> *SlideWrap<RpWidget>::toggle(
+ 				_toggled ? 0. : 1.,
+ 				_toggled ? 1. : 0.,
+ 				_duration,
+-				anim::linear);
++				ease);
+ 			if (_finishedCallback) {
+ 				_animation.setFinishedCallback(_finishedCallback);
+ 			}
+diff --git a/ui/wrap/slide_wrap.h b/ui/wrap/slide_wrap.h
+index 021c14a..ae84586 100644
+--- a/ui/wrap/slide_wrap.h
++++ b/ui/wrap/slide_wrap.h
+@@ -58,6 +58,9 @@ public:
+ 
+ 	QMargins getMargins() const override;
+ 
++	// I don't care about this being public
++	anim::transition ease = anim::linear;
++
+ protected:
+ 	int resizeGetHeight(int newWidth) override;
+ 	void wrappedSizeUpdated(QSize size) override;

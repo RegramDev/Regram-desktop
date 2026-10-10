@@ -104,6 +104,13 @@ using SendFilesConfirmed = Fn<void(
 	Api::SendOptions,
 	FullReplyTo)>;
 
+struct SendFilesStashed {
+	Ui::PreparedList list;
+	TextWithTags caption;
+	FullReplyTo replyTo;
+};
+using SendFilesStash = Fn<void(SendFilesStashed &&)>;
+
 struct SendFilesBoxDescriptor {
 	std::shared_ptr<ChatHelpers::Show> show;
 	Ui::PreparedList list;
@@ -117,6 +124,7 @@ struct SendFilesBoxDescriptor {
 	SendFilesConfirmed confirmed;
 	Fn<void()> cancelled;
 	FullReplyTo replyTo;
+	Fn<void(const TextWithTags &text)> cancelled2;
 };
 
 class SendFilesBox : public Ui::BoxContent {
@@ -132,7 +140,8 @@ public:
 		const TextWithTags &caption,
 		not_null<PeerData*> toPeer,
 		Api::SendType sendType,
-		SendMenu::Details sendMenuDetails);
+		SendMenu::Details sendMenuDetails,
+		Fn<void(const TextWithTags &text)> cancelled2 = nullptr);
 	SendFilesBox(QWidget*, SendFilesBoxDescriptor &&descriptor);
 
 	void setConfirmedCallback(SendFilesConfirmed callback) {
@@ -141,7 +150,12 @@ public:
 	void setCancelledCallback(Fn<void()> callback) {
 		_cancelledCallback = std::move(callback);
 	}
+	void setStashCallbacks(Fn<bool()> check, SendFilesStash stash) {
+		_stashCheck = std::move(check);
+		_stashCallback = std::move(stash);
+	}
 	void setReplyTo(FullReplyTo replyTo);
+	void sendWithOptions(Api::SendOptions options);
 
 	[[nodiscard]] rpl::producer<TextWithTags> takeTextWithTagsRequests() const;
 
@@ -247,6 +261,7 @@ private:
 	void generatePreviewFrom(int fromBlock);
 
 	void send(Api::SendOptions options, bool ctrlShiftEnter = false);
+	void stash();
 	[[nodiscard]] Fn<void(Api::SendOptions)> sendCallback();
 	void captionResized();
 	void saveSendWaySettings(bool rememberAll);
@@ -309,10 +324,14 @@ private:
 	SendFilesCheck _check;
 	SendFilesConfirmed _confirmedCallback;
 	Fn<void()> _cancelledCallback;
+	Fn<void(const TextWithTags &text)> _cancelled2Callback;
+	Fn<bool()> _stashCheck;
+	SendFilesStash _stashCallback;
 	rpl::variable<uint64> _price = 0;
 	std::unique_ptr<Ui::RpWidget> _priceTag;
 	QImage _priceTagBg;
 	bool _confirmed = false;
+	bool _stashed = false;
 	bool _textTaken = false;
 	bool _invertCaption = false;
 
@@ -351,5 +370,11 @@ private:
 	QPointer<Ui::RoundButton> _addFile;
 
 	rpl::event_stream<TextWithTags> _textWithTagsRequests;
+
+	// AyuGram files reordering
+
+	[[nodiscard]] bool isFileBlock(int i) const;
+	void moveFile(int from, int to);
+	void setupDragForBlock(not_null<Ui::RpWidget*> w, int index);
 
 };

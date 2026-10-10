@@ -72,6 +72,7 @@ private:
 };
 
 int WideChatWidth();
+[[nodiscard]] bool ServiceAllowsSwipeReply(not_null<const HistoryItem*> item);
 
 class ServiceMessagePainter {
 public:
@@ -124,12 +125,14 @@ public:
 		int left,
 		int width,
 		const Ui::Text::String &text,
-		const QRect &textRect);
+		const QRect &textRect,
+		int lastLineWidthAdd = 0);
 
 private:
 	static std::vector<int> CountLineWidths(
 		const Ui::Text::String &text,
-		const QRect &textRect);
+		const QRect &textRect,
+		int lastLineWidthAdd = 0);
 
 };
 

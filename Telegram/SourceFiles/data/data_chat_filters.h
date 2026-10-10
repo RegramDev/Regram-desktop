@@ -162,6 +162,10 @@ public:
 	void remove(FilterId id);
 	void moveAllToFront();
 	[[nodiscard]] const std::vector<ChatFilter> &list() const;
+	[[nodiscard]] bool allChatsHidden() const;
+	[[nodiscard]] std::vector<ChatFilter> displayList() const;
+	[[nodiscard]] int displayLimit() const;
+	void saveDisplayOrder(const std::vector<FilterId> &order);
 	[[nodiscard]] rpl::producer<> changed() const;
 	[[nodiscard]] rpl::producer<FilterId> isChatlistChanged() const;
 	[[nodiscard]] rpl::producer<TagColorChanged> tagColorChanged() const;
@@ -265,6 +269,8 @@ private:
 	base::flat_map<FilterId, MoreChatsData> _moreChatsData;
 	rpl::event_stream<FilterId> _moreChatsUpdated;
 	base::Timer _moreChatsTimer;
+
+	rpl::lifetime _lifetime;
 
 };
 

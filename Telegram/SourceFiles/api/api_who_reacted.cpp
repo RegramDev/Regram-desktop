@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "api/api_who_reacted.h"
+#include "regram/nagram/privacy/options.h"
 
 #include "api/api_global_privacy.h"
 #include "history/history_item.h"
@@ -29,6 +30,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/controls/who_reacted_context_action.h"
 #include "apiwrap.h"
 #include "styles/style_chat_helpers.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/filters/filters_controller.h"
+
 
 namespace Api {
 namespace {
@@ -477,6 +483,8 @@ bool UpdateUserpics(
 		};
 	}) | ranges::views::filter([](ResolvedPeer resolved) {
 		return resolved.peer != nullptr;
+	}) | ranges::views::filter([](const ResolvedPeer &resolved) {
+		return !FiltersController::isBlocked(resolved.peer);
 	}) | ranges::to_vector;
 
 	const auto same = [&] {
@@ -559,12 +567,15 @@ void RegenerateParticipants(not_null<State*> state, int small, int large) {
 	for (auto &userpic : state->userpics) {
 		const auto peer = userpic.peer;
 		const auto date = userpic.date;
+		const auto dateText = (userpic.dateReacted
+			|| !Nagram::ForDevice().Get(Nagram::Privacy::kHideReadTime))
+			? FormatReadDate(date, currentDate) : QString();
 		const auto id = peer->id.value;
 		const auto self = peer->isSelf();
 		const auto was = ranges::find(old, id, &Ui::WhoReadParticipant::id);
 		if (was != end(old)) {
 			was->name = peer->name();
-			was->date = FormatReadDate(date, currentDate);
+			was->date = dateText;
 			was->dateReacted = userpic.dateReacted;
 			was->self = self;
 			was->customEntityData = userpic.customEntityData;
@@ -574,7 +585,7 @@ void RegenerateParticipants(not_null<State*> state, int small, int large) {
 		}
 		now.push_back({
 			.name = peer->name(),
-			.date = FormatReadDate(date, currentDate),
+			.date = dateText,
 			.dateReacted = userpic.dateReacted,
 			.self = self,
 			.customEntityData = userpic.customEntityData,
@@ -655,9 +666,29 @@ rpl::producer<Ui::WhoReadContent> WhoReacted(
 				});
 				return;
 			}
+			auto &owner = item->history()->owner();
+			auto blockedReactionsCount = 0;
+			const auto &settings = AyuSettings::getInstance();
+			if (settings.filtersEnabled()) {
+				peers.list.erase(ranges::remove_if(peers.list, [&](const PeerWithReaction &p) {
+					const auto peer = owner.peerLoaded(p.peerWithDate.peer);
+					if (peer && FiltersController::isBlocked(peer)) {
+						if (!p.reaction.empty()) {
+							++blockedReactionsCount;
+						}
+						return true;
+					}
+					return false;
+				}), end(peers.list));
+				peers.read.erase(ranges::remove_if(peers.read, [&](const WhoReadPeer &p) {
+					const auto peer = owner.peerLoaded(p.peer);
+					return peer && FiltersController::isBlocked(peer);
+				}), end(peers.read));
+			}
+
 			state->current.state = peers.state;
 			state->current.fullReadCount = int(peers.read.size());
-			state->current.fullReactionsCount = peers.fullReactionsCount;
+			state->current.fullReactionsCount = peers.fullReactionsCount - blockedReactionsCount;
 			if (whoReadIds) {
 				const auto reacted = peers.list.size() - ranges::count(
 					peers.list,
@@ -706,23 +737,40 @@ QString FormatReadDate(TimeId date, const QDateTime &now) {
 	const auto parsed = base::unixtime::parse(date);
 	const auto readDate = parsed.date();
 	const auto nowDate = now.date();
+	const auto &settings = AyuSettings::getInstance();
+
+	if (readDate.year() < nowDate.year()) {
+		return tr::lng_mediaview_date_time(
+			tr::now,
+			lt_date,
+			tr::lng_month_day_year(
+				tr::now,
+				lt_month,
+				Lang::MonthDay(readDate.month())(tr::now),
+				lt_day,
+				QString::number(readDate.day()),
+				lt_year,
+				QString::number(readDate.year())),
+			lt_time,
+			QLocale().toString(parsed.time(), settings.showMessageSeconds() ? "HH:mm:ss" : QLocale::system().timeFormat(QLocale::ShortFormat)));
+	}
 	if (readDate == nowDate) {
 		return tr::lng_mediaview_today(
 			tr::now,
 			lt_time,
-			QLocale().toString(parsed.time(), QLocale::ShortFormat));
+			QLocale().toString(parsed.time(), settings.showMessageSeconds() ? "HH:mm:ss" : QLocale::system().timeFormat(QLocale::ShortFormat)));
 	} else if (readDate.addDays(1) == nowDate) {
 		return tr::lng_mediaview_yesterday(
 			tr::now,
 			lt_time,
-			QLocale().toString(parsed.time(), QLocale::ShortFormat));
+			QLocale().toString(parsed.time(), settings.showMessageSeconds() ? "HH:mm:ss" : QLocale::system().timeFormat(QLocale::ShortFormat)));
 	}
 	return tr::lng_mediaview_date_time(
 		tr::now,
 		lt_date,
 		langDayOfMonthShort(readDate),
 		lt_time,
-		QLocale().toString(parsed.time(), QLocale::ShortFormat));
+		QLocale().toString(parsed.time(), settings.showMessageSeconds() ? "HH:mm:ss" : QLocale::system().timeFormat(QLocale::ShortFormat)));
 }
 
 bool WhoReadExists(not_null<HistoryItem*> item) {

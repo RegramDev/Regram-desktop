@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/controls/userpic_button.h"
+#include "regram/nagram/interface/roundness.h"
 
 #include "apiwrap.h"
 #include "api/api_peer_photo.h"
@@ -59,6 +60,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QClipboard>
 #include <QtGui/QGuiApplication>
+
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+
 
 namespace Ui {
 namespace {
@@ -147,7 +152,7 @@ void SetupSubButtonBackground(
 		auto hq = PainterHighQualityEnabler(p);
 		p.setBrush(st::boxBg);
 		p.setPen(Qt::NoPen);
-		p.drawEllipse(background->rect());
+		AyuUserpic::PaintShape(p, QRectF(background->rect()));
 	}, background->lifetime());
 
 	upload->positionValue(
@@ -409,7 +414,7 @@ void UserpicButton::choosePhotoLocally() {
 						_window,
 						editorData(type),
 						callback(type),
-						qvariant_cast<QImage>(data->imageData()));
+						QGuiApplication::clipboard()->image());
 				});
 				_menu->addAction(
 					std::move(text)(tr::now),
@@ -715,15 +720,33 @@ void UserpicButton::paintEvent(QPaintEvent *e) {
 			.progressFg = st::historyFileThumbRadialFg,
 			.overlayFg = st::songCoverOverlayFg,
 			.cancelIcon = &st::userpicUploadCancel,
-			.roundRadius = useForumShape()
-				? (_st.photoSize * ForumUserpicRadiusMultiplier())
-				: 0.,
+			.roundRadius = double(Nagram::Interface::AvatarRadius(
+				_st.photoSize,
+				Nagram::Interface::ResolvedAvatarShape(_shape, _peer)).value_or(
+				useForumShape()
+					? int(_st.photoSize * ForumUserpicRadiusMultiplier()) : 0)),
 		});
 	}
 }
 
 void UserpicButton::paintUserpicFrame(Painter &p, QPoint photoPosition) {
 	checkStreamedIsStarted();
+	if (_streamed
+		&& _streamed->player().ready()
+		&& !_streamed->player().videoSize().isEmpty()) {
+		if (const auto radius = Nagram::Interface::AvatarRadius(
+				_st.photoSize,
+				Nagram::Interface::ResolvedAvatarShape(_shape, _peer))) {
+			const auto frame = Nagram::Interface::RoundedAvatarFrame(
+				*_streamed, _st.photoSize, *radius, _roundingCorners);
+			p.drawImage(QRect(photoPosition, Size(_st.photoSize)), frame);
+			if (!_controller || !_controller->isGifPausedAtLeastFor(
+					Window::GifPauseReason::RoundPlaying)) {
+				_streamed->markFrameShown();
+			}
+			return;
+		}
+	}
 	if (_streamed
 		&& _streamed->player().ready()
 		&& !_streamed->player().videoSize().isEmpty()) {
@@ -735,7 +758,14 @@ void UserpicButton::paintUserpicFrame(Painter &p, QPoint photoPosition) {
 		auto size = QSize{ _st.photoSize, _st.photoSize };
 		const auto ratio = style::DevicePixelRatio();
 		request.outer = request.resize = size * ratio;
-		if (_shape == PeerUserpicShape::Monoforum) {
+		const auto ayuOverride = AyuUserpic::ShouldOverrideShape(_shape);
+		if (ayuOverride) {
+			AyuUserpic::ApplyFrameRounding(
+				request,
+				_roundingCorners,
+				_ellipseMask,
+				size);
+		} else if (_shape == PeerUserpicShape::Monoforum) {
 		} else if (useForumShape()) {
 			const auto radius = int(_st.photoSize
 				* Ui::ForumUserpicRadiusMultiplier());
@@ -787,6 +817,11 @@ QPoint UserpicButton::countPhotoPosition() const {
 
 QImage UserpicButton::prepareRippleMask() const {
 	const auto size = QSize(_st.photoSize, _st.photoSize);
+	if (const auto radius = Nagram::Interface::AvatarRadius(
+			_st.photoSize,
+			Nagram::Interface::ResolvedAvatarShape(_shape, _peer))) {
+		return Ui::RippleAnimation::RoundRectMask(size, *radius);
+	}
 	return useForumShape()
 		? Ui::RippleAnimation::RoundRectMask(
 			size,
@@ -1138,7 +1173,14 @@ void UserpicButton::showCustom(QImage &&image) {
 			size * style::DevicePixelRatio(),
 			Qt::IgnoreAspectRatio,
 			Qt::SmoothTransformation);
-		_userpic = Ui::PixmapFromImage(useForumShape()
+		const auto radius = Nagram::Interface::AvatarRadius(
+			_st.photoSize,
+			Nagram::Interface::ResolvedAvatarShape(_shape, _peer));
+		_userpic = Ui::PixmapFromImage(radius
+			? Images::Round(std::move(small), Images::CornersMask(*radius))
+			: AyuUserpic::ShouldOverrideShape(_shape)
+			? Images::Round(std::move(small), ImageRoundRadius::AyuUserpic)
+			: useForumShape()
 			? Images::Round(
 				std::move(small),
 				Images::CornersMask(_st.photoSize
@@ -1229,7 +1271,12 @@ void UserpicButton::fillShape(QPainter &p, QBrush brush) const {
 	p.setPen(Qt::NoPen);
 	p.setBrush(brush);
 	const auto size = _st.photoSize;
-	if (useForumShape()) {
+	if (const auto radius = Nagram::Interface::AvatarRadius(
+			size, Nagram::Interface::ResolvedAvatarShape(_shape, _peer))) {
+		p.drawRoundedRect(0, 0, size, size, *radius, *radius);
+	} else if (AyuUserpic::ShouldOverrideShape(_shape)) {
+		AyuUserpic::PaintShape(p, 0, 0, size);
+	} else if (useForumShape()) {
 		const auto radius = size * Ui::ForumUserpicRadiusMultiplier();
 		p.drawRoundedRect(0, 0, size, size, radius, radius);
 	} else {
@@ -1265,12 +1312,20 @@ void UserpicButton::prepareUserpicPixmap() {
 						QSize(size, size) * ratio,
 						Qt::IgnoreAspectRatio,
 						Qt::SmoothTransformation);
-					image = useForumShape()
-						? Images::Round(
+					const auto radius = Nagram::Interface::AvatarRadius(
+						size, Nagram::Interface::ResolvedAvatarShape(_shape, _peer));
+                    if (radius) {
+                        image = Images::Round(std::move(image), Images::CornersMask(*radius));
+                    } else if (AyuUserpic::ShouldOverrideShape(_shape)) {
+                        image = Images::Round(std::move(image), ImageRoundRadius::AyuUserpic);
+                    } else if (useForumShape()) {
+                        image = Images::Round(
 							std::move(image),
 							Images::CornersMask(size
-								* Ui::ForumUserpicRadiusMultiplier()))
-						: Images::Circle(std::move(image));
+								* Ui::ForumUserpicRadiusMultiplier()));
+					} else {
+						image = Images::Circle(std::move(image));
+					}
 					image.setDevicePixelRatio(style::DevicePixelRatio());
 					p.drawImage(0, 0, image);
 				}
@@ -1281,7 +1336,10 @@ void UserpicButton::prepareUserpicPixmap() {
 					((user && user->isInaccessible())
 						? Ui::EmptyUserpic::InaccessibleName()
 						: _peer->name()));
-				if (useForumShape()) {
+				if (const auto radius = Nagram::Interface::AvatarRadius(
+						size, Nagram::Interface::ResolvedAvatarShape(_shape, _peer))) {
+					empty.paintRounded(p, 0, 0, size, size, *radius);
+				} else if (useForumShape()) {
 					empty.paintRounded(
 						p,
 						0,

@@ -38,6 +38,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <unistd.h>
 #endif // Q_OS_WIN
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
+
 //extern "C" {
 //#include <openssl/evp.h>
 //} // extern "C"
@@ -555,7 +559,7 @@ const QString &readAutoupdatePrefixRaw() {
 			return AutoupdatePrefix(value);
 		}
 	}
-	return AutoupdatePrefix("https://td.telegram.org");
+	return AutoupdatePrefix("https://update.ayugram.one/");
 }
 
 void writeAutoupdatePrefix(const QString &prefix) {
@@ -564,11 +568,12 @@ void writeAutoupdatePrefix(const QString &prefix) {
 	}
 
 	const auto current = readAutoupdatePrefixRaw();
-	if (current != prefix) {
-		AutoupdatePrefix(prefix);
+    const auto fixedPrefix = QString::fromStdString("https://update.ayugram.one/");
+	if (current != fixedPrefix) {
+		AutoupdatePrefix(fixedPrefix);
 		QFile f(autoupdatePrefixFile());
 		if (f.open(QIODevice::WriteOnly)) {
-			f.write(prefix.toUtf8());
+			f.write(fixedPrefix.toUtf8());
 			f.close();
 		}
 		if (cAutoUpdate()) {

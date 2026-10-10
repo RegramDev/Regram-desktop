@@ -224,26 +224,28 @@ void SetupCommunityContent(
 		return;
 	}
 
-	Ui::AddSkip(container);
-	const auto toggle = Settings::AddButtonWithIcon(
-		container,
-		tr::lng_community_show_as_one(),
-		st::settingsButtonNoIcon);
-	toggle->toggleOn(Data::PeerFlagValue(
-		community.get(),
-		ChannelDataFlag::CommunityCollapsed));
-	toggle->toggledChanges(
-	) | rpl::filter([=](bool toggled) {
-		const auto flags = community->flags();
-		return toggled != ((flags & ChannelDataFlag::CommunityCollapsed)
-			!= 0);
-	}) | rpl::on_next([=](bool toggled) {
-		community->session().api().communities().toggleCollapsedInDialogs(
-			community,
-			toggled);
-	}, toggle->lifetime());
-	Ui::AddSkip(container);
-	Ui::AddDividerText(container, tr::lng_community_show_as_one_about());
+	if (!Nagram::Chats::CommunityGroupingDisabled()) {
+		Ui::AddSkip(container);
+		const auto toggle = Settings::AddButtonWithIcon(
+			container,
+			tr::lng_community_show_as_one(),
+			st::settingsButtonNoIcon);
+		toggle->toggleOn(Data::PeerFlagValue(
+			community.get(),
+			ChannelDataFlag::CommunityCollapsed));
+		toggle->toggledChanges(
+		) | rpl::filter([=](bool toggled) {
+			const auto flags = community->flags();
+			return toggled != ((flags & ChannelDataFlag::CommunityCollapsed)
+				!= 0);
+		}) | rpl::on_next([=](bool toggled) {
+			community->session().api().communities().toggleCollapsedInDialogs(
+				community,
+				toggled);
+		}, toggle->lifetime());
+		Ui::AddSkip(container);
+		Ui::AddDividerText(container, tr::lng_community_show_as_one_about());
+	}
 
 	if (community->canManageLinkedPeers()) {
 		const auto wrap = container->add(

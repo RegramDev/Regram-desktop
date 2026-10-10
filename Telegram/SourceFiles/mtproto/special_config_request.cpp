@@ -13,6 +13,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "base/openssl_help.h"
 #include "base/call_delayed.h"
+#include "regram/nagram/network/model.h"
+#include "regram/nagram/network/runtime.h"
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonArray>
@@ -231,6 +233,14 @@ SpecialConfigRequest::SpecialConfigRequest(
 				&& (attempt.type != Type::Mozilla);
 		}), _attempts.end());
 	}
+	if (const auto doh = Nagram::Network::CustomDoh(); !doh.isEmpty()) {
+		_attempts.erase(ranges::remove_if(_attempts, [](
+				const Attempt &attempt) {
+			return (attempt.type == Type::Google)
+				|| (attempt.type == Type::Mozilla);
+		}), _attempts.end());
+		_attempts.insert(begin(_attempts), { Type::Mozilla, doh });
+	}
 	ranges::reverse(_attempts); // We go from last to first.
 
 	sendNextRequest();
@@ -286,8 +296,7 @@ void SpecialConfigRequest::performRequest(const Attempt &attempt) {
 	auto payload = QByteArray();
 	switch (type) {
 	case Type::Mozilla: {
-		url.setHost(attempt.data);
-		url.setPath(u"/dns-query"_q);
+		Nagram::Network::SetDohEndpoint(url, attempt.data);
 		url.setQuery(u"name=%1&type=16&random_padding=%2"_q.arg(
 			_domainString,
 			GenerateDnsRandomPadding()));
@@ -410,6 +419,7 @@ QByteArray SpecialConfigRequest::finalizeRequest(
 			).arg(reply->error()));
 	}
 	const auto result = reply->readAll();
+	Nagram::Network::CheckDohReply(reply, result);
 	const auto from = ranges::remove(
 		_requests,
 		reply,

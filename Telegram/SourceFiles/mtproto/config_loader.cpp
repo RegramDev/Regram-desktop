@@ -13,6 +13,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/mtproto_dc_options.h"
 #include "mtproto/mtproto_config.h"
 #include "mtproto/mtp_instance.h"
+#include "regram/nagram/network/runtime.h"
 
 namespace MTP {
 namespace details {
@@ -116,7 +117,9 @@ void ConfigLoader::enumerate() {
 }
 
 void ConfigLoader::refreshSpecialLoader() {
-	if (_proxyEnabled || _instance->isKeysDestroyer()) {
+	if (_proxyEnabled
+		|| _instance->isKeysDestroyer()
+		|| Nagram::Network::BackupAddressesDisabled()) {
 		_specialLoader.reset();
 		return;
 	}
@@ -176,7 +179,7 @@ void ConfigLoader::addSpecialEndpoint(
 
 void ConfigLoader::sendSpecialRequest() {
 	terminateSpecialRequest();
-	if (_proxyEnabled) {
+	if (_proxyEnabled || Nagram::Network::BackupAddressesDisabled()) {
 		_specialLoader.reset();
 		return;
 	}

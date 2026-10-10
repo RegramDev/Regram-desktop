@@ -5,11 +5,11 @@
 	<key>CFBundleExecutable</key>
 	<string>@output_name@</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Telegram Desktop messaging app</string>
+	<string>Regram Desktop messaging app</string>
 	<key>CFBundleIconFile</key>
-	<string>Icon.icns</string>
+	<string>@nagram_bundle_icon@</string>
 	<key>CFBundleIconName</key>
-	<string>Icon.icns</string>
+	<string>@nagram_bundle_icon@</string>
 	<key>CFBundleIdentifier</key>
 	<string>@bundle_identifier_plist@</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -32,13 +32,14 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLIconFile</key>
-			<string>Icon.icns</string>
+			<string>@nagram_bundle_icon@</string>
 			<key>CFBundleURLName</key>
 			<string>@bundle_identifier_plist@</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>tg</string>
 				<string>tonsite</string>
+				<string>ton</string>
 			</array>
 		</dict>
 	</array>

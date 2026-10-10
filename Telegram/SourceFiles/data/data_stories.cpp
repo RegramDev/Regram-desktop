@@ -27,6 +27,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/layers/show.h"
 #include "ui/text/text_utilities.h"
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
+
 namespace Data {
 namespace {
 
@@ -1240,6 +1244,12 @@ void Stories::markAsRead(FullStoryId id, bool viewed) {
 	if (!maybeStory) {
 		return;
 	}
+
+	const auto &ghost = AyuSettings::ghost(&_owner->session());
+	if (!ghost.sendReadStories()) {
+		return;
+	}
+
 	const auto story = *maybeStory;
 	if (story->expired() && story->inProfile()) {
 		_incrementViewsPending[id.peer].emplace(id.story);
@@ -1394,6 +1404,11 @@ void Stories::toggleHidden(
 void Stories::sendMarkAsReadRequest(
 		not_null<PeerData*> peer,
 		StoryId tillId) {
+	const auto &ghost = AyuSettings::ghost(&_owner->session());
+	if (!ghost.sendReadStories()) {
+		return;
+	}
+
 	const auto peerId = peer->id;
 	_markReadRequests.emplace(peerId);
 	const auto finish = [=] {
@@ -1423,6 +1438,12 @@ void Stories::checkQuitPreventFinished() {
 
 void Stories::sendMarkAsReadRequests() {
 	_markReadTimer.cancel();
+
+	const auto &ghost = AyuSettings::ghost(&_owner->session());
+	if (!ghost.sendReadStories()) {
+		return;
+	}
+
 	for (auto i = begin(_markReadPending); i != end(_markReadPending);) {
 		const auto peerId = *i;
 		if (_markReadRequests.contains(peerId)) {
@@ -1441,6 +1462,12 @@ void Stories::sendIncrementViewsRequests() {
 	if (_incrementViewsPending.empty()) {
 		return;
 	}
+
+	const auto &ghost = AyuSettings::ghost(&_owner->session());
+	if (!ghost.sendReadStories()) {
+		return;
+	}
+
 	struct Prepared {
 		PeerId peer = 0;
 		QVector<MTPint> ids;
@@ -2290,7 +2317,9 @@ bool Stories::isQuitPrevent() {
 	if (!_incrementViewsPending.empty()) {
 		sendIncrementViewsRequests();
 	}
-	if (_markReadRequests.empty() && _incrementViewsRequests.empty()) {
+
+	const auto &ghost = AyuSettings::ghost(&_owner->session());
+	if (!ghost.sendReadStories() || (_markReadRequests.empty() && _incrementViewsRequests.empty())) {
 		return false;
 	}
 	LOG(("Stories prevents quit, marking as read..."));

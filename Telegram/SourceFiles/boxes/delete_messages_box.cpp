@@ -375,6 +375,13 @@ auto DeleteMessagesBox::revokeText(not_null<PeerData*> peer) const
 		return std::nullopt;
 	}
 
+	items.erase(
+		ranges::remove_if(items, &HistoryItem::isDeleted),
+		end(items));
+	if (items.empty()) {
+		return std::nullopt;
+	}
+
 	const auto now = base::unixtime::now();
 	const auto canRevoke = [&](HistoryItem * item) {
 		return item->canDeleteForEveryone(now);

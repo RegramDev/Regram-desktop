@@ -43,6 +43,10 @@ namespace Main {
 class Session;
 } // namespace Main
 
+namespace Nagram {
+class ListRefresher;
+} // namespace Nagram
+
 namespace Ui {
 class IconButton;
 class PopupMenu;
@@ -97,6 +101,7 @@ struct ChosenRow {
 	PeerId sublistJumpPeerId;
 	QByteArray sponsoredRandomId;
 	bool userpicClick : 1 = false;
+	bool communityBadgeClick : 1 = false;
 	bool filteredRow : 1 = false;
 	bool newWindow : 1 = false;
 };
@@ -127,6 +132,7 @@ enum class WidgetState {
 };
 
 class InnerWidget final : public Ui::RpWidget {
+	friend class Nagram::ListRefresher;
 public:
 	using ChatsFilterTagsKey = int64;
 
@@ -145,6 +151,7 @@ public:
 		SearchRequestType type,
 		int fullCount);
 	void peerSearchReceived(Api::PeerSearchResult result);
+	void idSearchReceived(const std::vector<not_null<PeerData*>> &results);
 
 	[[nodiscard]] FilterId filterId() const;
 	void switchToFilter(FilterId filterId);
@@ -170,6 +177,7 @@ public:
 
 	[[nodiscard]] bool isUserpicPress() const;
 	[[nodiscard]] bool isUserpicPressOnWide() const;
+	[[nodiscard]] bool isCommunityBadgePressOnNarrow() const;
 	void cancelChatPreview();
 	bool scheduleChatPreview(QPoint positionOverride);
 	bool showChatPreview();
@@ -242,7 +250,7 @@ public:
 		int64 key,
 		std::optional<Ui::Controls::SwipeContextData> data);
 	[[nodiscard]] int64 calcSwipeKey(int top);
-	void prepareQuickAction(int64 key, Dialogs::Ui::QuickDialogAction);
+	bool prepareQuickAction(int64 key, Dialogs::Ui::QuickDialogAction);
 	void clearQuickActions();
 
 	Qt::FocusPolicy accessibilityFocusPolicy() override {
@@ -381,6 +389,7 @@ private:
 		bool pressedTopicJump,
 		bool pressedRightButton);
 	void setPeerSearchPressed(int pressed, bool pressedRightButton);
+	void setIdSearchPressed(int pressed);
 	void setPreviewPressed(int pressed);
 	void setSearchedPressed(int pressed);
 	bool isPressed() const {
@@ -388,6 +397,7 @@ private:
 			|| _pressed
 			|| (_hashtagPressed >= 0)
 			|| (_filteredPressed >= 0)
+			|| (_idSearchPressed >= 0)
 			|| (_peerSearchPressed >= 0)
 			|| (_previewPressed >= 0)
 			|| (_searchedPressed >= 0)
@@ -400,6 +410,7 @@ private:
 			|| _selected
 			|| (_hashtagSelected >= 0)
 			|| (_filteredSelected >= 0)
+			|| (_idSearchSelected >= 0)
 			|| (_peerSearchSelected >= 0)
 			|| (_previewSelected >= 0)
 			|| (_searchedSelected >= 0)
@@ -478,6 +489,7 @@ private:
 	[[nodiscard]] int filteredOffset() const;
 	[[nodiscard]] int filteredIndex(int y) const;
 	[[nodiscard]] int filteredHeight(int till = -1) const;
+	[[nodiscard]] int idSearchOffset() const;
 	[[nodiscard]] int peerSearchOffset() const;
 	[[nodiscard]] int searchInChatOffset() const;
 	[[nodiscard]] int previewOffset() const;
@@ -608,6 +620,8 @@ private:
 	void dragPinnedFromTouch();
 	[[nodiscard]] bool hasChatTypeFilter() const;
 
+	void restoreScrollShowingCommunity(
+		not_null<Data::CommunityInfo*> community);
 	void saveChatsFilterScrollState(FilterId filterId);
 	bool restoreChatsFilterScrollState(FilterId filterId);
 
@@ -720,6 +734,10 @@ private:
 	int _peerSearchPressed = -1;
 	int _peerSearchMenu = -1;
 
+	std::vector<std::unique_ptr<PeerSearchResult>> _idSearchResults;
+	int _idSearchSelected = -1;
+	int _idSearchPressed = -1;
+
 	std::vector<std::unique_ptr<FakeRow>> _previewResults;
 	int _previewCount = 0;
 	int _previewSelected = -1;
@@ -775,6 +793,7 @@ private:
 		std::unique_ptr<Ui::VideoUserpic>> _videoUserpics;
 
 	base::flat_map<FilterId, int> _chatsFilterScrollStates;
+	int _communityScrollTop = 0;
 
 	std::unordered_map<ChatsFilterTagsKey, TagCache> _chatsFilterTags;
 	bool _waitingAllChatListEntryRefreshesForTags = false;

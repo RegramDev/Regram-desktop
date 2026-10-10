@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_entry.h"
+#include "regram/nagram/chats/sort.h"
+#include "regram/nagram/chats/local_pins.h"
 
 #include "dialogs/dialogs_key.h"
 #include "dialogs/dialogs_indexed_list.h"
@@ -222,6 +224,7 @@ void Entry::updateChatListSortPosition() {
 		&& hasUnreadUnmutedForSort())
 		? UnreadOnTopDialogPos(sortKeyByDate)
 		: sortKeyByDate;
+	_sortKeyByDate = Nagram::Chats::SortKey(*this, _sortKeyByDate);
 	const auto fixedIndex = fixedOnTopIndex();
 	_sortKeyInChatList = fixedIndex
 		? FixedOnTopDialogPos(fixedIndex)
@@ -247,7 +250,9 @@ int Entry::lookupPinnedIndex(FilterId filterId) const {
 
 uint64 Entry::computeSortPosition(FilterId filterId) const {
 	const auto index = lookupPinnedIndex(filterId);
-	return index ? PinnedDialogPos(index) : _sortKeyByDate;
+	return index
+		? PinnedDialogPos(index)
+		: Nagram::Chats::LocalPinSortKey(*this, filterId, _sortKeyByDate);
 }
 
 bool Entry::hasUnreadUnmutedForSort() const {
@@ -322,7 +327,7 @@ void Entry::notifyUnreadStateChange(const UnreadState &wasState) {
 			sublist,
 			Data::SublistUpdate::Flag::UnreadView);
 	}
-	if (owner().dialogsUnreadOnTop()) {
+	if (owner().dialogsUnreadOnTop() || Nagram::Chats::SortingEnabled()) {
 		updateChatListSortPosition();
 	}
 	updateChatListEntryPostponed();

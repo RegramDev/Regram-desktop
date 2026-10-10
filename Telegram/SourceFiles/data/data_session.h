@@ -38,6 +38,10 @@ namespace Main {
 class Session;
 } // namespace Main
 
+namespace Nagram {
+class ViewRefresher;
+} // namespace Nagram
+
 namespace Ui {
 class BoxContent;
 } // namespace Ui
@@ -1034,6 +1038,7 @@ public:
 	[[nodiscard]] HistoryItem *messageWithPeer(PeerId id) const;
 
 private:
+	friend class Nagram::ViewRefresher;
 	using Messages = std::unordered_map<MsgId, not_null<HistoryItem*>>;
 
 	struct NextToUpgradeGift {

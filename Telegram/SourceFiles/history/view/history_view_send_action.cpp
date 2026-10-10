@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_send_action.h"
+#include "regram/nagram/messages/content.h"
 
 #include "data/data_user.h"
 #include "data/data_send_action.h"
@@ -19,6 +20,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text_options.h"
 #include "ui/painter.h"
 #include "styles/style_dialogs.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/filters/filters_controller.h"
+
 
 namespace HistoryView {
 namespace {
@@ -60,6 +66,10 @@ bool SendActionPainter::updateNeedsAnimating(
 	using Type = Api::SendProgressType;
 	if (action.type() == mtpc_sendMessageCancelAction) {
 		clear(user);
+		return false;
+	}
+
+	if (FiltersController::isBlocked(user)) {
 		return false;
 	}
 
@@ -148,6 +158,9 @@ bool SendActionPainter::paint(
 		int outerWidth,
 		style::color color,
 		crl::time ms) {
+	if (Nagram::Messages::HidePrivateActivity(_history->peer)) {
+		return false;
+	}
 	if (_sendActionAnimation) {
 		const auto animationWidth = _sendActionAnimation.width();
 		const auto extraAnimationWidth = _animationLeft

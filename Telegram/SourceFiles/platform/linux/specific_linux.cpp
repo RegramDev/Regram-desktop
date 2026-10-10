@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/update_checker.h"
 #include "core/version.h"
 #include "data/data_location.h"
+#include "regram/nagram/core/relaunch.h"
 #include "window/window_controller.h"
 #include "webview/platform/linux/webview_linux_webkitgtk.h"
 
@@ -233,7 +234,7 @@ bool GenerateDesktopFile(
 	DEBUG_LOG(("App Info: placing .desktop file to %1").arg(targetPath));
 	if (!QDir(targetPath).exists()) QDir().mkpath(targetPath);
 
-	const auto sourceFile = u":/misc/org.telegram.desktop.desktop"_q;
+	const auto sourceFile = u":/misc/dev.regram.desktop.desktop"_q;
 	const auto targetFile = targetPath
 		+ QGuiApplication::desktopFileName()
 		+ u".desktop"_q;
@@ -372,7 +373,7 @@ bool GenerateDesktopFile(
 		hashMd5Hex(d.constData(), d.size(), md5Hash);
 
 		if (!Core::Launcher::Instance().customWorkingDir()) {
-			QFile::remove(u"%1org.telegram.desktop._%2.desktop"_q.arg(
+			QFile::remove(u"%1dev.regram.desktop._%2.desktop"_q.arg(
 				targetPath,
 				md5Hash));
 
@@ -381,7 +382,7 @@ bool GenerateDesktopFile(
 			hashMd5Hex(exePath.constData(), exePath.size(), md5Hash);
 		}
 
-		QFile::remove(u"%1org.telegram.desktop.%2.desktop"_q.arg(
+		QFile::remove(u"%1dev.regram.desktop.%2.desktop"_q.arg(
 			targetPath,
 			md5Hash));
 	}
@@ -440,7 +441,7 @@ bool GenerateServiceFile(bool silent = false) {
 		const auto d = QFile::encodeName(QDir(cWorkingDir()).absolutePath());
 		hashMd5Hex(d.constData(), d.size(), md5Hash);
 
-		QFile::remove(u"%1org.telegram.desktop._%2.service"_q.arg(
+		QFile::remove(u"%1dev.regram.desktop._%2.service"_q.arg(
 			targetPath,
 			md5Hash));
 	}
@@ -674,11 +675,10 @@ QString ExecutablePathForShortcuts() {
 		const auto &arguments = Core::Launcher::Instance().arguments();
 		if (!arguments.isEmpty()) {
 			const auto result = QFileInfo(arguments.first()).fileName();
-			if (!result.isEmpty()) {
+			if (Nagram::RunsFromPath(result)) {
 				return result;
 			}
 		}
-		return cExeName();
 	}
 	return cExeDir() + cExeName();
 }
@@ -686,19 +686,6 @@ QString ExecutablePathForShortcuts() {
 } // namespace Platform
 
 QString psAppDataPath() {
-	// Previously we used ~/.TelegramDesktop, so look there first.
-	// If we find data there, we should still use it.
-	auto home = QDir::homePath();
-	if (!home.isEmpty()) {
-		auto oldPath = home + u"/.TelegramDesktop/"_q;
-		auto oldSettingsBase = oldPath + u"tdata/settings"_q;
-		if (QFile::exists(oldSettingsBase + '0')
-			|| QFile::exists(oldSettingsBase + '1')
-			|| QFile::exists(oldSettingsBase + 's')) {
-			return oldPath;
-		}
-	}
-
 	return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + '/';
 }
 
@@ -738,11 +725,11 @@ void start() {
 		}
 
 		if (!Core::UpdaterDisabled()) {
-			return u"org.telegram.desktop._%1"_q.arg(
+			return u"dev.regram.desktop._%1"_q.arg(
 				Core::Launcher::Instance().instanceHash().constData());
 		}
 
-		return u"org.telegram.desktop"_q;
+		return u"dev.regram.desktop"_q;
 	}());
 
 	LOG(("App ID: %1").arg(QGuiApplication::desktopFileName()));
@@ -857,6 +844,12 @@ QString ApplicationIconName() {
 	return Result;
 }
 
+QString LocalizedCurrencyName(
+		const QString &currency,
+		const QString &languageId) {
+	return QString();
+}
+
 void LaunchMaps(const Data::LocationPoint &point, Fn<void()> fail) {
 	const auto url = QUrl(
 		u"geo:%1,%2"_q.arg(point.latAsString(), point.lonAsString()));
@@ -893,43 +886,49 @@ void psSendToMenu(bool send, bool silent) {
 }
 
 bool linuxMoveFile(const char *from, const char *to) {
-	FILE *ffrom = fopen(from, "rb"), *fto = fopen(to, "wb");
+	auto ffrom = std::unique_ptr<FILE, int(*)(FILE*)>(
+		fopen(from, "rb"),
+		fclose);
 	if (!ffrom) {
-		if (fto) fclose(fto);
 		return false;
 	}
+	auto fto = std::unique_ptr<FILE, int(*)(FILE*)>(
+		fopen(to, "wb"),
+		fclose);
 	if (!fto) {
-		fclose(ffrom);
 		return false;
 	}
 	static const int BufSize = 65536;
 	char buf[BufSize];
-	while (size_t size = fread(buf, 1, BufSize, ffrom)) {
-		fwrite(buf, 1, size, fto);
+	while (const auto size = fread(buf, 1, BufSize, ffrom.get())) {
+		if (fwrite(buf, 1, size, fto.get()) != size) {
+			return false;
+		}
+	}
+	if (ferror(ffrom.get())
+		|| ferror(fto.get())
+		|| fflush(fto.get()) != 0) {
+		return false;
 	}
 
-	struct stat fst; // from http://stackoverflow.com/questions/5486774/keeping-fileowner-and-permissions-after-copying-file-in-c
-	//let's say this wont fail since you already worked OK on that fp
-	if (fstat(fileno(ffrom), &fst) != 0) {
-		fclose(ffrom);
-		fclose(fto);
+	struct stat fst = {}; // from http://stackoverflow.com/questions/5486774/keeping-fileowner-and-permissions-after-copying-file-in-c
+	if (fstat(fileno(ffrom.get()), &fst) != 0) {
 		return false;
 	}
 	//update to the same uid/gid
-	if (fchown(fileno(fto), fst.st_uid, fst.st_gid) != 0) {
-		fclose(ffrom);
-		fclose(fto);
+	if (fchown(fileno(fto.get()), fst.st_uid, fst.st_gid) != 0) {
 		return false;
 	}
 	//update the permissions
-	if (fchmod(fileno(fto), fst.st_mode) != 0) {
-		fclose(ffrom);
-		fclose(fto);
+	if (fchmod(fileno(fto.get()), fst.st_mode) != 0) {
 		return false;
 	}
 
-	fclose(ffrom);
-	fclose(fto);
+	const auto fromClosed = (fclose(ffrom.release()) == 0);
+	const auto toClosed = (fclose(fto.release()) == 0);
+	if (!fromClosed || !toClosed) {
+		return false;
+	}
 
 	if (unlink(from)) {
 		return false;

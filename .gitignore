@@ -59,6 +59,8 @@ cmake-build-debug/
 *.qsb
 
 # Local configuration files
+.local/
+CMakeUserPresets.json
 settings.local.json
 *.local.json
 .env

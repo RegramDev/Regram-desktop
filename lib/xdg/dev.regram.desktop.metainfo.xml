@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component type="desktop">
+    <id>dev.regram.desktop</id>
+    <metadata_license>CC0-1.0</metadata_license>
+    <project_license>GPL-3.0-or-later</project_license>
+    <name>Regram Desktop</name>
+    <summary>A customizable Telegram desktop client</summary>
+    <description>
+        <p>Regram is an independent Telegram client based on Telegram Desktop.</p>
+    </description>
+    <categories>
+        <category>Network</category>
+        <category>InstantMessaging</category>
+    </categories>
+    <developer id="dev.regram"><name>Regram</name></developer>
+    <url type="homepage">https://github.com/RegramDev/Regram-desktop</url>
+    <url type="bugtracker">https://github.com/RegramDev/Regram-desktop/issues</url>
+    <url type="vcs-browser">https://github.com/RegramDev/Regram-desktop</url>
+    <launchable type="desktop-id">dev.regram.desktop.desktop</launchable>
+    <provides>
+        <binary>Regram</binary>
+        <dbus type="session">dev.regram.desktop</dbus>
+        <mediatype>x-scheme-handler/tg</mediatype>
+        <mediatype>x-scheme-handler/tonsite</mediatype>
+    </provides>
+</component>

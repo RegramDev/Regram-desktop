@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/emoji_suggestions_widget.h"
+#include "regram/core/local_premium.h"
 
 #include "chat_helpers/emoji_keywords.h"
 #include "core/core_settings.h"
@@ -237,7 +238,7 @@ auto SuggestionsWidget::lookupCustom(const std::vector<Row> &rows) const
 		return {};
 	}
 	auto custom = base::flat_multi_map<int, Custom>();
-	const auto premium = _session->premium();
+	const auto premium = Regram::Premium::ForLocalFeatures(*_session);
 	const auto stickers = &_session->data().stickers();
 	for (const auto setId : stickers->emojiSetsOrder()) {
 		const auto i = stickers->sets().find(setId);

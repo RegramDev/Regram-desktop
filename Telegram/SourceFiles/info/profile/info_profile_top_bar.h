@@ -25,7 +25,6 @@ class SavedStarGiftId;
 } // namespace Data
 
 namespace Info::Profile {
-class BadgeTooltip;
 class TopicIconView;
 } // namespace Info::Profile
 
@@ -58,6 +57,7 @@ struct FlatLabel;
 namespace Ui {
 class AnimatedString;
 class FlatLabel;
+class GlareTooltip;
 class IconButton;
 class InputField;
 class LabelWithNumbers;
@@ -262,12 +262,13 @@ private:
 	const Fn<bool()> _gifPausedChecker;
 	const std::unique_ptr<Badge> _badge;
 	const std::unique_ptr<Badge> _verified;
+	const std::unique_ptr<Badge> _exteraBadge;
 
 	const bool _hasActions;
 	const int _minForProgress;
 
-	std::unique_ptr<BadgeTooltip> _badgeTooltip;
-	std::vector<std::unique_ptr<BadgeTooltip>> _badgeOldTooltips;
+	std::unique_ptr<Ui::GlareTooltip> _badgeTooltip;
+	std::vector<std::unique_ptr<Ui::GlareTooltip>> _badgeOldTooltips;
 	uint64 _badgeCollectibleId = 0;
 
 	object_ptr<Ui::MarqueeLabel> _title;
@@ -332,6 +333,7 @@ private:
 
 	Ui::PeerUserpicView _userpicView;
 	InMemoryKey _userpicUniqueKey;
+	uint8 _userpicAyuState = 0xFF;
 	QImage _cachedUserpic;
 	Ui::CommunityUserpicEffect _communityUserpicEffect;
 	bool _communityEffect = false;

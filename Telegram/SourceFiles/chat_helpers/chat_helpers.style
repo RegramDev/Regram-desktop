@@ -76,6 +76,7 @@ ComposeIcons {
 	menuEmojiViewPack: icon;
 	menuEmojiRemoveRecent: icon;
 	menuMute: icon;
+	menuUnmute: icon;
 	menuSchedule: icon;
 	menuWhenOnline: icon;
 	menuSpoiler: icon;
@@ -154,6 +155,8 @@ EmojiPan {
 	searchBackTextLeft: pixels;
 	searchBackTextTop: pixels;
 	photoButtonIcon: icon;
+	audioButtonIcon: icon;
+	linkButtonIcon: icon;
 	colorAll: IconButton;
 	colorAllLabel: FlatLabel;
 	removeSet: IconButton;
@@ -328,8 +331,8 @@ defaultWhoRead: WhoRead {
 whenReadStyle: TextStyle(defaultTextStyle) {
 	font: font(12px);
 }
-whenReadPadding: margins(34px, 3px, 17px, 4px);
-whenReadIconPosition: point(8px, 0px);
+whenReadPadding: margins(54px, 3px, 17px, 4px);
+whenReadIconPosition: point(15px, 0px);
 whenReadSkip: 3px;
 whenReadShowPadding: margins(6px, 0px, 6px, 2px);
 whoSentItem: Menu(defaultMenu) {
@@ -636,7 +639,8 @@ stickersPhotoButtonHeight: 36px;
 stickersPhotoButtonRadius: 8px;
 stickersPhotoButtonPadding: margins(6px, 0px, 12px, 0px);
 stickersPhotoButtonIconSkip: 4px;
-stickersPhotoButtonFont: font(21px bold);
+stickersPhotoButtonFont: font(14px bold);
+stickersPhotoButtonSkip: 10px;
 mediaPreviewPhotoSkip: 48px;
 
 emojiPanColorAll: IconButton(stickerPanRemoveSet) {
@@ -744,6 +748,7 @@ defaultComposeIcons: ComposeIcons {
 	menuEmojiViewPack: menuIconShowAll;
 	menuEmojiRemoveRecent: menuIconCancel;
 	menuMute: menuIconMute;
+	menuUnmute: menuIconUnmute;
 	menuSchedule: menuIconSchedule;
 	menuWhenOnline: menuIconWhenOnline;
 	menuSpoiler: menuIconSpoiler;
@@ -831,6 +836,8 @@ defaultEmojiPan: EmojiPan {
 	searchBackTextLeft: 40px;
 	searchBackTextTop: 10px;
 	photoButtonIcon: icon {{ "photo_editor/camera-24x24", windowFg }};
+	audioButtonIcon: icon {{ "photo_editor/widget_music", windowFg }};
+	linkButtonIcon: icon {{ "limits/links", windowFg }};
 	colorAll: emojiPanColorAll;
 	colorAllLabel: emojiPanColorAllLabel;
 	removeSet: stickerPanRemoveSet;
@@ -1249,6 +1256,16 @@ historyUnreadPollVotes: TwoIconButton(historyToDown) {
 	iconAbove: icon {{ "history_unread_poll_vote-40x40", historyToDownFg, point(6px, 6px) }};
 	iconAboveOver: icon {{ "history_unread_poll_vote-40x40", historyToDownFgOver, point(6px, 6px) }};
 }
+historyStash: TwoIconButton(historyToDown) {
+	iconAbove: icon {{ "history_stash_bubble-40x40", historyToDownFg, point(6px, 6px) }};
+	iconAboveOver: icon {{ "history_stash_bubble-40x40", historyToDownFgOver, point(6px, 6px) }};
+}
+historyStashArrow: icon {{ "history_stash_arrow-40x40", historyToDownFg, point(6px, 6px) }};
+historyStashArrowOver: icon {{ "history_stash_arrow-40x40", historyToDownFgOver, point(6px, 6px) }};
+historyStashArrowClipPosition: point(18px, 28px);
+historyStashArrowClipSize: size(16px, 12px);
+historyStashArrowTravel: 12px;
+historyStashBubbleTravel: 4px;
 historyUnreadThingsSkip: 4px;
 
 historyQuoteStyle: QuoteStyle(defaultQuoteStyle) {

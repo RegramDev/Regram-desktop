@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "media/view/media_view_overlay_widget.h"
+#include "regram/nagram/media/options.h"
+#include "regram/nagram/privacy/protection.h"
 
 #include "apiwrap.h"
 #include "api/api_attached_stickers.h"
@@ -20,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/calls_instance.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
+#include "core/core_screenshot_protection.h"
 #include "core/file_utilities.h"
 #include "core/mime_type.h"
 #include "core/ui_integration.h"
@@ -133,6 +136,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QScreen>
 
 #include <kurlmimedata.h>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/ayu_state.h"
+#include "regram/ayu/features/streamer_mode/streamer_mode.h"
+
 
 namespace Media {
 namespace View {
@@ -925,10 +934,15 @@ OverlayWidget::OverlayWidget()
 
 	// Toggling between windowed and fullscreen changes the window flags,
 	// and that is a path where Qt recreates the native window, dropping
-	// everything set on the old one. Reapply on every handle change.
-	_window->winIdValue(
-	) | rpl::on_next([=] {
-		Platform::SetWindowScreenshotProtection(_window, _screenshotProtected);
+	// everything set on the old one. Reapply on every handle change,
+	// and after the app-wide protection is applied to all windows.
+	rpl::combine(
+		_window->winIdValue(),
+		Core::App().screenshotProtection().activeValue()
+	) | rpl::on_next([=](WId, bool active) {
+		Platform::SetWindowScreenshotProtection(
+			_window,
+			_screenshotProtected || active);
 	}, lifetime());
 
 	_window->screenValue(
@@ -1444,11 +1458,8 @@ bool OverlayWidget::hasCopyMediaRestriction(bool skipPremiumCheck) const {
 		if (story->call()) {
 			return true;
 		}
-		return skipPremiumCheck
-			? !story->canDownloadIfPremium()
-			: !story->canDownloadChecked();
 	}
-	return (_history && !_history->peer->allowsForwarding())
+	return (_history && !Nagram::Privacy::AllowsCopy(_history->peer))
 		|| (_message && _message->forbidsSaving());
 }
 
@@ -1485,7 +1496,9 @@ QSize OverlayWidget::videoSize() const {
 bool OverlayWidget::streamingRequiresControls() const {
 	return !_stories
 		&& _document
-		&& (!_document->isAnimation() || _document->isVideoMessage());
+		&& (!_document->isAnimation()
+			|| _document->isVideoMessage()
+			|| Nagram::ForDevice().Get(Nagram::Media::kGifPlaybackControls));
 }
 
 QImage OverlayWidget::videoFrame() const {
@@ -1843,6 +1856,11 @@ void OverlayWidget::updateControls() {
 		_ttlTimer.cancel();
 	}
 	refreshTtlBadge(destroyAt);
+	if (_photo) {
+		_dateText += QString(", DC%1").arg(_photo->getDC());
+	} else if (_document) {
+		_dateText += QString(", DC%1").arg(_document->getDC());
+	}
 	if (!_fromName.isEmpty()) {
 		_fromNameLabel.setText(
 			st::mediaviewTextStyle,
@@ -4513,6 +4531,12 @@ void OverlayWidget::activate() {
 	setFocus();
 	QApplication::setActiveWindow(_window);
 	setFocus();
+
+	if (AyuSettings::getInstance().streamerMode()) {
+		AyuFeatures::StreamerMode::hideWidgetWindow(_window);
+	} else {
+		AyuFeatures::StreamerMode::showWidgetWindow(_window);
+	}
 }
 
 void OverlayWidget::show(OpenRequest request) {
@@ -5343,6 +5367,7 @@ void OverlayWidget::initThemePreview() {
 	current.backgroundId = Background()->id();
 	current.backgroundImage = Background()->createCurrentImage();
 	current.backgroundTiled = Background()->tile();
+	current.previewBg = st::themePreviewBg->c;
 
 	const auto &cloudList = _document->session().data().cloudThemes().list();
 	const auto i = ranges::find(
@@ -6077,13 +6102,16 @@ bool OverlayWidget::contentNeedsScreenshotProtection() const {
 	if (const auto story = _stories ? _stories->story() : nullptr) {
 		return story->forbidsForward();
 	}
-	return (_history && !_history->peer->allowsForwarding())
+	return (_history && !Nagram::Privacy::AllowsCopy(_history->peer))
 		|| (_message && _message->forbidsSaving());
 }
 
 void OverlayWidget::refreshScreenshotProtection() {
 	_screenshotProtected = contentNeedsScreenshotProtection();
-	Platform::SetWindowScreenshotProtection(_window, _screenshotProtected);
+	Platform::SetWindowScreenshotProtection(
+		_window,
+		(_screenshotProtected
+			|| Core::App().screenshotProtection().active()));
 }
 
 void OverlayWidget::refreshSystemMediaControls() {
@@ -8833,6 +8861,7 @@ Window::SessionController *OverlayWidget::findWindow(bool switchTo) const {
 
 // #TODO unite and check
 void OverlayWidget::clearBeforeHide() {
+	AyuState::disableGhostModeOnStoryClose(_storiesSession);
 	checkSingleViewMediaBurn();
 	_message = nullptr;
 	_sharedMedia = nullptr;

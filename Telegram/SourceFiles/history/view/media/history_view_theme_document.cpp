@@ -44,6 +44,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat.h"
 #include "styles/style_credits.h"
 
+// AyuGram includes
+#include "regram/ayu/features/message_shot/message_shot.h"
+
+
 namespace HistoryView {
 namespace {
 
@@ -268,7 +272,9 @@ void ThemeDocument::draw(Painter &p, const PaintContext &context) const {
 			p.setPen(st->msgDateImgFg());
 			p.drawTextLeft(statusX, statusY, width(), _statusText, statusW - 2 * st::msgDateImgPadding.x());
 		}
-		if (radial || (!loaded && !_data->loading())) {
+		if ((radial || (!loaded && !_data->loading()))
+			&& !AyuFeatures::MessageShot::isTakingShot()
+			&& (_parent->context() != Context::MediaEditor)) {
 			const auto radialOpacity = (radial && loaded && !_data->uploading())
 				? _animation->radial.opacity() :
 				1.;

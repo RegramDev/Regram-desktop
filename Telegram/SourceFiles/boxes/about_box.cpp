@@ -33,25 +33,29 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
 
-namespace {
+// AyuGram includes
+#include "window/window_session_controller.h"
+#include "window/window_session_controller_link_info.h"
 
 rpl::producer<TextWithEntities> Text1() {
-	return tr::lng_about_text1(
+	return tr::lng_nagram_about_api(
 		lt_api_link,
 		tr::lng_about_text1_api(tr::url(u"https://core.telegram.org/api"_q)),
 		tr::marked);
 }
 
+namespace {
+
 rpl::producer<TextWithEntities> Text2() {
 	return tr::lng_about_text2(
 		lt_gpl_link,
-		rpl::single(tr::link(
+		rpl::single(Ui::Text::Link(
 			"GNU GPL",
-			"https://github.com/telegramdesktop/tdesktop/blob/master/LICENSE")),
+			"https://github.com/RegramDev/Regram-desktop/blob/regram/port/LICENSE")),
 		lt_github_link,
-		rpl::single(tr::link(
+		rpl::single(Ui::Text::Link(
 			"GitHub",
-			"https://github.com/telegramdesktop/tdesktop")),
+			"https://github.com/RegramDev/Regram-desktop")),
 		tr::marked);
 }
 
@@ -64,8 +68,8 @@ rpl::producer<TextWithEntities> Text3() {
 
 } // namespace
 
-void AboutBox(not_null<Ui::GenericBox*> box) {
-	box->setTitle(u"Telegram Desktop"_q);
+void AboutBox(not_null<Ui::GenericBox*> box, Window::SessionController*) {
+	box->setTitle(u"Regram Desktop"_q);
 
 	auto layout = box->verticalLayout();
 
@@ -83,35 +87,7 @@ void AboutBox(not_null<Ui::GenericBox*> box) {
 			st::boxRowPadding.right(),
 			st::boxRowPadding.bottom()));
 	version->setClickedCallback([=] {
-		if (cRealAlphaVersion()) {
-			auto url = u"https://tdesktop.com/"_q;
-			if (Platform::IsWindows32Bit()) {
-				url += u"win/%1.zip"_q;
-			} else if (Platform::IsWindows64Bit()) {
-				url += u"win64/%1.zip"_q;
-			} else if (Platform::IsWindowsARM64()) {
-				url += u"winarm/%1.zip"_q;
-			} else if (Platform::IsMac()) {
-				url += u"mac/%1.zip"_q;
-			} else if (Platform::IsLinux()) {
-				url += u"linux/%1.tar.xz"_q;
-			} else {
-				Unexpected("Platform value.");
-			}
-			url = url.arg(u"talpha%1_%2"_q
-				.arg(cRealAlphaVersion())
-				.arg(Core::countAlphaVersionSignature(cRealAlphaVersion())));
-
-			QGuiApplication::clipboard()->setText(url);
-
-			box->getDelegate()->show(
-				Ui::MakeInformBox(
-					"The link to the current private alpha "
-					"version of Telegram Desktop was copied "
-					"to the clipboard."));
-		} else {
-			File::OpenUrl(Core::App().changelogLink());
-		}
+		File::OpenUrl(Core::App().changelogLink());
 	});
 
 	Ui::AddSkip(layout, st::aboutTopSkip);
@@ -124,11 +100,15 @@ void AboutBox(not_null<Ui::GenericBox*> box) {
 		Ui::AddSkip(layout, st::aboutSkip);
 	};
 
+	addText(tr::lng_nagram_about(tr::marked));
 	addText(Text1());
 	addText(Text2());
 	addText(Text3());
 
 	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
+	box->addLeftButton(tr::lng_nagram_source_code(), [=] {
+		File::OpenUrl(u"https://github.com/RegramDev/Regram-desktop"_q);
+	});
 
 	box->setWidth(st::aboutWidth);
 }

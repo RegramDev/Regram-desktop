@@ -28,6 +28,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/message_field.h" // ConvertTextTagsToEntities.
 #include "chat_helpers/stickers_dice_pack.h" // DicePacks::kDiceString.
 #include "ui/text/text_entity.h" // TextWithEntities.
+#include "regram/nagram/compose/text.h"
 #include "ui/item_text_options.h" // Ui::ItemTextOptions.
 #include "ui/chat/attach/attach_prepare.h"
 #include "main/main_session.h"
@@ -36,6 +37,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/file_upload.h"
 #include "mainwidget.h"
 #include "apiwrap.h"
+
+// AyuGram includes
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace Api {
 namespace {
@@ -185,6 +190,8 @@ void SendExistingMedia(
 		Fn<MTPInputMedia()> inputMedia,
 		Data::FileOrigin origin,
 		std::optional<MsgId> localMessageId) {
+	applyGhostScheduling(&message.action.history->session(), message.action.options);
+
 	const auto history = message.action.history;
 	const auto peer = history->peer;
 	const auto session = &history->session();
@@ -244,9 +251,11 @@ void SendExistingMedia(
 		TextUtilities::ConvertTextTagsToEntities(message.textWithTags.tags)
 	};
 	TextUtilities::Trim(caption);
+	caption = Nagram::Compose::PrepareText(caption, false);
+	const auto captionNormalized = reverseLocalPremiumEmoji(caption, history);
 	auto sentEntities = EntitiesToMTP(
 		session,
-		caption.entities,
+		captionNormalized.entities,
 		ConvertOption::SkipLocal);
 	if (!sentEntities.v.isEmpty()) {
 		sendFlags |= MTPmessages_SendMedia::Flag::f_entities;
@@ -702,6 +711,25 @@ void SendExistingDocument(
 		MessageToSend &&message,
 		not_null<DocumentData*> document,
 		std::optional<MsgId> localMessageId) {
+	if (!document->sticker()
+		&& !document->isVideoMessage()
+		&& !document->isVoiceMessage()) {
+		const auto clearReplyTo = prependPseudoReply(message);
+		if (clearReplyTo) {
+			message.action.replyTo.messageId = FullMsgId(
+				message.action.replyTo.messageId.peer,
+				message.action.replyTo.topicRootId);
+		}
+	} else if (message.action.replyTo && message.action.history) {
+		if (const auto item = message.action.history->session().data().message(message.action.replyTo.messageId)) {
+			if (item->isDeleted()) {
+				message.action.replyTo.messageId = FullMsgId(
+					message.action.replyTo.messageId.peer,
+					message.action.replyTo.topicRootId);
+			}
+		}
+	}
+
 	const auto inputMedia = [=] {
 		return MTP_inputMediaDocument(
 			MTP_flags(message.action.options.mediaSpoiler
@@ -737,6 +765,7 @@ void SendMusicSelection(
 		TextUtilities::ConvertTextTagsToEntities(message.textWithTags.tags)
 	};
 	TextUtilities::Trim(caption);
+	caption = Nagram::Compose::PrepareText(caption, false);
 
 	const auto api = &message.action.history->session().api();
 
@@ -784,6 +813,13 @@ void SendExistingPhoto(
 		MessageToSend &&message,
 		not_null<PhotoData*> photo,
 		std::optional<MsgId> localMessageId) {
+	const auto clearReplyTo = prependPseudoReply(message);
+	if (clearReplyTo) {
+		message.action.replyTo.messageId = FullMsgId(
+			message.action.replyTo.messageId.peer,
+			message.action.replyTo.topicRootId);
+	}
+
 	const auto inputMedia = [=] {
 		return MTP_inputMediaPhoto(
 			MTP_flags(0),
@@ -1009,6 +1045,7 @@ struct ConfirmedLocalFile {
 		session->user()).flags;
 	TextUtilities::PrepareForSending(caption, prepareFlags);
 	TextUtilities::Trim(caption);
+	caption = Nagram::Compose::PrepareText(caption, false);
 	return caption;
 }
 
@@ -1136,6 +1173,7 @@ struct ConfirmedLocalFile {
 		not_null<Main::Session*> session,
 		const std::shared_ptr<FilePrepareResult> &file,
 		int starsPaid) {
+	applyGhostScheduling(session, file->to.options);
 	const auto isEditing = (file->type != SendMediaType::Audio)
 		&& (file->type != SendMediaType::Round)
 		&& (file->to.replaceMediaOf != 0);
@@ -1160,6 +1198,30 @@ struct ConfirmedLocalFile {
 		: nullptr;
 	const auto history = session->data().history(file->to.peer);
 	const auto peer = history->peer;
+
+	if (!isEditing && !welcomeTemplate) {
+		if (file->type != SendMediaType::Audio
+			&& file->type != SendMediaType::Round) {
+			const auto clearReply = prependPseudoReply(
+				session,
+				history,
+				file->caption,
+				file->to.replyTo);
+			if (clearReply) {
+				file->to.replyTo.messageId = FullMsgId(
+					file->to.replyTo.messageId.peer,
+					file->to.replyTo.topicRootId);
+			}
+		} else if (file->to.replyTo) {
+			if (const auto replied = session->data().message(file->to.replyTo.messageId)) {
+				if (replied->isDeleted()) {
+					file->to.replyTo.messageId = FullMsgId(
+						file->to.replyTo.messageId.peer,
+						file->to.replyTo.topicRootId);
+				}
+			}
+		}
+	}
 
 	if (!isEditing) {
 		auto &histories = session->data().histories();

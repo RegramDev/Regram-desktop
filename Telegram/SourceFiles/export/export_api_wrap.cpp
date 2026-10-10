@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "export/export_api_wrap.h"
+#include "regram/nagram/export/range.h"
 
 #include "export/export_settings.h"
 #include "export/data/export_data_types.h"
@@ -22,8 +23,8 @@ namespace Export {
 namespace {
 
 constexpr auto kUserpicsSliceLimit = 100;
-constexpr auto kFileChunkSize = 128 * 1024;
-constexpr auto kFileRequestsCount = 2;
+constexpr auto kFileChunkSize = 8 * 128 * 1024;
+constexpr auto kFileRequestsCount = 3;
 //constexpr auto kFileNextRequestDelay = crl::time(20);
 constexpr auto kChatsSliceLimit = 100;
 constexpr auto kMessagesSliceLimit = 100;
@@ -581,6 +582,7 @@ struct ApiWrap::ChatProcess : AbstractMessagesProcess {
 
 	int localSplitIndex = 0;
 	int32 largestIdPlusOne = 1;
+	base::flat_map<int, int32> firstIds;
 };
 
 struct ApiWrap::TopicProcess : AbstractMessagesProcess {
@@ -1839,7 +1841,7 @@ void ApiWrap::checkFirstMessageDate(int localSplitIndex, int count) {
 	Expects(localSplitIndex < _chatProcess->info.splits.size());
 
 	if (_settings->singlePeerTill <= 0) {
-		messagesCountLoaded(localSplitIndex, count);
+		resolveMessagesRange(localSplitIndex, count);
 		return;
 	}
 
@@ -1855,8 +1857,38 @@ void ApiWrap::checkFirstMessageDate(int localSplitIndex, int count) {
 		const auto skipSplit = !Data::SingleMessageBefore(
 			result,
 			_settings->singlePeerTill);
-		messagesCountLoaded(localSplitIndex, skipSplit ? 0 : count);
+		resolveMessagesRange(localSplitIndex, skipSplit ? 0 : count);
 	});
+}
+
+void ApiWrap::resolveMessagesRange(int localSplitIndex, int count) {
+	Expects(_chatProcess != nullptr);
+
+	using namespace Nagram::Export;
+	const auto mine = [=] { return _chatProcess->info.onlyMyMessages; };
+	// WHY: getHistory returns the newest message with date <= offset_date,
+	// so offset_date = date - 1 with add_offset = -1 gives the first one
+	// at or after the date.
+	const auto lookup = [=](TimeId date, Fn<void(Anchor)> done) {
+		requestChatMessages(
+			_chatProcess->info.splits[localSplitIndex],
+			0,
+			-1,
+			1,
+			[=](const MTPmessages_Messages &result) {
+				done(ParseAnchor(result));
+			},
+			date - 1);
+	};
+	ResolveRange(
+		count,
+		mine() ? 0 : _settings->singlePeerFrom,
+		mine() ? 0 : _settings->singlePeerTill,
+		lookup,
+		[=](Range range) {
+			_chatProcess->firstIds[localSplitIndex] = mine() ? 1 : range.firstId;
+			messagesCountLoaded(localSplitIndex, mine() ? count : range.count);
+		});
 }
 
 void ApiWrap::messagesCountLoaded(int localSplitIndex, int count) {
@@ -2213,7 +2245,9 @@ void ApiWrap::requestMessagesSlice() {
 	}
 	requestChatMessages(
 		_chatProcess->info.splits[_chatProcess->localSplitIndex],
-		_chatProcess->largestIdPlusOne,
+		std::max(
+			_chatProcess->largestIdPlusOne,
+			_chatProcess->firstIds[_chatProcess->localSplitIndex]),
 		-kMessagesSliceLimit,
 		kMessagesSliceLimit,
 		[=](const MTPmessages_Messages &result) {
@@ -2240,7 +2274,8 @@ void ApiWrap::requestChatMessages(
 		int offsetId,
 		int addOffset,
 		int limit,
-		FnMut<void(MTPmessages_Messages&&)> done) {
+		FnMut<void(MTPmessages_Messages&&)> done,
+		TimeId offsetDate) {
 	Expects(_chatProcess != nullptr);
 
 	_chatProcess->requestDone = std::move(done);
@@ -2269,8 +2304,8 @@ void ApiWrap::requestChatMessages(
 			MTPVector<MTPReaction>(), // saved_reaction
 			MTPint(), // top_msg_id
 			MTP_inputMessagesFilterEmpty(),
-			MTP_int(0), // min_date
-			MTP_int(0), // max_date
+			MTP_int(std::max(_settings->singlePeerFrom - 1, 0)), // min_date
+			MTP_int(_settings->singlePeerTill), // max_date
 			MTP_int(offsetId),
 			MTP_int(addOffset),
 			MTP_int(limit),
@@ -2282,7 +2317,7 @@ void ApiWrap::requestChatMessages(
 		splitRequest(realSplitIndex, MTPmessages_GetHistory(
 			realPeerInput,
 			MTP_int(offsetId),
-			MTP_int(0), // offset_date
+			MTP_int(offsetDate), // offset_date
 			MTP_int(addOffset),
 			MTP_int(limit),
 			MTP_int(0), // max_id
@@ -2303,7 +2338,8 @@ void ApiWrap::requestChatMessages(
 						offsetId,
 						addOffset,
 						limit,
-						base::take(_chatProcess->requestDone));
+						base::take(_chatProcess->requestDone),
+						offsetDate);
 					return true;
 				}
 			}
@@ -2804,6 +2840,9 @@ void ApiWrap::finishMessagesSlice() {
 	auto slice = *base::take(_chatProcess->slice);
 	if (!slice.list.empty()) {
 		_chatProcess->largestIdPlusOne = slice.list.back().id + 1;
+		if (Nagram::Export::PastRange(slice.list, _settings->singlePeerTill)) {
+			_chatProcess->lastSlice = true;
+		}
 		const auto splitIndex = _chatProcess->info.splits[
 			_chatProcess->localSplitIndex];
 		if (splitIndex < 0) {

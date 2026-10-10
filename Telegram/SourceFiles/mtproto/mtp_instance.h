@@ -28,6 +28,8 @@ using AuthKeyPtr = std::shared_ptr<AuthKey>;
 using AuthKeysList = std::vector<AuthKeyPtr>;
 enum class Environment : uchar;
 
+void SetRpcErrorObserver(Fn<void(const Error&)> observer);
+
 class Instance : public QObject {
 	Q_OBJECT
 

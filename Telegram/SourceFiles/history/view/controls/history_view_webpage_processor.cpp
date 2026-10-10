@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/controls/history_view_webpage_processor.h"
+#include "regram/nagram/compose/options.h"
 
 #include "base/unixtime.h"
 #include "data/data_chat_participant_status.h"
@@ -15,6 +16,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
+
+// AyuGram includes
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace HistoryView::Controls {
 
@@ -145,18 +150,19 @@ void WebpageResolver::request(const QString &link, bool force) {
 			page->pendingTill = 0;
 			page->failed = true;
 		}
-		_cache.emplace(link, page->failed ? nullptr : page.get());
+		const auto empty = (data.vwebpage().type() == mtpc_webPageEmpty);
+		_cache[link] = (empty || page->failed) ? nullptr : page.get();
 		_resolved.fire_copy(link);
 	};
 	const auto fail = [=] {
-		_cache.emplace(link, nullptr);
+		_cache[link] = nullptr;
 		_resolved.fire_copy(link);
 	};
 	_requestLink = link;
 	_requestId = _api.request(
 		MTPmessages_GetWebPagePreview(
 			MTP_flags(0),
-			MTP_string(link),
+			MTP_string(getBetterLinkPreview(link)),
 			MTPVector<MTPMessageEntity>()
 	)).done([=](
 			const MTPmessages_WebPagePreview &result,
@@ -219,6 +225,10 @@ WebpageProcessor::WebpageProcessor(
 		_parsedLinks = std::move(parsed);
 		checkPreview();
 	}, _lifetime);
+	Nagram::ForDevice().Value(Nagram::Compose::kDisableLinkPreview
+	) | rpl::skip(1) | rpl::on_next([=] {
+		checkNow(true);
+	}, _lifetime);
 
 	_resolver->resolved() | rpl::on_next([=](QString link) {
 		if (_link != link
@@ -230,6 +240,7 @@ WebpageProcessor::WebpageProcessor(
 		if (_data) {
 			_draft.id = _data->id;
 			_draft.url = _data->url;
+			_draft.previewChanged = (getBetterLinkPreview(link) != link);
 			updateFromData();
 		} else {
 			_links = QStringList();
@@ -364,6 +375,10 @@ void WebpageProcessor::checkPreview() {
 		return;
 	} else if (_draft.manual) {
 		return;
+	} else if (Nagram::ForDevice().Get(Nagram::Compose::kDisableLinkPreview)) {
+		apply({ .removed = true });
+		_draft.removed = false;
+		return;
 	} else if (_links == _parsedLinks) {
 		return;
 	}
@@ -393,6 +408,7 @@ void WebpageProcessor::checkPreview() {
 		_data = page;
 		_draft.id = _data->id;
 		_draft.url = _data->url;
+		_draft.previewChanged = (getBetterLinkPreview(chosen) != chosen);
 	} else {
 		_data = nullptr;
 		_draft = {};

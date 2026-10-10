@@ -1,0 +1,17 @@
+<RCC>
+  <qresource prefix="/langs/nagram">
+    <file alias="zh-hans.strings">../langs/nagram/zh-hans.strings</file>
+    <file alias="zh-hant.strings">../langs/nagram/zh-hant.strings</file>
+  </qresource>
+  <qresource prefix="/nagram/icons">
+    <file alias="block.png">../branding/regram.png</file>
+    <file alias="block_black.png">../branding/regram.png</file>
+    <file alias="block_blue.png">../branding/regram.png</file>
+    <file alias="block_niello.png">../branding/regram.png</file>
+    <file alias="block_purple.png">../branding/regram.png</file>
+    <file alias="classic.png">../branding/regram.png</file>
+    <file alias="colorful.png">../branding/regram.png</file>
+    <file alias="cyan.png">../branding/regram.png</file>
+    <file alias="black.png">../branding/regram.png</file>
+  </qresource>
+</RCC>

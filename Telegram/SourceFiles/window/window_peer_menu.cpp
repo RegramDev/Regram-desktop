@@ -6,6 +6,14 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_peer_menu.h"
+#include "regram/nagram/privacy/options.h"
+#include "regram/nagram/privacy/alias.h"
+#include "regram/nagram/privacy/admin_shortcuts.h"
+#include "regram/nagram/filters/menu.h"
+#include "regram/nagram/services/auto_translate.h"
+#include "regram/nagram/services/send_translation.h"
+#include "regram/nagram/chats/recent_chats.h"
+#include "regram/nagram/chats/local_pins.h"
 
 #include "base/call_delayed.h"
 #include "menu/menu_check_item.h"
@@ -83,6 +91,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_context_menu.h"
 #include "history/view/history_view_schedule_box.h"
 #include "iv/editor/iv_editor_session.h"
+#include "wallet/wallet_panel.h"
 #include "window/window_separate_id.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
@@ -135,9 +144,17 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_window.h" // st::windowMinWidth
 #include "styles/style_menu_icons.h"
 #include "styles/style_premium.h"
+#include "styles/style_wallet.h"
 
 #include <QAction>
 #include <QtWidgets/QApplication>
+
+// AyuGram includes
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "styles/style_ayu_icons.h"
+#include "regram/ayu/ui/context_menu/context_menu.h"
+#include "regram/ayu/features/forward/ayu_forward.h"
+
 
 namespace Window {
 namespace {
@@ -333,11 +350,13 @@ private:
 	void addNewContact();
 	void addShareContact();
 	void addEditContact();
+	void addLocalAlias();
 	void addBotToGroup();
 	void addNewMembers();
 	void addDeleteContact();
 	void addTTLSubmenu(bool addSeparator);
 	void addSendGift();
+	void addSendMoney();
 	void addCreateTopic();
 	void addViewAsMessages();
 	void addViewAsTopics();
@@ -406,6 +425,8 @@ bool PinnedLimitReached(
 		owner->setChatPinned(wasted, FilterId(), false);
 		owner->setChatPinned(history, FilterId(), true);
 		history->session().api().savePinnedOrder(folder);
+	} else if (Nagram::Chats::TryLocalPin(controller, history)) {
+		return true;
 	} else if (folder) {
 		controller->show(Box(FolderPinsLimitBox, &history->session()));
 	} else {
@@ -431,7 +452,8 @@ void TogglePinnedThread(
 		not_null<Window::SessionController*> controller,
 		not_null<Dialogs::Entry*> entry,
 		Fn<void()> onToggled) {
-	if (!entry->folderKnown()) {
+	if (!entry->folderKnown()
+		|| Nagram::Chats::LocalUnpin(entry, onToggled)) {
 		return;
 	}
 	const auto owner = &entry->owner();
@@ -560,6 +582,11 @@ void Filler::addTogglePin() {
 		&& !community->collapsedInDialogs()) {
 		return;
 	} else if (InsideCollapsedCommunity(_request.key.history())) {
+		return;
+	} else if (Nagram::Chats::AddLocalUnpinAction(
+			_addAction,
+			entry,
+			filterId)) {
 		return;
 	}
 	const auto pinText = [=] {
@@ -813,7 +840,7 @@ void Filler::addUngroup() {
 	const auto channel = _peer ? _peer->asChannel() : nullptr;
 	if (!channel
 		|| !channel->isCommunity()
-		|| !(channel->flags() & ChannelDataFlag::CommunityCollapsed)) {
+		|| !channel->collapsedInDialogs()) {
 		return;
 	}
 	const auto controller = _controller;
@@ -1161,6 +1188,17 @@ void Filler::addEditContact() {
 		&st::menuIconEdit);
 }
 
+void Filler::addLocalAlias() {
+	if (_topic || _peer->isSelf() || _peer->migrateTo()) {
+		return;
+	}
+	const auto peer = _peer;
+	const auto show = _controller->uiShow();
+	_addAction(tr::lng_nagram_peer_alias(tr::now), [=] {
+		Nagram::Privacy::ShowAlias(show, peer);
+	}, &st::menuIconEdit);
+}
+
 void Filler::addBotToGroup() {
 	const auto user = _peer->asUser();
 	if (!user) {
@@ -1433,7 +1471,8 @@ void Filler::addCreatePoll() {
 }
 
 void Filler::addCreateTodoList() {
-	if (skipCreateActions()) {
+	if (skipCreateActions() || Nagram::ForDevice().Get(
+		Nagram::Privacy::kHideCreateTodo)) {
 		return;
 	}
 	const auto can = _topic
@@ -1599,7 +1638,7 @@ void Filler::addToggleNoForwards() {
 			}
 		}).send();
 	};
-	const auto disabledNow = !user->allowsForwarding();
+	const auto disabledNow = user->isAyuNoForwards();
 	_addAction(disabledNow
 		? tr::lng_enable_sharing(tr::now)
 		: tr::lng_disable_sharing(tr::now), [=] {
@@ -1693,6 +1732,12 @@ void Filler::addSendGift() {
 	_addAction(tr::lng_profile_gift_premium(tr::now), [=] {
 		Ui::ShowStarGiftBox(navigation, peer);
 	}, &st::menuIconGiftPremium);
+}
+
+void Filler::addSendMoney() {
+	if (const auto user = _peer->asUser()) {
+		AddSendMoneyAction(_controller, user, _addAction);
+	}
 }
 
 void Filler::fill() {
@@ -1895,6 +1940,12 @@ void Filler::addVideoChat() {
 }
 
 void Filler::fillContextMenuActions() {
+	const auto history = _request.key.history();
+	const auto channel = history ? history->peer->asChannel() : nullptr;
+	if (channel && !channel->amIn() && !history->inChatList()) {
+		addNewWindow(false);
+		return;
+	}
 	addNewWindow();
 	addUngroup();
 	addHidePromotion();
@@ -1914,6 +1965,7 @@ void Filler::fillContextMenuActions() {
 	}
 	addBanFromChannel();
 	addClearHistory();
+	AyuUi::AddDeleteOwnMessagesAction(_peer, _topic, _controller, _addAction);
 	addDeleteChat();
 	addLeaveChat();
 	addDeleteTopic();
@@ -1921,10 +1973,14 @@ void Filler::fillContextMenuActions() {
 
 void Filler::fillHistoryActions() {
 	addToggleMuteSubmenu(true);
+	AyuUi::AddAyuGramActions(_peer, _thread, _controller, _addAction);
 	addCreateTopic();
 	addInfo();
+	AyuUi::AddJumpToBeginningAction(_peer, _thread, _controller, _addAction);
+	AyuUi::AddOpenChannelAction(_peer, _controller, _addAction);
 	addViewAsTopics();
 	addManageChat();
+	Nagram::Privacy::AddAdminShortcuts(_addAction, _controller, _peer);
 	addStoryArchive();
 	addSupportInfo();
 	addBoostChat();
@@ -1936,8 +1992,12 @@ void Filler::fillHistoryActions() {
 	addDirectMessages();
 	addExportChat();
 	addTranslate();
+	Nagram::AutoTranslate::AddPeerMenu(_addAction, _controller, _peer);
+	Nagram::SendTranslation::AddPeerMenu(_addAction, _controller, _peer);
+	Nagram::Filters::AddScopeAction(_addAction, _controller, _peer, nullptr);
 	addReport();
 	addClearHistory();
+	AyuUi::AddDeleteOwnMessagesAction(_peer, _topic, _controller, _addAction);
 	addDeleteChat();
 	addLeaveChat();
 }
@@ -1948,16 +2008,21 @@ void Filler::fillProfileActions() {
 	addNewContact();
 	addShareContact();
 	addEditContact();
+	addLocalAlias();
 	addBotToGroup();
 	addNewMembers();
 	addSendGift();
+	addSendMoney();
 	addViewStatistics();
 	addStoryArchive();
 	addManageChat();
+	Nagram::Privacy::AddAdminShortcuts(_addAction, _controller, _peer);
 	addSetPersonalChannel();
 	addTopicLink();
 	addManageTopic();
 	addToggleTopicClosed();
+	AyuUi::AddOpenChannelAction(_peer, _controller, _addAction);
+	AyuUi::AddShadowBanAction(_peer, _addAction);
 	addViewDiscussion();
 	addDirectMessages();
 	addExportChat();
@@ -1972,9 +2037,12 @@ void Filler::fillProfileActions() {
 }
 
 void Filler::fillRepliesActions() {
+	AyuUi::AddAyuGramActions(_peer, _thread, _controller, _addAction);
 	if (_topic) {
 		addInfo();
+		AyuUi::AddJumpToBeginningAction(_peer, _thread, _controller, _addAction);
 		addManageTopic();
+		Nagram::Filters::AddScopeAction(_addAction, _controller, _peer, _topic);
 	}
 	addBoostChat();
 	addCreatePoll();
@@ -3256,7 +3324,12 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 				|| (count && (forum || monoforum || community))) {
 				return;
 			} else if (!count || forum || monoforum || community) {
-				ChooseRecipientBoxController::rowClicked(row);
+				if (base::IsCtrlPressed() || base::IsShiftPressed()) {
+					delegate()->peerListSetRowChecked(row, !row->checked());
+					_selectionChanges.fire({});
+				} else {
+					ChooseRecipientBoxController::rowClicked(row);
+				}
 			} else if (count) {
 				delegate()->peerListSetRowChecked(row, !row->checked());
 				_selectionChanges.fire({});
@@ -3436,9 +3509,11 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 		auto state = std::make_unique<PeerListState>();
 		state->controllerState = std::make_unique<SavedState>();
 
+		auto recent = base::flat_set<not_null<PeerData*>>();
 		const auto addList = [&](auto chats) {
 			for (const auto &row : chats->all()) {
-				if (const auto history = row->history()) {
+				if (const auto history = row->history()
+					; history && !recent.contains(history->peer)) {
 					state->list.push_back(history->peer);
 				}
 			}
@@ -3446,6 +3521,13 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 
 		if (!id) {
 			state->list.push_back(session->user());
+			Nagram::Chats::ForEachRecentShareTarget(
+				session,
+				[&](not_null<History*> history) {
+					if (recent.emplace(history->peer).second) {
+						state->list.push_back(history->peer);
+					}
+				});
 			addList(session->data().chatsList()->indexed());
 			const auto folderId = Data::Folder::kId;
 			if (const auto folder = session->data().folderLoaded(folderId)) {
@@ -3524,7 +3606,9 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 				return true;
 			}
 			const auto id = SeparateId(
-				((peer->isForum() && !peer->useSubsectionTabs())
+				((!thread->asTopic()
+					&& peer->isForum()
+					&& !peer->useSubsectionTabs())
 					? SeparateType::Forum
 					: SeparateType::Chat),
 				thread);
@@ -3652,9 +3736,14 @@ base::weak_qptr<Ui::BoxContent> ShowForwardMessagesBox(
 			std::move(comment),
 			options,
 			forwardOptions);
-		if (!state->submit && successCallback) {
+		const auto items = history->owner().idsToItems(msgIds);
+		const auto ayuForwarding = AyuForward::isAyuForwardNeeded(items)
+			|| AyuForward::isFullAyuForwardNeeded(items.front());
+
+		if ((!state->submit || ayuForwarding) && successCallback) {
 			successCallback();
 		}
+		// AyuGram-changed
 	};
 
 	const auto sendMenuType = [=] {
@@ -4006,6 +4095,7 @@ base::weak_qptr<Ui::BoxContent> ShowSendNowMessagesBox(
 					MTP_int(session->scheduledMessages().lookupId(item)));
 			}
 		}
+		markReadAfterAction(history);
 		session->api().request(MTPmessages_SendScheduledMessages(
 			history->peer->input(),
 			MTP_vector<MTPint>(ids)
@@ -4548,6 +4638,44 @@ void AddSenderUserpicModerateAction(
 			.isAttention = true,
 		});
 	}
+}
+
+void AddSendMoneyAction(
+		not_null<SessionController*> controller,
+		not_null<UserData*> user,
+		const PeerMenuCallback &addAction) {
+	const auto session = &controller->session();
+	const auto userId = peerToUser(user->id);
+	const auto weakController = base::make_weak(controller);
+	const auto weakSession = base::make_weak(session);
+	const auto canOffer = [=] {
+		return weakController
+			&& weakSession
+			&& &controller->session() == session
+			&& &user->session() == session
+			&& session->data().userLoaded(userId) == user
+			&& Wallet::CanOfferSendMoney(user);
+	};
+	if (!canOffer()) {
+		return;
+	}
+	const auto activated = std::make_shared<bool>(false);
+	const auto sent = [=] {
+		if (weakController
+			&& weakSession
+			&& &controller->session() == session
+			&& session->data().userLoaded(userId) == user) {
+			controller->showPeerHistory(
+				user,
+				SectionShow::Way::ClearStack,
+				ShowAtTheEndMsgId);
+		}
+	};
+	addAction(tr::lng_wallet_profile_send_money(tr::now), [=] {
+		if (canOffer() && !std::exchange(*activated, true)) {
+			Wallet::OpenSendMoney(controller, user, sent);
+		}
+	}, &st::walletMenuIcon);
 }
 
 void AddSeparatorAndShiftUp(const PeerMenuCallback &addAction) {

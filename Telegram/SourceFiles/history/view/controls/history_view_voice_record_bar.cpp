@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/controls/history_view_voice_record_bar.h"
+#include "regram/nagram/compose/options.h"
 
 #include "api/api_send_progress.h"
 #include "base/event_filter.h"
@@ -53,6 +54,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_media_player.h"
 
 #include <tgcalls/VideoCaptureInterface.h>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "boxes/abstract_box.h"
+
 
 namespace HistoryView::Controls {
 namespace {
@@ -738,7 +744,7 @@ private:
 	const style::font &_durationFont;
 	QString _duration;
 	int _durationWidth = 0;
-	const style::MediaPlayerButton &_playPauseSt;
+	const style::MediaPlayerPlayIcon &_playPauseSt;
 	const base::unique_qptr<Ui::AbstractButton> _playPauseButton;
 	const QColor _activeWaveformBar;
 	const QColor _inactiveWaveformBar;
@@ -791,7 +797,7 @@ ListenWrap::ListenWrap(
 , _durationFont(font)
 , _duration(FormatTrimDuration(_data->duration))
 , _durationWidth(_durationFont->width(_duration))
-, _playPauseSt(st::mediaPlayerButton)
+, _playPauseSt(st::historyRecordCenterControlIcon)
 , _playPauseButton(base::make_unique_q<Ui::AbstractButton>(parent))
 , _activeWaveformBar(st::historyRecordVoiceFgActiveIcon->c)
 , _inactiveWaveformBar(
@@ -1079,7 +1085,7 @@ void ListenWrap::initPlayButton() {
 		? VoiceDocument
 		: RoundVideoDocument;
 
-	const auto &play = _playPauseSt.playOuter;
+	const auto &play = _playPauseSt.size;
 	updateControlGeometry();
 	_playPauseButton->show();
 	_playPauseButton->setAccessibleName(tr::lng_record_lock_play(tr::now));
@@ -2810,7 +2816,10 @@ void VoiceRecordBar::recordUpdated(quint16 level, int samples) {
 void VoiceRecordBar::stop(bool send) {
 	if (isHidden() && !send) {
 		return;
-	} else if (send && _pauseInsteadSend) {
+	} else if (send && (_pauseInsteadSend || Nagram::ForDevice().Get(
+			_recordingVideo
+				? Nagram::Compose::kPreviewRoundVideo
+				: Nagram::Compose::kPreviewVoice))) {
 		_fullRecord = true;
 		stopRecording(StopType::Listen);
 		_lockShowing = false;
@@ -3006,13 +3015,34 @@ void VoiceRecordBar::stopRecording(StopType type, bool ttlBeforeHide) {
 								? std::numeric_limits<int>::max()
 								: 0),
 						};
-						_sendVoiceRequests.fire({
-							.bytes = data.content,
-							//.waveform = {},
-							.duration = data.duration,
-							.options = options,
-							.video = true,
-						});
+
+						auto sendRoundCallback = crl::guard(
+							this,
+							[=, this](Fn<void()> &&close)
+							{
+								_sendVoiceRequests.fire({
+									.bytes = data.content,
+									//.waveform = {},
+									.duration = data.duration,
+									.options = options,
+									.video = true,
+								});
+								close();
+							});
+
+						const auto &settings = AyuSettings::getInstance();
+						if (settings.roundConfirmation()) {
+							_show->showBox(Ui::MakeConfirmBox(
+								{
+									.text = tr::ayu_ConfirmationRound(),
+									.confirmed = std::move(sendRoundCallback),
+									.confirmText = tr::lng_send_button()
+								}));
+						} else {
+							sendRoundCallback([]
+							{
+							});
+						}
 					}
 				});
 			});
@@ -3031,17 +3061,38 @@ void VoiceRecordBar::stopRecording(StopType type, bool ttlBeforeHide) {
 
 			window()->raise();
 			window()->activateWindow();
-			const auto options = Api::SendOptions{
+			auto options = Api::SendOptions{
 				.ttlSeconds = (ttlBeforeHide
 					? std::numeric_limits<int>::max()
 					: 0),
 			};
-			_sendVoiceRequests.fire({
-				.bytes = _data.content,
-				.waveform = _data.waveform,
-				.duration = _data.duration,
-				.options = options,
-			});
+
+			auto sendVoiceCallback = crl::guard(
+				this,
+				[=, this](Fn<void()> &&close)
+				{
+					_sendVoiceRequests.fire({
+						.bytes = _data.content,
+						.waveform = _data.waveform,
+						.duration = _data.duration,
+						.options = options,
+					});
+					close();
+				});
+
+			const auto &settings = AyuSettings::getInstance();
+			if (settings.voiceConfirmation()) {
+				_show->showBox(Ui::MakeConfirmBox(
+					{
+						.text = tr::ayu_ConfirmationVoice(),
+						.confirmed = std::move(sendVoiceCallback),
+						.confirmText = tr::lng_send_button()
+					}));
+			} else {
+				sendVoiceCallback([]
+				{
+				});
+			}
 		}));
 	}
 }
@@ -3107,13 +3158,37 @@ void VoiceRecordBar::requestToSendWithOptions(Api::SendOptions options) {
 			_listen->prepareForSendAnimation();
 			_listen->applyTrimBeforeSend();
 		}
-		_sendVoiceRequests.fire({
-			.bytes = _data.content,
-			.waveform = _data.waveform,
-			.duration = _data.duration,
-			.options = options,
-			.video = !_data.minithumbs.isNull(),
-		});
+
+		const auto video = !_data.minithumbs.isNull();
+		const auto &settings = AyuSettings::getInstance();
+		auto sendVoiceCallback = crl::guard(
+			this,
+			[=, this](Fn<void()> &&close)
+			{
+				_sendVoiceRequests.fire({
+					.bytes = _data.content,
+					.waveform = _data.waveform,
+					.duration = _data.duration,
+					.options = options,
+					.video = video,
+				});
+				close();
+			});
+
+		if (video ? settings.roundConfirmation() : settings.voiceConfirmation()) {
+			_show->showBox(Ui::MakeConfirmBox(
+				{
+					.text = (video
+						? tr::ayu_ConfirmationRound()
+						: tr::ayu_ConfirmationVoice()),
+					.confirmed = std::move(sendVoiceCallback),
+					.confirmText = tr::lng_send_button()
+				}));
+		} else {
+			sendVoiceCallback([]
+			{
+			});
+		}
 	}
 }
 

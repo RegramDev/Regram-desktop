@@ -6,6 +6,11 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "core/application.h"
+#include "regram/nagram/interface/app_icon.h"
+#include "regram/nagram/interface/roundness.h"
+#include "regram/nagram/interface/text.h"
+#include "regram/nagram/core/options.h"
+#include "regram/nagram/privacy/options.h"
 
 #include "data/data_abstract_structure.h"
 #include "data/data_channel.h"
@@ -87,6 +92,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/localstorage.h"
 #include "payments/payments_checkout_process.h"
 #include "export/export_manager.h"
+#include "wallet/wallet_panel.h"
 #include "webrtc/webrtc_environment.h"
 #include "window/window_saved_windows.h"
 #include "window/window_separate_id.h"
@@ -107,6 +113,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QScreen>
 
 #include <ksandbox.h>
+
+// AyuGram includes
+#include "regram/ayu/ayu_infra.h"
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/data/ayu_database.h"
+#include "regram/settings/shared.h"
+#include "regram/ayu/features/streamer_mode/streamer_mode.h"
+
 
 namespace Core {
 namespace {
@@ -141,7 +155,8 @@ void SetCrashAnnotationsGL() {
 base::options::toggle OptionSkipUrlSchemeRegister({
 	.id = kOptionSkipUrlSchemeRegister,
 	.name = "Skip URL scheme register",
-	.description = "Don't re-register tg:// URL scheme on autoupdate.",
+	.description = "Register Telegram links only when explicitly requested.",
+	.defaultValue = true,
 });
 
 } // namespace
@@ -186,6 +201,15 @@ Application::Application()
 	_private->proxyRotation = std::make_unique<ProxyRotationManager>();
 
 	_platformIntegration->init();
+	_screenshotProtection->addContentReason(
+		Nagram::ForDevice().Value(Nagram::Privacy::kDemoMode), _lifetime);
+	Nagram::ForDevice().Value(Nagram::Privacy::kDemoMode)
+		| rpl::on_next([=](bool) {
+			updateWindowTitles();
+			for (const auto widget : QApplication::allWidgets()) {
+				widget->update();
+			}
+		}, _lifetime);
 
 	passcodeLockChanges(
 	) | rpl::on_next([=](bool locked) {
@@ -240,7 +264,7 @@ Application::Application()
 			},
 			.confirmText = tr::lng_proxy_web_open(tr::now),
 			.cancelText = tr::lng_cancel(tr::now),
-		}));
+		}), Ui::LayerOption::KeepOther);
 	}, _lifetime);
 }
 
@@ -249,6 +273,7 @@ void Application::closeAdditionalWindows() {
 	for (const auto &[index, account] : _domain->accounts()) {
 		if (account->sessionExists()) {
 			account->session().attachWebView().closeAll();
+			Wallet::CloseWallet(&account->session());
 		}
 	}
 	_iv->closeAll();
@@ -281,6 +306,7 @@ Application::~Application() {
 
 	_private->proxyRotation = nullptr;
 	_domain->finish();
+	AyuDatabase::shutdown();
 	MTP::WebProxy::Transport::Shutdown();
 
 	Local::finish();
@@ -309,6 +335,9 @@ void Application::run() {
 	_notifications = std::make_unique<Window::Notifications::System>();
 
 	startLocalStorage();
+	Nagram::Interface::StartRoundness();
+	Nagram::Interface::StartUiText();
+	Nagram::Interface::StartAppIcon(_lifetime);
 
 	style::SetCustomFont(settings().customFontFamily());
 	style::internal::StartFonts();
@@ -337,6 +366,7 @@ void Application::run() {
 	_translator = std::make_unique<Lang::Translator>();
 	QCoreApplication::instance()->installTranslator(_translator.get());
 
+	AyuInfra::init();
 	style::StartManager(cScale());
 	Ui::Accessible::Init();
 	Ui::InitTextOptions();
@@ -553,6 +583,9 @@ void Application::startDomain() {
 
 void Application::startSettingsAndBackground() {
 	Local::rewriteSettingsIfNeeded();
+	if (_domain->started() && !AyuDatabase::available()) {
+		AyuDatabase::initialize();
+	}
 	Window::Theme::Background()->start();
 	checkSystemDarkMode();
 	Ui::SetScreenReaderModeDisabled(
@@ -597,6 +630,10 @@ void Application::processCreatedWindow(
 	}
 	window->openInMediaViewRequests(
 	) | rpl::start_to_stream(_openInMediaViewRequests, window->lifetime());
+
+	if (AyuSettings::getInstance().streamerMode()) {
+		AyuFeatures::StreamerMode::hideWidgetWindow(window->widget());
+	}
 }
 
 void Application::startMediaView() {
@@ -945,6 +982,8 @@ void Application::startLocalStorage() {
 	settings().saveDelayedRequests() | rpl::on_next([=] {
 		saveSettingsDelayed();
 	}, _lifetime);
+	AyuSettings::load();
+	Regram::Settings::AttachSharedSettings(_lifetime);
 }
 
 void Application::startEmojiImageLoader() {
@@ -980,7 +1019,19 @@ void Application::setScreenIsLocked(bool locked) {
 }
 
 bool Application::screenIsLocked() const {
-	return _screenIsLocked;
+	return _screenIsLocked.current();
+}
+
+rpl::producer<bool> Application::screenIsLockedValue() const {
+	return _screenIsLocked.value();
+}
+
+void Application::notifySystemSleep() {
+	_systemSleep.fire({});
+}
+
+rpl::producer<> Application::systemSleepEvents() const {
+	return _systemSleep.events();
 }
 
 void Application::floatPlayerToggleGifsPaused(bool paused) {
@@ -1209,11 +1260,27 @@ void Application::checkStartUrls() {
 		return;
 	}
 	if (!Core::App().passcodeLocked()) {
-		cRefStartUrls() = ranges::views::all(
-			cRefStartUrls()
+		// WHY: tg://resolve?acc= switches the account, which shows the
+		// new main widget and re-enters here while we still iterate,
+		// so take the list out and merge whatever was added meanwhile.
+		const auto urls = base::take(cRefStartUrls());
+		auto left = ranges::views::all(
+			urls
 		) | ranges::views::filter([&](const QUrl &url) {
 			if (url.scheme() == u"tonsite"_q) {
 				iv().showTonSite(url.toString(), {});
+				return false;
+			} else if (url.scheme() == u"ton"_q) {
+				const auto window = _lastActivePrimaryWindow;
+				const auto controller = (window && !window->locked())
+					? window->sessionController()
+					: nullptr;
+				if (!controller) {
+					return true;
+				}
+				Wallet::OpenTransferLink(
+					controller,
+					url.toString(QUrl::FullyEncoded));
 				return false;
 			} else if (_lastActivePrimaryWindow) {
 				const auto local = TryConvertUrlToLocal(url.toString());
@@ -1221,6 +1288,8 @@ void Application::checkStartUrls() {
 			}
 			return true;
 		}) | ranges::to<QList<QUrl>>;
+		left.append(base::take(cRefStartUrls()));
+		cRefStartUrls() = std::move(left);
 	}
 	if (!cRefStartUrls().isEmpty()
 		&& _lastActivePrimaryWindow
@@ -1266,7 +1335,7 @@ bool Application::openInternalUrl(const QString &url, QVariant context) {
 }
 
 QString Application::changelogLink() const {
-	return u"https://telegramdesktop.github.io/tdesktop/changelog/"_q;
+	return u"https://github.com/RegramDev/Regram-desktop/releases"_q;
 }
 
 bool Application::openCustomUrl(
@@ -1334,6 +1403,9 @@ void Application::maybeLockByPasscode() {
 
 void Application::unlockPasscode() {
 	clearPasscodeLock();
+	if (_domain->started() && !AyuDatabase::available()) {
+		AyuDatabase::initialize();
+	}
 	enumerateWindows([&](not_null<Window::Controller*> w) {
 		w->clearPasscodeLock();
 	});
@@ -1399,6 +1471,7 @@ bool Application::someSessionExists() const {
 }
 
 void Application::checkAutoLock(crl::time lastNonIdleTime) {
+	// Cached verification stops planted bytes from disarming idle locking.
 	if (!_domain->local().hasLocalPasscode()
 		|| passcodeLocked()
 		|| !someSessionExists()) {
@@ -1784,7 +1857,8 @@ bool Application::closeActiveWindow() {
 	} else if (_iv->closeActive()
 		|| Iv::Editor::CloseActiveWindow()
 		|| calls().closeCurrentActiveCall()
-		|| (_savedWindows && _savedWindows->closeActiveShell())) {
+		|| (_savedWindows && _savedWindows->closeActiveShell())
+		|| Wallet::CloseActiveWindow()) {
 		return true;
 	} else if (const auto window = activeWindow()) {
 		if (window->widget()->isActive()) {
@@ -1801,7 +1875,8 @@ bool Application::minimizeActiveWindow() {
 		return true;
 	} else if (_iv->minimizeActive()
 		|| Iv::Editor::MinimizeActiveWindow()
-		|| calls().minimizeCurrentActiveCall()) {
+		|| calls().minimizeCurrentActiveCall()
+		|| Wallet::MinimizeActiveWindow()) {
 		return true;
 	} else if (const auto window = activeWindow()) {
 		if (window->widget()->isActive()) {
@@ -2012,6 +2087,7 @@ void Application::startShortcuts() {
 			return true;
 		});
 		request->check(Command::Lock) && request->handle([=] {
+			// Keep manual locking available for a verified app lock.
 			if (!passcodeLocked() && _domain->local().hasLocalPasscode()) {
 				maybeLockByPasscode();
 				return true;
@@ -2043,7 +2119,7 @@ void Application::RegisterUrlScheme() {
 		.arguments = arguments,
 		.protocol = u"tg"_q,
 		.protocolName = u"Telegram Link"_q,
-		.shortAppName = u"tdesktop"_q,
+		.shortAppName = u"regram"_q,
 		.longAppName = QCoreApplication::applicationName(),
 		.displayAppName = AppName.utf16(),
 		.displayAppDescription = AppName.utf16(),
@@ -2054,6 +2130,17 @@ void Application::RegisterUrlScheme() {
 		.arguments = arguments,
 		.protocol = u"tonsite"_q,
 		.protocolName = u"TonSite Link"_q,
+		.shortAppName = u"regram"_q,
+		.longAppName = QCoreApplication::applicationName(),
+		.displayAppName = AppName.utf16(),
+		.displayAppDescription = AppName.utf16(),
+	});
+
+	base::Platform::RegisterUrlScheme(base::Platform::UrlSchemeDescriptor{
+		.executable = Platform::ExecutablePathForShortcuts(),
+		.arguments = arguments,
+		.protocol = u"ton"_q,
+		.protocolName = u"Ton Link"_q,
 		.shortAppName = u"tdesktop"_q,
 		.longAppName = QCoreApplication::applicationName(),
 		.displayAppName = AppName.utf16(),

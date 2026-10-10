@@ -13,6 +13,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/session.h"
 #include "base/unixtime.h"
 #include "base/random.h"
+#include "regram/nagram/network/runtime.h"
+
+#include <QtCore/QtEndian>
+
+#include <QtCore/QtEndian>
 
 namespace MTP {
 namespace details {
@@ -99,8 +104,8 @@ mtpBuffer AbstractConnection::prepareSecurePacket(
 	constexpr auto kTcpPostfixInts = 4;
 	result.reserve(kPrefixInts + size + kTcpPostfixInts);
 	result.resize(kPrefixInts);
-	*reinterpret_cast<uint64*>(&result[kAuthKeyIdPosition]) = keyId;
-	*reinterpret_cast<MTPint128*>(&result[kMessageKeyPosition]) = msgKey;
+	qToUnaligned(keyId, &result[kAuthKeyIdPosition]);
+	qToUnaligned(msgKey, &result[kMessageKeyPosition]);
 	return result;
 }
 
@@ -186,7 +191,7 @@ ConnectionPointer AbstractConnection::Create(
 			return ConnectionPointer::New<HttpConnection>(thread, proxy);
 		}
 	}();
-	if (proxy.tryCustomResolve()) {
+	if (proxy.tryCustomResolve() && !Nagram::Network::UseSystemDns()) {
 		return ConnectionPointer::New<ResolvingConnection>(
 			instance,
 			thread,

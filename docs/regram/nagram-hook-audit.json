@@ -1,0 +1,2401 @@
+{
+  "reference": "5d0222ca152396aa213f3455528ce09c544cce30",
+  "date": "2026-10-10",
+  "method": "Static source consumer names; no runtime acceptance implied",
+  "hooks": [
+    {
+      "hook": "AddSettingsEntry",
+      "reference_files": [
+        "settings/sections/settings_main.cpp"
+      ],
+      "local_files": [],
+      "status": "Regram settings wrapper"
+    },
+    {
+      "hook": "AttachCloudSync",
+      "reference_files": [
+        "main/main_session.cpp"
+      ],
+      "local_files": [
+        "main/main_session.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "AutoTranslate::AddPeerMenu",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "AutoTranslate::Enabled",
+      "reference_files": [
+        "history/history.cpp"
+      ],
+      "local_files": [
+        "history/history.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "AutoTranslate::StateValue",
+      "reference_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "AutoTranslate::Tracking",
+      "reference_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "CancelChatTranslation",
+      "reference_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::AddLocalUnpinAction",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::AddManagedOnlyAction",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp",
+        "window/window_filters_menu.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp",
+        "window/window_filters_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::AddRecentChatsMenuItem",
+      "reference_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::AllowedInFolder",
+      "reference_files": [
+        "data/data_chat_filters.cpp"
+      ],
+      "local_files": [
+        "data/data_chat_filters.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::CommunityGroupingDisabled",
+      "reference_files": [
+        "boxes/peers/community_box.cpp",
+        "data/data_channel.h",
+        "dialogs/dialogs_row.cpp",
+        "dialogs/dialogs_widget.cpp"
+      ],
+      "local_files": [
+        "boxes/peers/community_box.cpp",
+        "data/data_channel.h",
+        "dialogs/dialogs_row.cpp",
+        "dialogs/dialogs_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::FiltersTabsStyle",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::FolderButtonActive",
+      "reference_files": [
+        "window/window_filters_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_filters_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::FolderListItemsChanges",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::FolderTabChosen",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::FolderTabIcons",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::FolderTabMenu",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::FolderTabs",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::ForEachRecentChat",
+      "reference_files": [
+        "boxes/peer_list_controllers.cpp"
+      ],
+      "local_files": [
+        "boxes/peer_list_controllers.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::ForEachRecentShareTarget",
+      "reference_files": [
+        "boxes/peer_list_controllers.cpp",
+        "boxes/share_box.cpp",
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "boxes/peer_list_controllers.cpp",
+        "boxes/share_box.cpp",
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::GlobalSearchDisabled",
+      "reference_files": [
+        "dialogs/dialogs_widget.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::HiddenPreviewText",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget_accessibility.cpp",
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget_accessibility.cpp",
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::HidePhoneSuggestion",
+      "reference_files": [
+        "settings/sections/settings_main.cpp"
+      ],
+      "local_files": [
+        "settings/sections/settings_main.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::HidePreview",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget_accessibility.cpp",
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget_accessibility.cpp",
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::HideProxySponsor",
+      "reference_files": [
+        "data/components/promo_suggestions.cpp"
+      ],
+      "local_files": [
+        "data/components/promo_suggestions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::HideSponsoredMessages",
+      "reference_files": [
+        "data/components/sponsored_messages.cpp",
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "local_files": [
+        "data/components/sponsored_messages.cpp",
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::HideStories",
+      "reference_files": [
+        "dialogs/dialogs_widget.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::HideSuggestion",
+      "reference_files": [
+        "dialogs/dialogs_top_bar_suggestion.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_top_bar_suggestion.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::LayoutChatTools",
+      "reference_files": [
+        "history/view/history_view_top_bar_widget.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_top_bar_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::LocalPinSortKey",
+      "reference_files": [
+        "dialogs/dialogs_entry.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_entry.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::LocalUnpin",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::MakeRecentFilterRow",
+      "reference_files": [
+        "boxes/filters/edit_filter_chats_list.cpp"
+      ],
+      "local_files": [
+        "boxes/filters/edit_filter_chats_list.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::PreviewLines",
+      "reference_files": [
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "local_files": [
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::RecentFolderEnabled",
+      "reference_files": [
+        "boxes/filters/edit_filter_box.cpp"
+      ],
+      "local_files": [
+        "boxes/filters/edit_filter_box.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::RecentInFolder",
+      "reference_files": [
+        "data/data_chat_filters.cpp"
+      ],
+      "local_files": [
+        "data/data_chat_filters.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::RedirectFromAllChats",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp",
+        "window/window_filters_menu.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp",
+        "window/window_filters_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::RememberFolder",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::ResetFilterForFolder",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::RestoreReadingPosition",
+      "reference_files": [
+        "history/history_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::RowStyle",
+      "reference_files": [
+        "dialogs/dialogs_row.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_row.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::SetRecentFolderEnabled",
+      "reference_files": [
+        "boxes/filters/edit_filter_box.cpp"
+      ],
+      "local_files": [
+        "boxes/filters/edit_filter_box.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::SetupFolderListButtons",
+      "reference_files": [
+        "window/window_filters_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_filters_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::ShowArchiveInFolders",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::ShownFolderTab",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::ShowsPinnedIcon",
+      "reference_files": [
+        "dialogs/dialogs_quick_action.cpp",
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_quick_action.cpp",
+        "dialogs/ui/dialogs_layout.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::SortKey",
+      "reference_files": [
+        "dialogs/dialogs_entry.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_entry.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::SortingEnabled",
+      "reference_files": [
+        "dialogs/dialogs_entry.cpp",
+        "history/history.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_entry.cpp",
+        "history/history.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::StartupFolder",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::TryLocalPin",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::VerifyStartupFolder",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::WatchArchiveTab",
+      "reference_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "local_files": [
+        "ui/widgets/chat_filters_tabs_strip.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::WatchFolders",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::WatchReadingPositions",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::WatchRecentChats",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Chats::WatchSorting",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::ButtonsChanged",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::ChannelBottomText",
+      "reference_files": [
+        "history/history_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::ChannelBottomVisible",
+      "reference_files": [
+        "history/history_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::ConfirmBeforeSend",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/history_view_chat_section.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/history_view_chat_section.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::Hidden",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_bottom_controls.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_bottom_controls.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::InputPlaceholder",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::InstallFieldHooks",
+      "reference_files": [
+        "chat_helpers/message_field.cpp"
+      ],
+      "local_files": [
+        "chat_helpers/message_field.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::LocalForwards",
+      "reference_files": [
+        "apiwrap.cpp"
+      ],
+      "local_files": [
+        "apiwrap.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::OpenDiscussion",
+      "reference_files": [
+        "history/history_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::PrepareText",
+      "reference_files": [
+        "api/api_editing.cpp",
+        "api/api_sending.cpp",
+        "apiwrap.cpp",
+        "data/components/ephemeral_messages.cpp"
+      ],
+      "local_files": [
+        "api/api_editing.cpp",
+        "api/api_sending.cpp",
+        "apiwrap.cpp",
+        "data/components/ephemeral_messages.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::SetupFormatToolbar",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Compose::TranslateBeforeSend",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/history_view_chat_section.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/history_view_chat_section.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "CreateChatTranslateProvider",
+      "reference_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_translate_tracker.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "CreateMessageTranslateProvider",
+      "reference_files": [
+        "boxes/translate_box.cpp"
+      ],
+      "local_files": [
+        "boxes/translate_box.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Export::PastRange",
+      "reference_files": [
+        "export/export_api_wrap.cpp"
+      ],
+      "local_files": [
+        "export/export_api_wrap.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "ExternalTranscriptionSelected",
+      "reference_files": [
+        "history/view/history_view_transcribe_button.cpp",
+        "history/view/media/history_view_document.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_transcribe_button.cpp",
+        "history/view/media/history_view_document.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Filters::AddScopeAction",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Filters::DisplayText",
+      "reference_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Filters::Hidden",
+      "reference_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "local_files": [
+        "history/history_item.cpp",
+        "history/view/history_view_element.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Filters::Project",
+      "reference_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "ForDevice",
+      "reference_files": [
+        "api/api_who_reacted.cpp",
+        "apiwrap.cpp",
+        "boxes/share_box.cpp",
+        "calls/calls_instance.cpp",
+        "chat_helpers/emoji_list_widget.cpp",
+        "chat_helpers/message_field.cpp",
+        "chat_helpers/stickers_list_footer.cpp",
+        "chat_helpers/stickers_list_widget.cpp",
+        "chat_helpers/tabbed_panel.cpp",
+        "core/application.cpp",
+        "data/components/sponsored_messages.cpp",
+        "data/data_chat_filters.cpp",
+        "dialogs/dialogs_top_bar_suggestion.cpp",
+        "dialogs/dialogs_widget.cpp",
+        "history/history_view_pull_to_next_channel.cpp",
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_bottom_controls.cpp",
+        "history/view/controls/history_view_compose_controls.cpp",
+        "history/view/controls/history_view_voice_record_bar.cpp",
+        "history/view/controls/history_view_webpage_processor.cpp",
+        "history/view/history_view_about_view.cpp",
+        "history/view/history_view_bottom_info.cpp",
+        "history/view/history_view_chat_section.cpp",
+        "history/view/history_view_contact_status.cpp",
+        "history/view/history_view_element.cpp",
+        "history/view/history_view_message.cpp",
+        "history/view/history_view_reply.cpp",
+        "history/view/history_view_scheduled_section.cpp",
+        "history/view/media/history_view_gif.cpp",
+        "history/view/media/history_view_sticker.cpp",
+        "info/profile/info_profile_shared_media_classic.cpp",
+        "info/profile/info_profile_top_bar.cpp",
+        "info/profile/tabs/adapters/info_profile_tab_peer_lists.cpp",
+        "media/stories/media_stories_repost_view.cpp",
+        "media/view/media_view_overlay_widget.cpp",
+        "storage/localimageloader.cpp",
+        "ui/chat/chat_style.cpp",
+        "ui/controls/compose_ai_button_factory.cpp",
+        "ui/widgets/chat_filters_tabs_strip.cpp",
+        "window/main_window.cpp",
+        "window/window_filters_menu.cpp",
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "api/api_who_reacted.cpp",
+        "apiwrap.cpp",
+        "boxes/share_box.cpp",
+        "calls/calls_instance.cpp",
+        "chat_helpers/emoji_list_widget.cpp",
+        "chat_helpers/message_field.cpp",
+        "chat_helpers/stickers_list_footer.cpp",
+        "chat_helpers/stickers_list_widget.cpp",
+        "chat_helpers/tabbed_panel.cpp",
+        "core/application.cpp",
+        "data/components/sponsored_messages.cpp",
+        "data/data_chat_filters.cpp",
+        "dialogs/dialogs_top_bar_suggestion.cpp",
+        "dialogs/dialogs_widget.cpp",
+        "history/history_view_pull_to_next_channel.cpp",
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_bottom_controls.cpp",
+        "history/view/controls/history_view_compose_controls.cpp",
+        "history/view/controls/history_view_voice_record_bar.cpp",
+        "history/view/controls/history_view_webpage_processor.cpp",
+        "history/view/history_view_about_view.cpp",
+        "history/view/history_view_bottom_info.cpp",
+        "history/view/history_view_chat_section.cpp",
+        "history/view/history_view_contact_status.cpp",
+        "history/view/history_view_element.cpp",
+        "history/view/history_view_message.cpp",
+        "history/view/history_view_reply.cpp",
+        "history/view/history_view_scheduled_section.cpp",
+        "history/view/media/history_view_gif.cpp",
+        "history/view/media/history_view_sticker.cpp",
+        "info/profile/info_profile_shared_media_classic.cpp",
+        "info/profile/info_profile_top_bar.cpp",
+        "info/profile/tabs/adapters/info_profile_tab_peer_lists.cpp",
+        "media/stories/media_stories_repost_view.cpp",
+        "media/view/media_view_overlay_widget.cpp",
+        "platform/mac/specific_mac_p.mm",
+        "storage/localimageloader.cpp",
+        "ui/chat/chat_style.cpp",
+        "ui/controls/compose_ai_button_factory.cpp",
+        "ui/widgets/chat_filters_tabs_strip.cpp",
+        "window/main_window.cpp",
+        "window/window_filters_menu.cpp",
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "InstallDraftTranslation",
+      "reference_files": [
+        "chat_helpers/message_field.cpp"
+      ],
+      "local_files": [
+        "chat_helpers/message_field.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "InstallRpcErrorObserver",
+      "reference_files": [
+        "main/main_session.cpp"
+      ],
+      "local_files": [
+        "main/main_session.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::AccountNameInTitle",
+      "reference_files": [
+        "window/main_window.cpp"
+      ],
+      "local_files": [
+        "window/main_window.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::AddMainMenuGroup",
+      "reference_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::AdjustBubbleRadius",
+      "reference_files": [
+        "ui/chat/chat_style_radius.cpp"
+      ],
+      "local_files": [
+        "ui/chat/chat_style_radius.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::AlwaysSeasonal",
+      "reference_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::AppIconBadge",
+      "reference_files": [
+        "platform/linux/main_window_linux.cpp",
+        "platform/mac/main_window_mac.mm",
+        "platform/win/main_window_win.cpp"
+      ],
+      "local_files": [
+        "platform/linux/main_window_linux.cpp",
+        "platform/mac/main_window_mac.mm",
+        "platform/win/main_window_win.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::AppIconGeneration",
+      "reference_files": [
+        "platform/win/tray_win.cpp"
+      ],
+      "local_files": [
+        "platform/win/tray_win.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::AvatarRadius",
+      "reference_files": [
+        "data/data_peer.cpp",
+        "dialogs/dialogs_row.cpp",
+        "ui/controls/userpic_button.cpp",
+        "ui/peer/video_userpic_player.cpp",
+        "ui/userpic_view.cpp"
+      ],
+      "local_files": [
+        "data/data_peer.cpp",
+        "dialogs/dialogs_row.cpp",
+        "ui/controls/userpic_button.cpp",
+        "ui/peer/video_userpic_player.cpp",
+        "ui/userpic_view.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::BubblePercent",
+      "reference_files": [
+        "ui/chat/chat_style_radius.cpp"
+      ],
+      "local_files": [
+        "ui/chat/chat_style_radius.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::CustomAppIcon",
+      "reference_files": [
+        "window/main_window.cpp"
+      ],
+      "local_files": [
+        "window/main_window.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::CustomLogo",
+      "reference_files": [
+        "window/main_window.cpp"
+      ],
+      "local_files": [
+        "window/main_window.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::IgnoreChatThemeValue",
+      "reference_files": [
+        "window/section_widget.cpp"
+      ],
+      "local_files": [
+        "window/section_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::MainMenuCustomOrder",
+      "reference_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::MainMenuSeasonal",
+      "reference_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::MainMenuTitle",
+      "reference_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::NotificationDelay",
+      "reference_files": [
+        "window/notifications_manager.cpp"
+      ],
+      "local_files": [
+        "window/notifications_manager.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::ResolvedAvatarShape",
+      "reference_files": [
+        "ui/controls/userpic_button.cpp"
+      ],
+      "local_files": [
+        "ui/controls/userpic_button.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::ReviewNotification",
+      "reference_files": [
+        "window/notifications_manager.cpp"
+      ],
+      "local_files": [
+        "window/notifications_manager.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::RoundedAvatarFrame",
+      "reference_files": [
+        "ui/controls/userpic_button.cpp"
+      ],
+      "local_files": [
+        "ui/controls/userpic_button.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::StartAppIcon",
+      "reference_files": [
+        "core/application.cpp"
+      ],
+      "local_files": [
+        "core/application.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::StartRoundness",
+      "reference_files": [
+        "core/application.cpp"
+      ],
+      "local_files": [
+        "core/application.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::StartUiText",
+      "reference_files": [
+        "core/application.cpp"
+      ],
+      "local_files": [
+        "core/application.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::TrayUnreadDot",
+      "reference_files": [
+        "platform/win/tray_win.cpp"
+      ],
+      "local_files": [
+        "platform/win/tray_win.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Interface::UiText",
+      "reference_files": [
+        "lang/lang_instance.cpp"
+      ],
+      "local_files": [
+        "lang/lang_instance.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::ApplyHashtagSearchPage",
+      "reference_files": [
+        "mainwidget.cpp"
+      ],
+      "local_files": [
+        "mainwidget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::AutoInlineBotEnabled",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::AutoLoginDisabled",
+      "reference_files": [
+        "core/ui_integration.cpp"
+      ],
+      "local_files": [
+        "core/ui_integration.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::AutomaticInlineQuery",
+      "reference_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "local_files": [
+        "history/history_widget.cpp",
+        "history/view/controls/history_view_compose_controls.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::FillAutomaticInlineQuery",
+      "reference_files": [
+        "chat_helpers/message_field.cpp"
+      ],
+      "local_files": [
+        "chat_helpers/message_field.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::HandleExternalLink",
+      "reference_files": [
+        "core/ui_integration.cpp"
+      ],
+      "local_files": [
+        "core/ui_integration.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::HashtagClickScope",
+      "reference_files": [
+        "core/click_handler_types.cpp"
+      ],
+      "local_files": [
+        "core/click_handler_types.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::OpenOutsideWebview",
+      "reference_files": [
+        "inline_bots/bot_attach_web_view.cpp"
+      ],
+      "local_files": [
+        "inline_bots/bot_attach_web_view.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::WebAppPanelSize",
+      "reference_files": [
+        "ui/chat/attach/attach_bot_webview.cpp"
+      ],
+      "local_files": [
+        "ui/chat/attach/attach_bot_webview.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Links::WebAppPlatform",
+      "reference_files": [
+        "inline_bots/bot_attach_web_view.cpp"
+      ],
+      "local_files": [
+        "inline_bots/bot_attach_web_view.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "ListRefresher::Attach",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "LocalizedValue",
+      "reference_files": [
+        "lang/lang_instance.cpp"
+      ],
+      "local_files": [
+        "lang/lang_instance.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::AddDownloadsMenuItem",
+      "reference_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_main_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::AutoDownloadBlocked",
+      "reference_files": [
+        "data/data_auto_download.cpp"
+      ],
+      "local_files": [
+        "data/data_auto_download.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::CoverLocation",
+      "reference_files": [
+        "data/data_document.cpp"
+      ],
+      "local_files": [
+        "data/data_document.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::GifMaxSize",
+      "reference_files": [
+        "history/view/media/history_view_gif.cpp"
+      ],
+      "local_files": [
+        "history/view/media/history_view_gif.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::GroupCallRawAudio",
+      "reference_files": [
+        "calls/group/calls_group_call.cpp"
+      ],
+      "local_files": [
+        "calls/group/calls_group_call.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::KeepOverflowFaved",
+      "reference_files": [
+        "data/stickers/data_stickers.cpp"
+      ],
+      "local_files": [
+        "data/stickers/data_stickers.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::LocalFaved",
+      "reference_files": [
+        "data/stickers/data_stickers.cpp"
+      ],
+      "local_files": [
+        "data/stickers/data_stickers.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::RemoveLocalFaved",
+      "reference_files": [
+        "data/stickers/data_stickers.cpp"
+      ],
+      "local_files": [
+        "data/stickers/data_stickers.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::StickerExport::Attach",
+      "reference_files": [
+        "main/main_session.cpp"
+      ],
+      "local_files": [
+        "main/main_session.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::StickerPanelCell",
+      "reference_files": [
+        "chat_helpers/stickers_list_widget.cpp"
+      ],
+      "local_files": [
+        "chat_helpers/stickers_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::VoiceRecordBitrate",
+      "reference_files": [
+        "media/audio/media_audio_capture.cpp"
+      ],
+      "local_files": [
+        "media/audio/media_audio_capture.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Media::WithLocalFaved",
+      "reference_files": [
+        "chat_helpers/stickers_list_widget.cpp"
+      ],
+      "local_files": [
+        "chat_helpers/stickers_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Menu::Apply",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Menu::MessageMenuStyle",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Menu::Selection::Select",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Menu::Tag",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::AllowReactionSelector",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::ApplyForwardedDate",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::ApplyInfoOptions",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::AttachActivityRefresh",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget.cpp",
+        "history/view/history_view_top_bar_widget.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget.cpp",
+        "history/view/history_view_top_bar_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::AttachPremiumRefresh",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::CollapseRecommendedChannels",
+      "reference_files": [
+        "apiwrap.cpp"
+      ],
+      "local_files": [
+        "apiwrap.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::EditedMark",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::EffectDisabled",
+      "reference_files": [
+        "history/view/history_view_emoji_interactions.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_emoji_interactions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::Effects::Attach",
+      "reference_files": [
+        "history/view/history_view_emoji_interactions.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_emoji_interactions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::Effects::ShouldProcessPending",
+      "reference_files": [
+        "history/view/history_view_emoji_interactions.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_emoji_interactions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::FilterInlineReactions",
+      "reference_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::FilterReactionButton",
+      "reference_files": [
+        "history/view/history_view_message.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_message.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::FormatCounter",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::FormatEditedDate",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::FormatSavedFrom",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::FormatTime",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::ForwardsWidth",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::HidePrivateActivity",
+      "reference_files": [
+        "history/view/history_view_send_action.cpp",
+        "history/view/history_view_top_bar_widget.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_send_action.cpp",
+        "history/view/history_view_top_bar_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::HideQuickShare",
+      "reference_files": [
+        "history/view/history_view_message.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_message.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::HideSavedTags",
+      "reference_files": [
+        "dialogs/dialogs_search_tags.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_search_tags.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::LayoutForwards",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::MenuReactions",
+      "reference_files": [
+        "history/view/reactions/history_view_reactions_selector.cpp"
+      ],
+      "local_files": [
+        "history/view/reactions/history_view_reactions_selector.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::PaintForwards",
+      "reference_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_bottom_info.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::PaintSenderOnline",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::PremiumStickerEffectDisabled",
+      "reference_files": [
+        "history/view/media/history_view_sticker.cpp"
+      ],
+      "local_files": [
+        "history/view/media/history_view_sticker.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::RecommendedChannelsMedia",
+      "reference_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::RepaintOnSenderOnline",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::RevealMediaSpoiler",
+      "reference_files": [
+        "history/view/media/history_view_media.cpp"
+      ],
+      "local_files": [
+        "history/view/media/history_view_media.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::RevealTextSpoilers",
+      "reference_files": [
+        "history/view/history_view_text_helper.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_text_helper.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::SavedTagsValue",
+      "reference_files": [
+        "dialogs/dialogs_search_tags.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_search_tags.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::ServiceText",
+      "reference_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::ShowPremiumBadges",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget_accessibility.cpp",
+        "main/main_session.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget_accessibility.cpp",
+        "main/main_session.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::ShowSavedTag",
+      "reference_files": [
+        "dialogs/dialogs_search_tags.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_search_tags.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::SimplifiedReplies",
+      "reference_files": [
+        "history/view/history_view_reply.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_reply.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::VideoUserpicAllowed",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget.cpp",
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget.cpp",
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::VisibleBadgeContent",
+      "reference_files": [
+        "info/profile/info_profile_badge.cpp"
+      ],
+      "local_files": [
+        "info/profile/info_profile_badge.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::WhoReactedAtTop",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_context_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Messages::WithMessageId",
+      "reference_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_element.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::BackupAddressesDisabled",
+      "reference_files": [
+        "mtproto/config_loader.cpp"
+      ],
+      "local_files": [
+        "mtproto/config_loader.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::CheckDohReply",
+      "reference_files": [
+        "mtproto/details/mtproto_domain_resolver.cpp",
+        "mtproto/special_config_request.cpp"
+      ],
+      "local_files": [
+        "mtproto/details/mtproto_domain_resolver.cpp",
+        "mtproto/special_config_request.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::CustomDoh",
+      "reference_files": [
+        "mtproto/details/mtproto_domain_resolver.cpp",
+        "mtproto/special_config_request.cpp"
+      ],
+      "local_files": [
+        "mtproto/details/mtproto_domain_resolver.cpp",
+        "mtproto/special_config_request.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::DownloadMaxSessions",
+      "reference_files": [
+        "storage/download_manager_mtproto.cpp"
+      ],
+      "local_files": [
+        "storage/download_manager_mtproto.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::DownloadStartSessions",
+      "reference_files": [
+        "storage/download_manager_mtproto.cpp"
+      ],
+      "local_files": [
+        "storage/download_manager_mtproto.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::DownloadStartWindow",
+      "reference_files": [
+        "storage/download_manager_mtproto.cpp"
+      ],
+      "local_files": [
+        "storage/download_manager_mtproto.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::OrderIps",
+      "reference_files": [
+        "mtproto/mtp_instance.cpp"
+      ],
+      "local_files": [
+        "mtproto/mtp_instance.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::PreferIPv6",
+      "reference_files": [
+        "mtproto/session_private.cpp"
+      ],
+      "local_files": [
+        "mtproto/session_private.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::SetDohEndpoint",
+      "reference_files": [
+        "mtproto/details/mtproto_domain_resolver.cpp",
+        "mtproto/special_config_request.cpp"
+      ],
+      "local_files": [
+        "mtproto/details/mtproto_domain_resolver.cpp",
+        "mtproto/special_config_request.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::UploadPartSize",
+      "reference_files": [
+        "storage/file_upload.cpp"
+      ],
+      "local_files": [
+        "storage/file_upload.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::UseIPv4",
+      "reference_files": [
+        "mtproto/session.cpp"
+      ],
+      "local_files": [
+        "mtproto/session.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::UseIPv6",
+      "reference_files": [
+        "boxes/connection_box.cpp",
+        "core/proxy_rotation_manager.cpp",
+        "mtproto/session.cpp"
+      ],
+      "local_files": [
+        "boxes/connection_box.cpp",
+        "core/proxy_rotation_manager.cpp",
+        "mtproto/session.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Network::UseSystemDns",
+      "reference_files": [
+        "mtproto/connection_abstract.cpp"
+      ],
+      "local_files": [
+        "mtproto/connection_abstract.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "PrefersSystemAi",
+      "reference_files": [
+        "boxes/compose_ai_box.cpp",
+        "ui/controls/compose_ai_button_factory.cpp"
+      ],
+      "local_files": [
+        "boxes/compose_ai_box.cpp",
+        "ui/controls/compose_ai_button_factory.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::AddAdminShortcuts",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::Alias",
+      "reference_files": [
+        "data/data_peer.cpp"
+      ],
+      "local_files": [
+        "data/data_peer.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::AllowsCopy",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/history_item.cpp",
+        "history/view/history_view_context_menu.cpp",
+        "history/view/history_view_list_widget.cpp",
+        "info/media/info_media_provider.cpp",
+        "media/view/media_view_overlay_widget.cpp",
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/history_item.cpp",
+        "history/view/history_view_context_menu.cpp",
+        "history/view/history_view_list_widget.cpp",
+        "info/media/info_media_provider.cpp",
+        "media/view/media_view_overlay_widget.cpp",
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::AllowsCopyValue",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ApplyModerateDefaults",
+      "reference_files": [
+        "boxes/moderate_messages_box.cpp"
+      ],
+      "local_files": [
+        "boxes/moderate_messages_box.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::AttachSensitive",
+      "reference_files": [
+        "main/main_session.cpp"
+      ],
+      "local_files": [
+        "main/main_session.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::DemoMode",
+      "reference_files": [
+        "dialogs/dialogs_inner_widget.cpp",
+        "dialogs/ui/dialogs_layout.cpp",
+        "window/main_window.cpp",
+        "window/notifications_manager.cpp"
+      ],
+      "local_files": [
+        "dialogs/dialogs_inner_widget.cpp",
+        "dialogs/ui/dialogs_layout.cpp",
+        "window/main_window.cpp",
+        "window/notifications_manager.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::DisplayName",
+      "reference_files": [
+        "history/history.cpp",
+        "info/profile/info_profile_values.cpp"
+      ],
+      "local_files": [
+        "history/history.cpp",
+        "info/profile/info_profile_values.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::DoNotSharePhoneByDefault",
+      "reference_files": [
+        "boxes/peers/edit_contact_box.cpp"
+      ],
+      "local_files": [
+        "boxes/peers/edit_contact_box.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ForbidsCopy",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/history_item.cpp",
+        "history/view/history_view_context_menu.cpp",
+        "history/view/history_view_list_widget.cpp",
+        "iv/iv_rich_message_html_export.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/history_item.cpp",
+        "history/view/history_view_context_menu.cpp",
+        "history/view/history_view_list_widget.cpp",
+        "iv/iv_rich_message_html_export.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ForceCopy",
+      "reference_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "local_files": [
+        "history/history_inner_widget.cpp",
+        "history/view/history_view_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ForceCopyChanges",
+      "reference_files": [
+        "info/media/info_media_list_widget.cpp"
+      ],
+      "local_files": [
+        "info/media/info_media_list_widget.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::IgnoreRestrictions",
+      "reference_files": [
+        "data/data_peer.cpp"
+      ],
+      "local_files": [
+        "data/data_peer.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::LastNameFirst",
+      "reference_files": [
+        "lang/lang_keys.cpp"
+      ],
+      "local_files": [
+        "lang/lang_keys.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::PersianDate",
+      "reference_files": [
+        "lang/lang_keys.cpp"
+      ],
+      "local_files": [
+        "lang/lang_keys.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ProfileDcValue",
+      "reference_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "local_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ProfileIdValue",
+      "reference_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "local_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ProfileRegistrationLabel",
+      "reference_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "local_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ProfileRegistrationValue",
+      "reference_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "local_files": [
+        "info/profile/info_profile_actions.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::SensitiveRevealed",
+      "reference_files": [
+        "info/media/info_media_provider.cpp"
+      ],
+      "local_files": [
+        "info/media/info_media_provider.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::ShowAlias",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::SkipSensitiveWarning",
+      "reference_files": [
+        "data/data_peer.cpp"
+      ],
+      "local_files": [
+        "data/data_peer.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "Privacy::WatchRestrictions",
+      "reference_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "local_files": [
+        "window/window_session_controller.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "RelaunchWithoutUpdater",
+      "reference_files": [
+        "platform/mac/launcher_mac.mm"
+      ],
+      "local_files": [
+        "platform/mac/launcher_mac.mm"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "RunsFromPath",
+      "reference_files": [
+        "platform/linux/specific_linux.cpp"
+      ],
+      "local_files": [
+        "platform/linux/specific_linux.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "SendTranslation::AddPeerMenu",
+      "reference_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "local_files": [
+        "window/window_peer_menu.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "ShowCustomTranscription",
+      "reference_files": [
+        "history/view/history_view_transcribe_button.cpp"
+      ],
+      "local_files": [
+        "history/view/history_view_transcribe_button.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "ShowSystemAi",
+      "reference_files": [
+        "boxes/compose_ai_box.cpp"
+      ],
+      "local_files": [
+        "boxes/compose_ai_box.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "TranscriptionOverride",
+      "reference_files": [
+        "api/api_transcribes.cpp"
+      ],
+      "local_files": [
+        "api/api_transcribes.cpp"
+      ],
+      "status": "integrated"
+    },
+    {
+      "hook": "UpdateRevision",
+      "reference_files": [
+        "core/update_channel.h"
+      ],
+      "local_files": [],
+      "status": "Regram release policy"
+    },
+    {
+      "hook": "Updates::DownloadPrefix",
+      "reference_files": [
+        "core/update_checker.cpp"
+      ],
+      "local_files": [],
+      "status": "Regram release policy"
+    },
+    {
+      "hook": "Updates::FeedUrl",
+      "reference_files": [
+        "core/update_checker.cpp"
+      ],
+      "local_files": [],
+      "status": "Regram release policy"
+    },
+    {
+      "hook": "Updates::FeedVersion",
+      "reference_files": [
+        "core/update_checker.cpp"
+      ],
+      "local_files": [],
+      "status": "Regram release policy"
+    },
+    {
+      "hook": "Updates::SkipTelegramFeed",
+      "reference_files": [
+        "core/update_checker.cpp"
+      ],
+      "local_files": [],
+      "status": "Regram release policy"
+    },
+    {
+      "hook": "VersionIsBeta",
+      "reference_files": [
+        "boxes/about_box.cpp",
+        "core/launcher.cpp",
+        "core/update_checker.cpp",
+        "platform/linux/update_install_linux.cpp",
+        "settings.cpp"
+      ],
+      "local_files": [],
+      "status": "Regram release policy"
+    },
+    {
+      "hook": "VersionString",
+      "reference_files": [
+        "boxes/about_box.cpp"
+      ],
+      "local_files": [],
+      "status": "Regram release policy"
+    },
+    {
+      "hook": "ViewRefresher::Attach",
+      "reference_files": [
+        "main/main_session.cpp"
+      ],
+      "local_files": [
+        "main/main_session.cpp"
+      ],
+      "status": "integrated"
+    }
+  ]
+}

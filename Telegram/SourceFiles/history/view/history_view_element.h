@@ -14,13 +14,19 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "iv/iv_rich_page.h"
 #include "ui/userpic_view.h"
 
+// AyuGram includes
+#include "ui/effects/animations.h"
+
+
 class History;
+namespace Nagram::Messages { class ReadingCache; }
 class HistoryBlock;
 class HistoryItem;
 class UserData;
 struct HistoryMessageReply;
 struct PreparedServiceText;
 struct HistoryMessageReplyMarkup;
+class ReplyKeyboard;
 
 namespace Data {
 class Thread;
@@ -62,6 +68,7 @@ enum class InfoDisplayType : char;
 struct StateRequest;
 struct TextState;
 struct MessageSelection;
+class GramReadLine;
 class Media;
 class Reply;
 struct HistoryMessageRichPage;
@@ -79,6 +86,7 @@ enum class Context : char {
 	ScheduledTopic,
 	ChatPreview,
 	WelcomeMessages,
+	MediaEditor,
 };
 
 enum class OnlyEmojiAndSpaces : char {
@@ -137,6 +145,9 @@ public:
 		FullMsgId itemId,
 		const TextWithEntities &text) = 0;
 	virtual bool elementAnimationsPaused() = 0;
+	virtual bool elementHideReactions() { return false; }
+	virtual bool elementHideSenderNames() { return false; }
+	virtual std::optional<bool> elementSpoilersRevealed() { return std::nullopt; }
 	virtual bool elementHideReply(not_null<const Element*> view) = 0;
 	virtual bool elementShownUnread(not_null<const Element*> view) = 0;
 	virtual void elementSendBotCommand(
@@ -159,6 +170,7 @@ public:
 		Element *replacing) = 0;
 	virtual QString elementAuthorRank(not_null<const Element*> view) = 0;
 	virtual bool elementHideTopicButton(not_null<const Element*> view) = 0;
+	virtual GramReadLine *elementGramReadLine() = 0;
 
 	virtual ~ElementDelegate() {
 	}
@@ -225,6 +237,7 @@ public:
 		Element *replacing) override;
 	QString elementAuthorRank(not_null<const Element*> view) override;
 	bool elementHideTopicButton(not_null<const Element*> view) override;
+	GramReadLine *elementGramReadLine() override;
 
 };
 
@@ -458,6 +471,8 @@ public:
 	[[nodiscard]] not_null<HistoryItem*> data() const;
 	[[nodiscard]] not_null<History*> history() const;
 	[[nodiscard]] Media *media() const;
+	[[nodiscard]] bool hasCommentsButton() const;
+	[[nodiscard]] ReplyKeyboard *inlineReplyKeyboard() const;
 	[[nodiscard]] Context context() const;
 	void refreshDataId();
 
@@ -504,6 +519,10 @@ public:
 
 	[[nodiscard]] bool isHiddenByGroup() const;
 	[[nodiscard]] virtual bool isHidden() const;
+
+	[[nodiscard]] float64 deletedOpacity() const;
+	void startDeletedAnimation();
+	[[nodiscard]] Ui::Animations::Simple takeDeletedAnimation();
 
 	[[nodiscard]] bool isIsolatedEmoji() const {
 		return (_flags & Flag::SpecialOnlyEmoji)
@@ -664,7 +683,7 @@ public:
 		int top = 0;
 		int height = 0;
 	};
-	[[nodiscard]] virtual VerticalRepaintRange verticalRepaintRange() const;
+	[[nodiscard]] VerticalRepaintRange verticalRepaintRange() const;
 
 	[[nodiscard]] virtual bool isSignedAuthorElided() const;
 
@@ -713,6 +732,7 @@ public:
 		const Reactions::InlineList &reactions) const;
 	void clearCustomEmojiRepaint() const;
 	void hideSpoilers();
+	void revealSpoilers();
 	void repaint(QRect r = QRect()) const;
 
 	[[nodiscard]] ClickHandlerPtr fromPhotoLink() const {
@@ -772,6 +792,10 @@ protected:
 		Painter &p,
 		const PaintContext &context,
 		int geometryHeight) const;
+	void paintSwipeReplyIcon(
+		Painter &p,
+		const PaintContext &context,
+		QRect g) const;
 
 	[[nodiscard]] ClickHandlerPtr fromLink() const;
 
@@ -825,6 +849,7 @@ private:
 	virtual void invalidateTextDependentCache() {
 	}
 
+	void refreshDeletedAnimationTarget();
 	void refreshMedia(Element *replacing);
 	void setTextWithLinks(
 		const TextWithEntities &text,
@@ -846,6 +871,7 @@ private:
 
 	HistoryItem *_textItem = nullptr;
 	mutable Ui::Text::String _text;
+	std::unique_ptr<Nagram::Messages::ReadingCache> _nagramReading;
 	mutable uint32 _textWidth : 16 = 0;
 	mutable uint32 _textRealWidth : 16 = 0;
 	mutable int _textHeight = 0;
@@ -855,6 +881,9 @@ private:
 
 	mutable Flags _flags = Flag(0);
 	Context _context = Context();
+
+	mutable Ui::Animations::Simple _deletedOpacityAnimation;
+	mutable std::shared_ptr<base::weak_ptr<Element>> _deletedOpacityAnimationTarget;
 
 };
 

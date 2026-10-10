@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "api/api_editing.h"
+#include "regram/nagram/compose/text.h"
 
 #include "apiwrap.h"
 #include "api/api_media.h"
@@ -32,6 +33,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "mtproto/mtproto_response.h"
 #include "boxes/abstract_box.h" // Ui::show().
+
+// AyuGram includes
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace Api {
 namespace {
@@ -168,9 +173,10 @@ mtpRequestId SuggestMedia(
 	const auto api = &session->api();
 
 	const auto text = textWithEntities.text;
+	const auto textNormalized = reverseLocalPremiumEmoji(textWithEntities, item->history());
 	const auto sentEntities = EntitiesToMTP(
 		session,
-		textWithEntities.entities,
+		textNormalized.entities,
 		ConvertOption::SkipLocal);
 
 	const auto updateRecentStickers = inputMedia
@@ -295,12 +301,13 @@ mtpRequestId SuggestMessageOrMedia(
 template <typename DoneCallback, typename FailCallback>
 mtpRequestId EditMessage(
 		not_null<HistoryItem*> item,
-		const TextWithEntities &textWithEntities,
+		const TextWithEntities &originalText,
 		Data::WebPageDraft webpage,
 		SendOptions options,
 		DoneCallback &&done,
 		FailCallback &&fail,
 		std::optional<MTPInputMedia> inputMedia = std::nullopt) {
+	const auto textWithEntities = Nagram::Compose::PrepareText(originalText, true);
 	if (item->computeSuggestionActions()
 		== SuggestionActions::AcceptAndDecline) {
 		return SuggestMessageOrMedia(
@@ -317,9 +324,10 @@ mtpRequestId EditMessage(
 	const auto api = &session->api();
 
 	const auto text = textWithEntities.text;
+	const auto textNormalized = reverseLocalPremiumEmoji(textWithEntities, item->history());
 	const auto sentEntities = EntitiesToMTP(
 		session,
-		textWithEntities.entities,
+		textNormalized.entities,
 		ConvertOption::SkipLocal);
 	const auto media = item->media();
 
@@ -411,6 +419,7 @@ void EditMessageWithUploadedMedia(
 		if (item) {
 			item->removeFromSharedMediaIndex();
 			item->clearSavedMedia();
+			item->addToSharedMediaIndex();
 			item->setIsLocalUpdateMedia(true);
 			applyUpdates();
 			item->setIsLocalUpdateMedia(false);

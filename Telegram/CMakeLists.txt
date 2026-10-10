@@ -21,18 +21,26 @@ add_subdirectory(lib_webrtc)
 add_subdirectory(lib_webview)
 add_subdirectory(codegen)
 
+# AyuGram filters
+add_subdirectory(lib_icu)
+# AyuGram filters
+
 get_filename_component(src_loc SourceFiles REALPATH)
 get_filename_component(res_loc Resources REALPATH)
 
 include(cmake/telegram_options.cmake)
+include(cmake/regram.cmake)
 include(cmake/lib_ffmpeg.cmake)
 include(cmake/lib_stripe.cmake)
 include(cmake/lib_tgcalls.cmake)
 include(cmake/lib_prisma.cmake)
 include(cmake/lib_fido2.cmake)
+include(cmake/lib_zxcvbn.cmake)
 include(cmake/td_export.cmake)
+include(cmake/td_gram.cmake)
 include(cmake/td_iv.cmake)
 include(cmake/td_lang.cmake)
+include(cmake/nagram.cmake)
 include(cmake/td_mtproto.cmake)
 include(cmake/td_scheme.cmake)
 include(cmake/td_tde2e.cmake)
@@ -56,8 +64,14 @@ endif()
 include(cmake/generate_update_keys.cmake)
 generate_update_keys(Telegram ${res_loc}/update)
 
-if (DESKTOP_APP_TEST_APPS OR DESKTOP_APP_SPECIAL_TARGET)
+if (DESKTOP_APP_TEST_APPS OR TDESKTOP_BUILD_UPDATE_TESTS)
     include(cmake/test_update_verify.cmake)
+    if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE)
+        include(cmake/test_update_unpack.cmake)
+        if (WIN32 AND NOT build_winstore)
+            include(cmake/test_updater_win.cmake)
+        endif()
+    endif()
 endif()
 
 set_target_properties(Telegram PROPERTIES AUTOMOC ON)
@@ -67,6 +81,7 @@ PRIVATE
     tdesktop::lib_fido2
     tdesktop::lib_tgcalls
     tdesktop::td_export
+    tdesktop::td_gram
     tdesktop::td_iv
     tdesktop::td_lang
     tdesktop::td_mtproto
@@ -87,6 +102,7 @@ PRIVATE
     desktop-app::lib_webview
     desktop-app::lib_ffmpeg
     desktop-app::lib_stripe
+    desktop-app::external_ada
     desktop-app::external_zlib
     desktop-app::external_minizip
     desktop-app::external_kcoreaddons
@@ -97,7 +113,161 @@ PRIVATE
     desktop-app::external_auto_updates
     desktop-app::external_openssl
     desktop-app::external_openal
+    desktop-app::external_wallet_engine
     desktop-app::external_xxhash
+
+    # AyuGram filters
+    ayugram::lib_icu
+)
+
+set(ayugram_files
+        regram/ayu/ayu_worker.cpp
+        regram/ayu/ayu_worker.h
+        regram/ayu/ayu_url_handlers.cpp
+        regram/ayu/ayu_url_handlers.h
+        regram/ayu/ayu_state.cpp
+        regram/ayu/ayu_state.h
+        regram/ayu/ayu_settings.cpp
+        regram/ayu/ayu_settings.h
+        regram/ayu/ayu_lang.cpp
+        regram/ayu/ayu_lang.h
+        regram/ayu/ayu_infra.cpp
+        regram/ayu/ayu_infra.h
+        regram/ayu/utils/ayu_mapper.cpp
+        regram/ayu/utils/ayu_mapper.h
+        regram/ayu/utils/qt_key_modifiers_extended.h
+        regram/ayu/utils/telegram_helpers.cpp
+        regram/ayu/utils/telegram_helpers.h
+        regram/ayu/utils/windows_utils.cpp
+        regram/ayu/utils/windows_utils.h
+        regram/ayu/utils/rc_manager.cpp
+        regram/ayu/utils/rc_manager.h
+        regram/ayu/ui/ayu_logo.cpp
+        regram/ayu/ui/ayu_logo.h
+        regram/ayu/ui/toasts.cpp
+        regram/ayu/ui/toasts.h
+        regram/ayu/ui/ayu_userpic.cpp
+        regram/ayu/ui/ayu_userpic.h
+        regram/ayu/ui/utils/ayu_profile_values.cpp
+        regram/ayu/ui/utils/ayu_profile_values.h
+        regram/ayu/ui/utils/color_cut_quantizer.cpp
+        regram/ayu/ui/utils/color_cut_quantizer.h
+        regram/ayu/ui/utils/color_utils.cpp
+        regram/ayu/ui/utils/color_utils.h
+        regram/ayu/ui/utils/palette.cpp
+        regram/ayu/ui/utils/palette.h
+        regram/ayu/ui/utils/itunes_search.cpp
+        regram/ayu/ui/utils/itunes_search.h
+        regram/ayu/ui/settings/ayu_builder.cpp
+        regram/ayu/ui/settings/ayu_builder.h
+        regram/ayu/ui/settings/settings_appearance.cpp
+        regram/ayu/ui/settings/settings_appearance.h
+        regram/ayu/ui/settings/settings_ayu_utils.cpp
+        regram/ayu/ui/settings/settings_ayu_utils.h
+        regram/ayu/ui/settings/settings_chats.cpp
+        regram/ayu/ui/settings/settings_chats.h
+        regram/ayu/ui/settings/settings_general.cpp
+        regram/ayu/ui/settings/settings_general.h
+        regram/ayu/ui/settings/settings_ayu.cpp
+        regram/ayu/ui/settings/settings_ayu.h
+        regram/ayu/ui/settings/settings_filters.cpp
+        regram/ayu/ui/settings/settings_filters.h
+        regram/ayu/ui/settings/settings_main.cpp
+        regram/ayu/ui/settings/settings_main.h
+        regram/ayu/ui/settings/settings_other.cpp
+        regram/ayu/ui/settings/settings_other.h
+        regram/ayu/ui/settings/filters/settings_filters_list.cpp
+        regram/ayu/ui/settings/filters/settings_filters_list.h
+        regram/ayu/ui/settings/filters/per_dialog_filter.cpp
+        regram/ayu/ui/settings/filters/per_dialog_filter.h
+        regram/ayu/ui/settings/filters/edit_filter.cpp
+        regram/ayu/ui/settings/filters/edit_filter.h
+        regram/ayu/ui/context_menu/context_menu.cpp
+        regram/ayu/ui/context_menu/context_menu.h
+        regram/ayu/ui/context_menu/menu_item_subtext.cpp
+        regram/ayu/ui/context_menu/menu_item_subtext.h
+        regram/ayu/ui/message_history/history_inner.cpp
+        regram/ayu/ui/message_history/history_inner.h
+        regram/ayu/ui/message_history/history_item.cpp
+        regram/ayu/ui/message_history/history_item.h
+        regram/ayu/ui/message_history/history_section.cpp
+        regram/ayu/ui/message_history/history_section.h
+        regram/ayu/ui/boxes/edit_mark_box.cpp
+        regram/ayu/ui/boxes/edit_mark_box.h
+        regram/ayu/ui/boxes/font_selector.cpp
+        regram/ayu/ui/boxes/font_selector.h
+        regram/ayu/ui/boxes/import_filters_box.cpp
+        regram/ayu/ui/boxes/import_filters_box.h
+        regram/ayu/ui/boxes/theme_selector_box.cpp
+        regram/ayu/ui/boxes/theme_selector_box.h
+        regram/ayu/ui/boxes/message_shot_box.cpp
+        regram/ayu/ui/boxes/message_shot_box.h
+        regram/ayu/ui/boxes/donate_qr_box.cpp
+        regram/ayu/ui/boxes/donate_qr_box.h
+        regram/ayu/ui/boxes/donate_info_box.cpp
+        regram/ayu/ui/boxes/donate_info_box.h
+        regram/ayu/ui/boxes/plugin_info_box.cpp
+        regram/ayu/ui/boxes/plugin_info_box.h
+        regram/ayu/ui/components/image_view.cpp
+        regram/ayu/ui/components/image_view.h
+        regram/ayu/ui/components/icon_picker.cpp
+        regram/ayu/ui/components/icon_picker.h
+        regram/ayu/ui/components/avatar_corners_preview.cpp
+        regram/ayu/ui/components/avatar_corners_preview.h
+        regram/ayu/ui/components/message_preview.cpp
+        regram/ayu/ui/components/message_preview.h
+        regram/ayu/ui/components/saved_music.cpp
+        regram/ayu/ui/components/saved_music.h
+        regram/ayu/libs/json.hpp
+        regram/ayu/libs/json_ext.hpp
+        regram/ayu/libs/sqlite/sqlite3.c
+        regram/ayu/libs/sqlite/sqlite3.h
+        regram/ayu/libs/sqlite/sqlite_orm.h
+        regram/ayu/features/streamer_mode/platform/linux/streamer_mode_linux.cpp
+        regram/ayu/features/streamer_mode/platform/linux/streamer_mode_linux.h
+        regram/ayu/features/streamer_mode/platform/mac/streamer_mode_mac.mm
+        regram/ayu/features/streamer_mode/platform/mac/streamer_mode_mac.h
+        regram/ayu/features/streamer_mode/platform/win/streamer_mode_win.cpp
+        regram/ayu/features/streamer_mode/platform/win/streamer_mode_win.h
+        regram/ayu/features/streamer_mode/platform/platform_streamer_mode.h
+        regram/ayu/features/streamer_mode/streamer_mode.cpp
+        regram/ayu/features/streamer_mode/streamer_mode.h
+        regram/ayu/features/message_shot/message_shot.cpp
+        regram/ayu/features/message_shot/message_shot.h
+        regram/ayu/features/message_shot/message_shot_theme_state.cpp
+        regram/ayu/features/message_shot/message_shot_theme_state.h
+        regram/ayu/features/forward/ayu_forward.cpp
+        regram/ayu/features/forward/ayu_forward.h
+        regram/ayu/features/forward/ayu_forward_rich.cpp
+        regram/ayu/features/forward/ayu_forward_rich.h
+        regram/ayu/features/forward/ayu_sync.cpp
+        regram/ayu/features/forward/ayu_sync.h
+        regram/ayu/features/translator/ayu_translator.cpp
+        regram/ayu/features/translator/ayu_translator.h
+        regram/ayu/features/translator/ayu_translate_provider.cpp
+        regram/ayu/features/translator/ayu_translate_provider.h
+        regram/ayu/features/translator/html_parser.cpp
+        regram/ayu/features/translator/html_parser.h
+        regram/ayu/features/translator/implementations/google.cpp
+        regram/ayu/features/translator/implementations/google.h
+        regram/ayu/features/translator/implementations/yandex.cpp
+        regram/ayu/features/translator/implementations/yandex.h
+        regram/ayu/features/translator/implementations/base.cpp
+        regram/ayu/features/translator/implementations/base.h
+        regram/ayu/features/filters/filters_controller.cpp
+        regram/ayu/features/filters/filters_controller.h
+        regram/ayu/features/filters/filters_cache_controller.cpp
+        regram/ayu/features/filters/filters_cache_controller.h
+        regram/ayu/features/filters/filters_utils.cpp
+        regram/ayu/features/filters/filters_utils.h
+        regram/ayu/data/messages_storage.cpp
+        regram/ayu/data/messages_storage.h
+        regram/ayu/data/entities.h
+        regram/ayu/data/ayu_database.cpp
+        regram/ayu/data/ayu_database.h
+
+        info/profile/info_profile_music_button.cpp
+        info/profile/info_profile_music_button.h
 )
 
 if (NOT DESKTOP_APP_DISABLE_SWIFT6)
@@ -108,6 +278,7 @@ target_precompile_headers(Telegram PRIVATE $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:${sr
 nice_target_sources(Telegram ${src_loc}
 PRIVATE
     ${style_files}
+    ${ayugram_files}
 
     api/api_attached_stickers.cpp
     api/api_attached_stickers.h
@@ -594,6 +765,8 @@ PRIVATE
     core/sandbox.h
     core/shortcuts.cpp
     core/shortcuts.h
+    core/ton_explorer_url.cpp
+    core/ton_explorer_url.h
     core/ui_integration.cpp
     core/ui_integration.h
     core/update_channel.h
@@ -601,11 +774,15 @@ PRIVATE
     core/update_checker.h
     core/update_keys.cpp
     core/update_keys.h
+    core/update_unpack.cpp
+    core/update_unpack.h
     core/update_verify.cpp
     core/update_verify.h
     core/utils.cpp
     core/utils.h
     core/version.h
+    core/websocket_client.cpp
+    core/websocket_client.h
     countries/countries_manager.cpp
     countries/countries_manager.h
     data/business/data_business_chatbots.cpp
@@ -632,6 +809,8 @@ PRIVATE
     data/components/promo_suggestions.h
     data/components/recent_inline_bots.cpp
     data/components/recent_inline_bots.h
+    data/components/recent_money_recipients.cpp
+    data/components/recent_money_recipients.h
     data/components/recent_peers.cpp
     data/components/recent_peers.h
     data/components/recent_shared_media_gifts.cpp
@@ -686,6 +865,7 @@ PRIVATE
     data/data_cloud_themes.h
     data/data_community.cpp
     data/data_community.h
+    data/data_compose_stash.h
     data/data_document.cpp
     data/data_document.h
     data/data_document_media.cpp
@@ -870,11 +1050,25 @@ PRIVATE
     dialogs/suggestions/suggestion_userpic_setup.cpp
     dialogs/dialogs_widget.cpp
     dialogs/dialogs_widget.h
+    editor/audio_track_timeline.cpp
+    editor/audio_track_timeline.h
     editor/color_picker.cpp
     editor/color_picker.h
     editor/controllers/controllers.h
     editor/controllers/stickers_panel_controller.cpp
     editor/controllers/stickers_panel_controller.h
+    editor/editor_audio_timeline.cpp
+    editor/editor_audio_timeline.h
+    editor/editor_keys_legend.cpp
+    editor/editor_keys_legend.h
+    editor/editor_link_box.cpp
+    editor/editor_link_box.h
+    editor/editor_message_render.cpp
+    editor/editor_message_render.h
+    editor/editor_message_source.cpp
+    editor/editor_message_source.h
+    editor/editor_message_video.cpp
+    editor/editor_message_video.h
     editor/editor_paint.cpp
     editor/editor_paint.h
     editor/photo_editor.cpp
@@ -885,8 +1079,14 @@ PRIVATE
     editor/photo_editor_controls.h
     editor/photo_editor_layer_widget.cpp
     editor/photo_editor_layer_widget.h
+    editor/scene/scene_item_message.cpp
+    editor/scene/scene_item_message.h
     editor/scene/scene_item_sticker.cpp
     editor/scene/scene_item_sticker.h
+    editor/scene/scene_item_video.cpp
+    editor/scene/scene_item_video.h
+    editor/video/video_clip.cpp
+    editor/video/video_clip.h
     editor/video/video_editor.cpp
     editor/video/video_editor.h
     editor/video/video_editor_common.cpp
@@ -897,8 +1097,14 @@ PRIVATE
     editor/video/video_editor_quality.h
     editor/video/video_quality_slider.cpp
     editor/video/video_quality_slider.h
+    editor/video/video_segment_player.cpp
+    editor/video/video_segment_player.h
     editor/video/video_timeline.cpp
     editor/video/video_timeline.h
+    editor/video/video_timeline_seeker.cpp
+    editor/video/video_timeline_seeker.h
+    editor/video_item_timeline.cpp
+    editor/video_item_timeline.h
     export/export_manager.cpp
     export/export_manager.h
     export/view/export_view_content.cpp
@@ -934,6 +1140,10 @@ PRIVATE
     history/view/controls/history_view_compose_media_edit_manager.h
     history/view/controls/history_view_compose_search.cpp
     history/view/controls/history_view_compose_search.h
+    history/view/controls/history_view_compose_stash.cpp
+    history/view/controls/history_view_compose_stash.h
+    history/view/controls/history_view_compose_stash_hint.cpp
+    history/view/controls/history_view_compose_stash_hint.h
     history/view/controls/history_view_draft_options.cpp
     history/view/controls/history_view_draft_options.h
     history/view/controls/history_view_forward_panel.cpp
@@ -974,6 +1184,8 @@ PRIVATE
     history/view/media/history_view_gif.h
     history/view/media/history_view_giveaway.cpp
     history/view/media/history_view_giveaway.h
+    history/view/media/history_view_gram_transfer.cpp
+    history/view/media/history_view_gram_transfer.h
     history/view/media/history_view_invoice.cpp
     history/view/media/history_view_invoice.h
     history/view/media/history_view_large_emoji.cpp
@@ -1259,8 +1471,6 @@ PRIVATE
     info/polls/info_polls_results_widget.h
     info/profile/info_profile_actions.cpp
     info/profile/info_profile_actions.h
-    info/profile/info_profile_badge_tooltip.cpp
-    info/profile/info_profile_badge_tooltip.h
     info/profile/info_profile_badge.cpp
     info/profile/info_profile_badge.h
     info/profile/info_profile_birthday_effect.cpp
@@ -1410,8 +1620,6 @@ PRIVATE
     intro/intro_qr.h
     intro/intro_signup.cpp
     intro/intro_signup.h
-    intro/intro_start.cpp
-    intro/intro_start.h
     intro/intro_step.cpp
     intro/intro_step.h
     intro/intro_widget.cpp
@@ -1700,6 +1908,8 @@ PRIVATE
     platform/linux/translate_provider_linux.h
     platform/linux/tray_linux.cpp
     platform/linux/tray_linux.h
+    platform/linux/update_install_linux.cpp
+    platform/linux/update_install_linux.h
     platform/linux/webauthn_linux.cpp
     platform/mac/file_utilities_mac.mm
     platform/mac/file_utilities_mac.h
@@ -1728,6 +1938,8 @@ PRIVATE
     platform/mac/translate_provider_mac.mm
     platform/mac/tray_mac.h
     platform/mac/tray_mac.mm
+    platform/mac/wallet_protection_mac.h
+    platform/mac/wallet_protection_mac.mm
     platform/mac/webauthn_mac.mm
     platform/mac/window_title_mac.mm
     platform/mac/touchbar/items/mac_formatter_item.h
@@ -1764,6 +1976,8 @@ PRIVATE
     platform/win/translate_provider_win.h
     platform/win/tray_win.cpp
     platform/win/tray_win.h
+    platform/win/wallet_protection_win.cpp
+    platform/win/wallet_protection_win.h
     platform/win/webauthn_win.cpp
     platform/win/windows_app_user_model_id.cpp
     platform/win/windows_app_user_model_id.h
@@ -1962,20 +2176,32 @@ PRIVATE
     test/test_activation.h
     test/test_agent.cpp
     test/test_agent.h
+    test/test_animation_clock.cpp
+    test/test_animation_clock.h
     test/test_box_button.cpp
     test/test_box_button.h
     test/test_capture.cpp
     test/test_capture.h
+    test/test_clipboard.cpp
+    test/test_clipboard.h
+    test/test_console_lock.cpp
+    test/test_console_lock.h
+    test/test_corner_patch.cpp
+    test/test_corner_patch.h
     test/test_custom_emoji.cpp
     test/test_custom_emoji.h
     test/test_gated_stage.cpp
     test/test_gated_stage.h
+    test/test_gram_reconcile.cpp
+    test/test_gram_reconcile.h
     test/test_history_fixtures.cpp
     test/test_history_fixtures.h
     test/test_hover.cpp
     test/test_hover.h
     test/test_ink.cpp
     test/test_ink.h
+    test/test_lang_pack.cpp
+    test/test_lang_pack.h
     test/test_launch_fuse.cpp
     test/test_launch_fuse.h
     test/test_layer_root.cpp
@@ -1984,29 +2210,53 @@ PRIVATE
     test/test_log.h
     test/test_log_lines.cpp
     test/test_log_lines.h
+    test/test_mapped_target.cpp
+    test/test_mapped_target.h
+    test/test_marking_read.cpp
+    test/test_marking_read.h
     test/test_menu.cpp
     test/test_menu.h
     test/test_messages.cpp
     test/test_messages.h
+    test/test_notify_override.cpp
+    test/test_notify_override.h
     test/test_open_handoff.cpp
     test/test_open_handoff.h
     test/test_panel.cpp
     test/test_panel.h
+    test/test_post_paint.cpp
+    test/test_post_paint.h
     test/test_probe.cpp
     test/test_probe.h
+    test/test_rpc_fixture.cpp
+    test/test_rpc_fixture.h
     test/test_rpc_retry.cpp
     test/test_rpc_retry.h
     test/test_runner.cpp
     test/test_runner.h
     test/test_scenario.cpp
+    test/test_secrecy_scan.cpp
+    test/test_secrecy_scan.h
     test/test_style.cpp
     test/test_style.h
+    test/test_text_drop.cpp
+    test/test_text_drop.h
     test/test_text_reads.cpp
     test/test_text_reads.h
+    test/test_toast_capture.cpp
+    test/test_toast_capture.h
     test/test_transfer.cpp
     test/test_transfer.h
     test/test_via_window.cpp
     test/test_via_window.h
+    test/test_wallet_intercept.cpp
+    test/test_wallet_intercept.h
+    test/test_wallet_ready.cpp
+    test/test_wallet_ready.h
+    test/test_web_cache.cpp
+    test/test_web_cache.h
+    test/test_wheel.cpp
+    test/test_wheel.h
     test/test_widgets.cpp
     test/test_widgets.h
     ui/boxes/edit_invite_link_session.cpp
@@ -2097,6 +2347,72 @@ PRIVATE
     ui/unread_badge.h
     ui/peer/video_userpic_player.cpp
     ui/peer/video_userpic_player.h
+    wallet/wallet_address.cpp
+    wallet/wallet_address.h
+    wallet/wallet_amount_field.cpp
+    wallet/wallet_amount_field.h
+    wallet/wallet_amount_painter.cpp
+    wallet/wallet_amount_painter.h
+    wallet/wallet_api.cpp
+    wallet/wallet_api.h
+    wallet/wallet_chat_show.cpp
+    wallet/wallet_chat_show.h
+    wallet/wallet_collectible_media.cpp
+    wallet/wallet_collectible_media.h
+    wallet/wallet_collectibles.cpp
+    wallet/wallet_collectibles.h
+    wallet/wallet_comment.cpp
+    wallet/wallet_comment.h
+    wallet/wallet_content.cpp
+    wallet/wallet_content.h
+    wallet/wallet_custody.cpp
+    wallet/wallet_custody.h
+    wallet/wallet_diamond_flight.cpp
+    wallet/wallet_diamond_flight.h
+    wallet/wallet_engine.cpp
+    wallet/wallet_engine.h
+    wallet/wallet_fiat.cpp
+    wallet/wallet_fiat.h
+    wallet/wallet_key_protection.cpp
+    wallet/wallet_key_protection.h
+    wallet/wallet_onramp.cpp
+    wallet/wallet_onramp.h
+    wallet/wallet_palette.cpp
+    wallet/wallet_palette.h
+    wallet/wallet_panel.cpp
+    wallet/wallet_panel.h
+    wallet/wallet_phrase_shares.cpp
+    wallet/wallet_phrase_shares.h
+    wallet/wallet_rates.cpp
+    wallet/wallet_rates.h
+    wallet/wallet_session.cpp
+    wallet/wallet_session.h
+    wallet/wallet_stream.cpp
+    wallet/wallet_stream.h
+    wallet/wallet_ton_connect.cpp
+    wallet/wallet_ton_connect.h
+    wallet/wallet_ton_connect_box.cpp
+    wallet/wallet_ton_connect_box.h
+    wallet/wallet_ton_connect_claims.cpp
+    wallet/wallet_ton_connect_claims.h
+    wallet/wallet_ton_connect_emulation.cpp
+    wallet/wallet_ton_connect_emulation.h
+    wallet/wallet_ton_connect_link.cpp
+    wallet/wallet_ton_connect_link.h
+    wallet/wallet_ton_connect_request.cpp
+    wallet/wallet_ton_connect_request.h
+    wallet/wallet_ton_connect_request_box.cpp
+    wallet/wallet_ton_connect_request_box.h
+    wallet/wallet_transfer_messages.cpp
+    wallet/wallet_transfer_messages.h
+    wallet/wallet_transfer_store.cpp
+    wallet/wallet_transfer_store.h
+    wallet/wallet_unlock.cpp
+    wallet/wallet_unlock.h
+    wallet/wallet_user_addresses.cpp
+    wallet/wallet_user_addresses.h
+    wallet/wallet_vault.cpp
+    wallet/wallet_vault.h
     webauthn/cable.h
     webauthn/cable_box.cpp
     webauthn/cable_box.h
@@ -2223,6 +2539,8 @@ endif()
 
 nice_target_sources(Telegram ${res_loc}
 PRIVATE
+    qrc/ayu/ayu.qrc
+
     qrc/emoji_1.qrc
     qrc/emoji_2.qrc
     qrc/emoji_3.qrc
@@ -2283,7 +2601,11 @@ elseif (APPLE)
     target_link_frameworks_weak(Telegram PRIVATE UserNotifications)
 
     set(icons_path ${CMAKE_CURRENT_SOURCE_DIR}/Telegram/Images.xcassets)
-    if (CMAKE_GENERATOR STREQUAL Xcode)
+    set(nagram_bundle_icon Icon.icns)
+    nagram_mac_app_icon(nagram_icon_compiled)
+    if (nagram_icon_compiled)
+        set(nagram_bundle_icon Regram)
+    elseif (CMAKE_GENERATOR STREQUAL Xcode)
         target_add_resource(Telegram ${icons_path})
     else()
         set(icon_path ${icons_path}/Icon.iconset)
@@ -2291,19 +2613,19 @@ elseif (APPLE)
         find_program(PNG2ICNS png2icns)
         if (ICONUTIL)
             add_custom_command(
-                OUTPUT Icon.icns
+                OUTPUT AppIcon-Default.icns
                 COMMAND ${ICONUTIL}
                 ARGS
                     --convert icns
-                    --output Icon.icns
+                    --output AppIcon-Default.icns
                     ${icon_path}
             )
         elseif (PNG2ICNS)
             add_custom_command(
-                OUTPUT Icon.icns
+                OUTPUT AppIcon-Default.icns
                 COMMAND ${PNG2ICNS}
                 ARGS
-                    Icon.icns
+                    AppIcon-Default.icns
                     ${icon_path}/icon_16x16.png
                     ${icon_path}/icon_32x32.png
                     ${icon_path}/icon_128x128.png
@@ -2312,8 +2634,9 @@ elseif (APPLE)
             )
         endif()
         if (ICONUTIL OR PNG2ICNS)
-            set_source_files_properties(Icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-            target_add_resource(Telegram Icon.icns)
+            set(nagram_bundle_icon AppIcon-Default)
+            set_source_files_properties(AppIcon-Default.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+            target_add_resource(Telegram AppIcon-Default.icns)
         endif()
     endif()
 
@@ -2367,10 +2690,11 @@ else()
     generate_dbus(Telegram org.freedesktop.portal. XdpBackground ${third_party_loc}/xdg-desktop-portal/data/org.freedesktop.portal.Background.xml)
     generate_dbus(Telegram org.freedesktop.portal. FlatpakPortal ${src_loc}/platform/linux/org.freedesktop.portal.Flatpak.xml)
     generate_dbus(Telegram org.freedesktop. XdgNotifications ${src_loc}/platform/linux/org.freedesktop.Notifications.xml)
+    generate_dbus(Telegram org.freedesktop.login1. Logind ${src_loc}/platform/linux/org.freedesktop.login1.Manager.xml)
 endif()
 
 if (build_macstore)
-    set(bundle_identifier "org.telegram.desktop")
+    set(bundle_identifier "dev.regram.desktop")
     set(bundle_entitlements "Telegram Lite.entitlements")
     set(output_name "Telegram Lite")
     target_link_options(Telegram
@@ -2388,12 +2712,12 @@ if (build_macstore)
     )
 else()
     if (CMAKE_GENERATOR STREQUAL Xcode)
-        set(bundle_identifier "com.tdesktop.Telegram$<$<CONFIG:Debug>:Debug>")
+        set(bundle_identifier "dev.regram.desktop$<$<CONFIG:Debug>:.debug>")
     else()
-        set(bundle_identifier "com.tdesktop.Telegram")
+        set(bundle_identifier "dev.regram.desktop")
     endif()
     set(bundle_entitlements "Telegram.entitlements")
-    set(output_name "Telegram")
+    set(output_name "Regram")
 endif()
 
 if (CMAKE_GENERATOR STREQUAL Xcode)
@@ -2411,6 +2735,8 @@ set_target_properties(Telegram PROPERTIES
     XCODE_ATTRIBUTE_CURRENT_PROJECT_VERSION ${desktop_app_version_string}
     XCODE_ATTRIBUTE_PRODUCT_NAME ${output_name}
     XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME Icon
+    XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES "AppIcon-Alt AppIcon-Discord AppIcon-Spotify AppIcon-Extera AppIcon-Nothing AppIcon-Bard AppIcon-Yaplus AppIcon-Win95 AppIcon-Chibi AppIcon-Chibi2 AppIcon-Extera2"
+    XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS YES
     XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
     XCODE_ATTRIBUTE_COMBINE_HIDPI_IMAGES YES
     XCODE_ATTRIBUTE_COPY_PHASE_STRIP NO
@@ -2426,20 +2752,21 @@ set(entitlement_sources
 target_sources(Telegram PRIVATE ${entitlement_sources})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Telegram PREFIX Resources FILES ${entitlement_sources})
 
-target_include_directories(Telegram PRIVATE ${src_loc})
+target_include_directories(Telegram PRIVATE ${src_loc} ${src_loc}/regram/ayu ${src_loc}/regram/nagram)
 
 target_compile_definitions(Telegram
 PRIVATE
     TDESKTOP_API_ID=${TDESKTOP_API_ID}
     TDESKTOP_API_HASH=${TDESKTOP_API_HASH}
     G_LOG_DOMAIN="Telegram"
+    U_STATIC_IMPLEMENTATION=1 # AyuGram: do not use __declspec(dllimport) when including icu headers
 )
 
 get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if (APPLE
     OR is_multi_config
     OR NOT CMAKE_EXECUTABLE_SUFFIX STREQUAL ""
-    OR NOT "${output_name}" STREQUAL "Telegram")
+    OR NOT "${output_name}" STREQUAL "AyuGram")
     set(output_folder ${CMAKE_BINARY_DIR})
 else()
     set(output_folder ${CMAKE_BINARY_DIR}/bin)
@@ -2564,6 +2891,8 @@ if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE AND NOT build_macstore AND NOT build_wins
             target_link_options(Updater PRIVATE -municode)
         endif()
     elseif (APPLE)
+        # Keep the launch API available to macOS 10.13 release builds.
+        target_compile_options(Updater PRIVATE -Wno-error=deprecated-declarations)
         add_custom_command(TARGET Updater
         POST_BUILD
             COMMAND mkdir -p $<TARGET_FILE_DIR:Telegram>/../Frameworks
@@ -2619,28 +2948,28 @@ endif()
 
 if (LINUX AND DESKTOP_APP_USE_PACKAGED)
     include(GNUInstallDirs)
-    configure_file("../lib/xdg/org.telegram.desktop.service" "${CMAKE_CURRENT_BINARY_DIR}/org.telegram.desktop.service" @ONLY)
-    configure_file("../lib/xdg/org.telegram.desktop.metainfo.xml" "${CMAKE_CURRENT_BINARY_DIR}/org.telegram.desktop.metainfo.xml" @ONLY)
-    generate_appstream_changelog(Telegram "${CMAKE_SOURCE_DIR}/changelog.txt" "${CMAKE_CURRENT_BINARY_DIR}/org.telegram.desktop.metainfo.xml")
+    configure_file("../lib/xdg/dev.regram.desktop.service" "${CMAKE_CURRENT_BINARY_DIR}/dev.regram.desktop.service" @ONLY)
+    configure_file("../lib/xdg/dev.regram.desktop.metainfo.xml" "${CMAKE_CURRENT_BINARY_DIR}/dev.regram.desktop.metainfo.xml" @ONLY)
+    generate_appstream_changelog(Telegram "${CMAKE_SOURCE_DIR}/changelog.txt" "${CMAKE_CURRENT_BINARY_DIR}/dev.regram.desktop.metainfo.xml")
     install(TARGETS Telegram RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}")
-    install(FILES "Resources/art/icon16.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/16x16/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon16@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/16x16@2/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon32.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/32x32/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon32@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/32x32@2/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon48.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon48@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48@2/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon64.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/64x64/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon64@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/64x64@2/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon128.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon128@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128@2/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon256.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon256@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256@2/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon512.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/art/icon512@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512@2/apps" RENAME "org.telegram.desktop.png")
-    install(FILES "Resources/icons/tray_monochrome.svg" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/symbolic/apps" RENAME "org.telegram.desktop-symbolic.svg")
-    install(FILES "Resources/icons/tray_monochrome_attention.svg" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/symbolic/apps" RENAME "org.telegram.desktop-attention-symbolic.svg")
-    install(FILES "Resources/icons/tray_monochrome_mute.svg" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/symbolic/apps" RENAME "org.telegram.desktop-mute-symbolic.svg")
-    install(FILES "../lib/xdg/org.telegram.desktop.desktop" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/org.telegram.desktop.service" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/dbus-1/services")
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/org.telegram.desktop.metainfo.xml" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo")
+    install(FILES "Resources/art/icon16.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/16x16/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon16@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/16x16@2/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon32.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/32x32/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon32@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/32x32@2/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon48.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon48@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/48x48@2/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon64.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/64x64/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon64@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/64x64@2/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon128.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon128@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/128x128@2/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon256.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon256@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256@2/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon512.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/art/icon512@2x.png" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512@2/apps" RENAME "dev.regram.desktop.png")
+    install(FILES "Resources/icons/tray_monochrome.svg" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/symbolic/apps" RENAME "dev.regram.desktop-symbolic.svg")
+    install(FILES "Resources/icons/tray_monochrome_attention.svg" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/symbolic/apps" RENAME "dev.regram.desktop-attention-symbolic.svg")
+    install(FILES "Resources/icons/tray_monochrome_mute.svg" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/symbolic/apps" RENAME "dev.regram.desktop-mute-symbolic.svg")
+    install(FILES "../lib/xdg/dev.regram.desktop.desktop" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/dev.regram.desktop.service" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/dbus-1/services")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/dev.regram.desktop.metainfo.xml" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo")
 endif()

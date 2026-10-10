@@ -218,7 +218,7 @@ void ComputeInstallationTag() {
 
 bool MoveLegacyAlphaFolder(const QString &folder, const QString &file) {
 	const auto was = cExeDir() + folder;
-	const auto now = cExeDir() + u"TelegramForcePortable"_q;
+	const auto now = cExeDir() + u"RegramForcePortable"_q;
 	if (QDir(was).exists() && !QDir(now).exists()) {
 		const auto oldFile = was + "/tdata/" + file;
 		const auto newFile = was + "/tdata/alpha";
@@ -239,8 +239,8 @@ bool MoveLegacyAlphaFolder(const QString &folder, const QString &file) {
 }
 
 bool MoveLegacyAlphaFolder() {
-	if (!MoveLegacyAlphaFolder(u"TelegramAlpha_data"_q, u"alpha"_q)
-		|| !MoveLegacyAlphaFolder(u"TelegramBeta_data"_q, u"beta"_q)) {
+	if (!MoveLegacyAlphaFolder(u"RegramAlpha_data"_q, u"alpha"_q)
+		|| !MoveLegacyAlphaFolder(u"RegramBeta_data"_q, u"beta"_q)) {
 		return false;
 	}
 	return true;
@@ -251,7 +251,7 @@ bool CheckPortableVersionFolder() {
 		return false;
 	}
 
-	const auto portable = cExeDir() + u"TelegramForcePortable"_q;
+	const auto portable = cExeDir() + u"RegramForcePortable"_q;
 	QFile key(portable + u"/tdata/alpha"_q);
 	if (cAlphaVersion()) {
 		Assert(*AlphaPrivateKey != 0);
@@ -340,7 +340,7 @@ void Launcher::init() {
 	prepareSettings();
 	initQtMessageLogging();
 
-	QApplication::setApplicationName(u"TelegramDesktop"_q);
+	QApplication::setApplicationName(u"RegramDesktop"_q);
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 	// fallback session management is useless for tdesktop since it doesn't have
@@ -388,7 +388,7 @@ int Launcher::exec() {
 	}
 
 	// Before Logs::start(), which is where the working directory gets
-	// chosen: a translocated bundle never sees its TelegramForcePortable.
+	// chosen: a translocated bundle never sees its RegramForcePortable.
 	if (!Platform::CheckAppTranslocation()) {
 		return 0;
 	}
@@ -603,6 +603,7 @@ void Launcher::processArguments() {
 		{ "-tosettings"     , KeyFormat::NoValues },
 		{ "-startintray"    , KeyFormat::NoValues },
 		{ "-quit"           , KeyFormat::NoValues },
+		{ "-ghost"          , KeyFormat::NoValues },
 		{ "-workdir"        , KeyFormat::OneValue },
 		{ "--"              , KeyFormat::AllLeftValues },
 		{ "-scale"          , KeyFormat::OneValue },
@@ -652,6 +653,7 @@ void Launcher::processArguments() {
 	gStartToSettings = parseResult.contains("-tosettings");
 	gStartInTray = parseResult.contains("-startintray");
 	gQuit = parseResult.contains("-quit");
+	gGhost = parseResult.contains("-ghost");
 	_customWorkingDir = parseResult.value("-workdir", {}).join(QString());
 	if (!_customWorkingDir.isEmpty()) {
 		_customWorkingDir = QDir(_customWorkingDir).absolutePath() + '/';

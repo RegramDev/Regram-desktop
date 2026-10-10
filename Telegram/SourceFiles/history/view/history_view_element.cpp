@@ -6,12 +6,19 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_element.h"
+#include "regram/nagram/messages/format.h"
+#include "regram/nagram/messages/reactions.h"
+#include "regram/nagram/messages/content.h"
+#include "regram/nagram/messages/reading.h"
+#include "regram/nagram/messages/options.h"
+#include "regram/nagram/filters/view.h"
 
 #include "apiwrap.h"
 #include "api/api_transcribes.h"
 #include "history/view/history_view_service_message.h"
 #include "history/view/history_view_message.h"
 #include "history/view/media/history_view_community_added.h"
+#include "history/view/media/history_view_gram_transfer.h"
 #include "history/view/media/history_view_media_common.h"
 #include "history/view/media/history_view_media_generic.h"
 #include "history/view/media/history_view_media_grouped.h"
@@ -46,6 +53,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "spellcheck/spellcheck_highlight_syntax.h"
 #include "chat_helpers/stickers_emoji_pack.h"
 #include "payments/payments_reaction_process.h" // TryAddingPaidReaction.
+#include "window/themes/window_theme.h" // IsNightMode.
 #include "window/window_session_controller.h"
 #include "window/section_widget.h"
 #include "ui/chat/chat_style.h"
@@ -55,6 +63,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/effects/reaction_fly_animation.h"
 #include "ui/toast/toast.h"
 #include "ui/text/text_utilities.h"
+#include "ui/arc_angles.h"
 #include "ui/item_text_options.h"
 #include "ui/painter.h"
 #include "ui/rect.h"
@@ -72,6 +81,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat_style.h"
 #include "styles/style_dialogs.h"
 #include "styles/style_iv.h"
+
+// AyuGram includes
+#include "data/data_groups.h"
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/message_shot/message_shot.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "styles/style_ayu_styles.h"
+
 
 namespace HistoryView {
 namespace {
@@ -646,6 +663,9 @@ bool DefaultElementDelegate::elementHideTopicButton(
 	return true;
 }
 
+GramReadLine *DefaultElementDelegate::elementGramReadLine() {
+	return nullptr;
+}
 
 SimpleElementDelegate::SimpleElementDelegate(
 	not_null<Window::SessionController*> controller,
@@ -749,7 +769,7 @@ QString DateTooltipText(not_null<Element*> view) {
 	if (const auto stars = item->out() ? item->starsPaid() : 0) {
 		dateText += '\n' + tr::lng_you_paid_stars(tr::now, lt_count, stars);
 	}
-	return dateText;
+	return Nagram::Messages::WithMessageId(std::move(dateText), item);
 }
 
 void UnreadBar::init(const QString &string) {
@@ -771,12 +791,15 @@ void UnreadBar::paint(
 		int y,
 		int w,
 		ElementChatMode mode) const {
+	if (AyuFeatures::MessageShot::isTakingShot()) {
+		return;
+	}
 	const auto previousTranslation = p.transform().dx();
 	if (previousTranslation != 0) {
 		p.translate(-previousTranslation, 0);
 	}
 	const auto st = context.st;
-	const auto bottom = y + height();
+	/*const auto bottom = y + height();
 	y += marginTop();
 	p.fillRect(
 		0,
@@ -789,7 +812,7 @@ void UnreadBar::paint(
 		bottom - st::lineWidth,
 		w,
 		st::lineWidth,
-		st->historyUnreadBarBorder());
+		st->historyUnreadBarBorder());*/
 	p.setFont(st::historyUnreadBarFont);
 	p.setPen(st->historyUnreadBarFg());
 
@@ -803,13 +826,31 @@ void UnreadBar::paint(
 	}
 	w = maxwidth;
 
-	const auto skip = st::historyUnreadBarHeight
-		- 2 * st::lineWidth
-		- st::historyUnreadBarFont->height;
-	p.drawText(
-		(w - width) / 2,
-		y + (skip / 2) + st::historyUnreadBarFont->ascent,
-		text);
+	{
+		auto hq = PainterHighQualityEnabler(p);
+
+		// `width` - width of the text
+		const auto pillWidth = width + 2 * st::unreadPillPadding;
+		const auto pillHeight = height() - marginTop();
+		const auto pillX = (w - pillWidth) / 2;
+		const auto pillY = y + marginTop();
+
+		QPainterPath path;
+		path.addRoundedRect(pillX,
+							pillY,
+							pillWidth,
+							pillHeight,
+							static_cast<double>(pillHeight) / 2,
+							static_cast<double>(pillHeight) / 2);
+		p.fillPath(path, st->historyUnreadBarBg());
+
+		const auto textY = pillY
+			+ (pillHeight - st::historyUnreadBarFont->height) / 2
+			+ st::historyUnreadBarFont->ascent;
+
+		p.drawText((w - width) / 2, textY, text);
+	}
+
 	if (previousTranslation != 0) {
 		p.translate(previousTranslation, 0);
 	}
@@ -1267,6 +1308,24 @@ Element::Element(
 			AddComponents(FakeBotAboutTop::Bit());
 		}
 	}
+	const auto deletedOpacityEnabled
+		= AyuSettings::getInstance().semiTransparentDeletedMessages();
+	if (deletedOpacityEnabled
+		&& replacing
+		&& replacing->_deletedOpacityAnimation.animating()) {
+		_deletedOpacityAnimation = replacing->takeDeletedAnimation();
+		_deletedOpacityAnimationTarget
+			= replacing->_deletedOpacityAnimationTarget;
+		refreshDeletedAnimationTarget();
+	} else if (deletedOpacityEnabled
+		&& data->isDeleted()
+		&& data->wasDeletedAnimated()) {
+		// grouped messages handle it per-item
+		if (!history()->owner().groups().find(data)) {
+			startDeletedAnimation();
+			data->markDeletedAnimated();
+		}
+	}
 	refreshEphemeralBadge();
 }
 
@@ -1372,6 +1431,15 @@ void Element::hideSpoilers() {
 	}
 }
 
+void Element::revealSpoilers() {
+	if (_text.hasSpoilers()) {
+		_text.setSpoilerRevealed(true, anim::type::instant);
+	}
+	if (_media) {
+		_media->revealSpoilers();
+	}
+}
+
 void Element::customEmojiRepaint() {
 	if (!(_flags & Flag::CustomEmojiRepainting)) {
 		_flags |= Flag::CustomEmojiRepainting;
@@ -1418,6 +1486,69 @@ void Element::repaint(QRect r) const {
 	history()->owner().requestViewRepaint(this, r);
 }
 
+void Element::refreshDeletedAnimationTarget() {
+	if (!_deletedOpacityAnimationTarget) {
+		_deletedOpacityAnimationTarget
+			= std::make_shared<base::weak_ptr<Element>>();
+	}
+	*_deletedOpacityAnimationTarget = base::make_weak(this);
+}
+
+float64 Element::deletedOpacity() const {
+	const auto &settings = AyuSettings::getInstance();
+	if (!settings.semiTransparentDeletedMessages()) {
+		_deletedOpacityAnimation.stop();
+		_deletedOpacityAnimationTarget = nullptr;
+		return 1.;
+	}
+	if (_context == Context::AdminLog) { // render normally in "View Deleted"
+		return 1.;
+	}
+	if (_data->isDeleted()) {
+		if (const auto group = history()->owner().groups().find(_data)) {
+			// animation works weirdly on grouped messages, so only a fixed opacity here
+			const auto allDeleted = ranges::all_of(
+				group->items,
+				&HistoryItem::isDeleted);
+			return allDeleted ? 0.7 : 1.;
+		}
+		const auto opacity = _deletedOpacityAnimation.value(0.7);
+		if (!_deletedOpacityAnimation.animating()) {
+			_deletedOpacityAnimationTarget = nullptr;
+		}
+		return opacity;
+	}
+	return 1.;
+}
+
+void Element::startDeletedAnimation() {
+	if (!AyuSettings::getInstance().semiTransparentDeletedMessages()) {
+		_deletedOpacityAnimation.stop();
+		_deletedOpacityAnimationTarget = nullptr;
+		return;
+	}
+	refreshDeletedAnimationTarget();
+	_deletedOpacityAnimation.start(
+		[target = _deletedOpacityAnimationTarget] {
+			if (!AyuSettings::getInstance().semiTransparentDeletedMessages()) {
+				return false;
+			}
+			if (const auto view = target->get()) {
+				view->repaint();
+				return true;
+			}
+			return false;
+		},
+		1.,
+		0.7,
+		500,
+		anim::easeOutCubic);
+}
+
+Ui::Animations::Simple Element::takeDeletedAnimation() {
+	return std::move(_deletedOpacityAnimation);
+}
+
 void Element::paintHighlight(
 		Painter &p,
 		const PaintContext &context,
@@ -1432,6 +1563,85 @@ void Element::paintHighlight(
 	const auto fillheight = fill + geometryHeight + fill;
 
 	paintCustomHighlight(p, context, skiptop, fillheight, data());
+}
+
+void Element::paintSwipeReplyIcon(
+		Painter &p,
+		const PaintContext &context,
+		QRect g) const {
+	constexpr auto kShiftRatio = 1.5;
+	constexpr auto kBouncePart = 0.25;
+	constexpr auto kMaxHeightRatio = 3.5;
+	constexpr auto kStrokeWidth = 2.;
+	constexpr auto kWaveWidth = 10.;
+	const auto mirrored = !context.gestureHorizontal.inverted;
+	const auto isLeftSize = !context.outbg
+		|| (delegate()->elementChatMode() == ElementChatMode::Wide);
+	const auto ratio = std::min(context.gestureHorizontal.ratio, 1.);
+	const auto reachRatio = context.gestureHorizontal.reachRatio;
+	const auto size = st::historyFastShareSize;
+	const auto bubbleRight = mirrored
+		? (width() - g.x())
+		: rect::right(g);
+	const auto outerWidth = st::historySwipeIconSkip
+		+ (isLeftSize ? bubbleRight : width())
+		+ ((g.height() < size * kMaxHeightRatio)
+			? rightActionSize().value_or(QSize()).width()
+			: 0);
+	const auto shift = std::min(
+		(size * kShiftRatio * context.gestureHorizontal.ratio),
+		-1. * context.gestureHorizontal.translation
+	) + (st::historySwipeIconSkip * ratio * (isLeftSize ? .7 : 1.));
+	const auto rect = QRectF(
+		outerWidth - shift,
+		g.y() + (g.height() - size) / 2,
+		size,
+		size);
+	const auto center = rect::center(rect);
+	const auto spanAngle = ratio * arc::kFullLength;
+	const auto strokeWidth = style::ConvertFloatScale(kStrokeWidth);
+
+	const auto reachScale = std::clamp(
+		(reachRatio > kBouncePart)
+			? (kBouncePart * 2 - reachRatio)
+			: reachRatio,
+		0.,
+		1.);
+	auto pen = Window::Theme::IsNightMode()
+		? QPen(anim::with_alpha(context.st->msgServiceFg()->c, 0.3))
+		: QPen(context.st->msgServiceBg());
+	pen.setWidthF(strokeWidth - (1. * (reachScale / kBouncePart)));
+	const auto arcRect = rect - Margins(strokeWidth);
+	p.save();
+	if (mirrored) {
+		p.translate(width(), 0);
+		p.scale(-1., 1.);
+	}
+	{
+		auto hq = PainterHighQualityEnabler(p);
+		p.setPen(Qt::NoPen);
+		p.setBrush(context.st->msgServiceBg());
+		p.setOpacity(ratio);
+		const auto scale = 1. + 1. * reachScale;
+		p.translate(center);
+		p.scale(mirrored ? scale : -scale, scale);
+		p.translate(-center);
+		p.drawEllipse(rect);
+		context.st->historyFastShareIcon().paintInCenter(p, rect);
+		p.setPen(pen);
+		p.setBrush(Qt::NoBrush);
+		p.drawArc(arcRect, arc::kQuarterLength, spanAngle);
+		// p.drawArc(arcRect, arc::kQuarterLength, spanAngle);
+		if (reachRatio) {
+			const auto w = style::ConvertFloatScale(kWaveWidth);
+			p.setOpacity(ratio - reachRatio);
+			p.drawArc(
+				arcRect + Margins(reachRatio * reachRatio * w),
+				arc::kQuarterLength,
+				spanAngle);
+		}
+	}
+	p.restore();
 }
 
 void Element::paintCustomHighlight(
@@ -1503,13 +1713,30 @@ bool Element::isTopicRootReply() const {
 }
 
 bool Element::hidesBottomInfo() const {
-	return data()->isWelcomeTemplate();
+	return data()->isWelcomeTemplate()
+		|| (data()->isFakeHistoryItem()
+			&& context() == Context::MediaEditor);
+}
+
+ReplyKeyboard *Element::inlineReplyKeyboard() const {
+	return (_context == Context::MediaEditor)
+		? nullptr
+		: _data->inlineReplyKeyboard();
+}
+
+bool Element::hasCommentsButton() const {
+	return (_context != Context::MediaEditor)
+		&& (_data->repliesAreComments() || _data->externalReply());
 }
 
 int Element::skipBlockWidth() const {
 	if (hidesBottomInfo()) {
 		return 0;
 	}
+	if (AyuFeatures::MessageShot::ignoreRender(AyuFeatures::MessageShot::RenderPart::Date)) {
+		return st::msgDateDelta.x();
+	}
+
 	return st::msgDateSpace + infoWidth() - st::msgDateDelta.x();
 }
 
@@ -1537,7 +1764,7 @@ bool Element::isHiddenByGroup() const {
 }
 
 bool Element::isHidden() const {
-	return isHiddenByGroup();
+	return isMessageHidden(data()) || isHiddenByGroup();
 }
 
 void Element::overrideMedia(std::unique_ptr<Media> media) {
@@ -1567,6 +1794,7 @@ void Element::overrideRightBadge(const QString &text, BadgeRole role) {
 	const auto badge = Get<RightBadge>();
 	badge->overridden = true;
 	badge->role = role;
+	badge->channel = false;
 	badge->tag.setMarkedText(
 		st::defaultTextStyle,
 		{ text },
@@ -1622,6 +1850,10 @@ void Element::refreshMedia(Element *replacing) {
 	_flags &= ~Flag::HiddenByGroup;
 
 	const auto item = data();
+	if (Nagram::Filters::Hidden(item)) {
+		_media = nullptr;
+		return;
+	}
 	if (!item->computeUnavailableReason().isEmpty()) {
 		_media = nullptr;
 		return;
@@ -1644,8 +1876,10 @@ void Element::refreshMedia(Element *replacing) {
 			}
 		}
 		_media = media->createView(this, replacing);
+	} else if (item->Has<HistoryServiceGramTransfer>()) {
+		_media = CreateGramTransferMedia(this, replacing);
 	} else if (item->showSimilarChannels()) {
-		_media = std::make_unique<SimilarChannels>(this);
+		_media = Nagram::Messages::RecommendedChannelsMedia(this);
 	} else if (isOnlyCustomEmoji()
 		&& Core::App().settings().largeEmoji()
 		&& !item->isSponsored()) {
@@ -1789,9 +2023,13 @@ int Element::textHeightFor(int textWidth) const {
 		if (const auto rich = const_cast<Element*>(this)->richpage()) {
 			const auto articleHeight = rich->article.resizeGetHeight(
 				richPageWidthFor(textWidth));
-			_textHeight = st::mediaInBubbleSkip
+			const auto skips = rich->edgeSkips();
+			_textHeight = skips.top()
 				+ articleHeight
-				+ (_text.hasSkipBlock() ? skipBlockHeight() : 0);
+				+ skips.bottom()
+				+ ((_text.hasSkipBlock() && !rich->article.hasSkipBlock())
+					? skipBlockHeight()
+					: 0);
 			rich->article.setVisibleTopBottom(0, articleHeight);
 			_textRealWidth = std::clamp(
 				rich->article.lastLayoutWidth(),
@@ -1815,6 +2053,10 @@ int Element::textHeightFor(int textWidth) const {
 
 auto Element::contextDependentServiceText() -> TextWithLinks {
 	const auto item = data();
+	if (item->Has<HistoryServiceGramTransfer>()) {
+		auto prepared = item->prepareGramTransferText(false);
+		return { std::move(prepared.text), std::move(prepared.links) };
+	}
 	const auto info = item->Get<HistoryServiceTopicInfo>();
 	if (!info) {
 		return {};
@@ -2177,7 +2419,8 @@ void Element::setTextWithLinks(
 	});
 	if (_flags & Flag::ServiceMessage) {
 		const auto &options = Ui::ItemTextServiceOptions();
-		_text.setMarkedText(st::serviceTextStyle, text, options, context);
+		_text.setMarkedText(st::serviceTextStyle,
+			Nagram::Messages::ServiceText(this, text), options, context);
 		auto linkIndex = 0;
 		for (const auto &link : links) {
 			// Link indices start with 1.
@@ -2185,9 +2428,23 @@ void Element::setTextWithLinks(
 		}
 	} else {
 		const auto item = data();
+		const auto filtered = Nagram::Filters::Project(item, text);
+		const auto display = Nagram::Filters::DisplayText(filtered);
 		const auto &options = Ui::ItemTextOptions(item);
 		clearSpecialOnlyEmoji();
-		_text.setMarkedText(st::messageTextStyle, text, options, context);
+		const auto spacing = Nagram::ForDevice().Get(
+			Nagram::Messages::kReadingSpacing);
+		const auto chinese = Nagram::ForDevice().Get(
+			Nagram::Messages::kReadingChinese);
+		if (!item->nagramOriginalShown() && (spacing || chinese)) {
+			if (!_nagramReading) {
+				_nagramReading = std::make_unique<Nagram::Messages::ReadingCache>();
+			}
+			_text.setMarkedText(st::messageTextStyle,
+				_nagramReading->Get(display, spacing, chinese), options, context);
+		} else {
+			_text.setMarkedText(st::messageTextStyle, display, options, context);
+		}
 		if (!item->_text.empty() && _text.isEmpty()){
 			// If server has allowed some text that we've trim-ed entirely,
 			// just replace it with something so that UI won't look buggy.
@@ -2414,6 +2671,10 @@ void Element::destroyUnreadBar() {
 }
 
 int Element::displayedDateHeight() const {
+	if (AyuFeatures::MessageShot::isTakingShot() || isMessageHidden(data())) {
+		return 0;
+	}
+
 	if (auto date = Get<DateBadge>()) {
 		return date->height();
 	}
@@ -2814,9 +3075,11 @@ int Element::textualMaxWidth() const {
 }
 
 auto Element::verticalRepaintRange() const -> VerticalRepaintRange {
+	const auto media = this->media();
+	const auto add = media ? media->bubbleRollRepaintMargins() : QMargins();
 	return {
-		.top = 0,
-		.height = height()
+		.top = -add.top(),
+		.height = height() + add.top() + add.bottom()
 	};
 }
 
@@ -2857,8 +3120,14 @@ void Element::setupReactions(Element *replacing) {
 
 void Element::refreshReactions() {
 	using namespace Reactions;
-	auto reactionsData = InlineListDataFromMessage(this);
-	if (reactionsData.reactions.empty()) {
+	if (delegate()->elementHideReactions()) {
+		setReactions(nullptr);
+		return;
+	}
+	auto reactionsData = Nagram::Messages::FilterInlineReactions(
+		this, InlineListDataFromMessage(this));
+	if (reactionsData.reactions.empty()
+		|| context() == Context::MediaEditor) {
 		setReactions(nullptr);
 		return;
 	}
@@ -2911,6 +3180,7 @@ void Element::refreshReactions() {
 					if (id.paid() || ranges::contains(chosen, id)) {
 						now->animateReaction({
 							.id = id,
+							.haptic = true,
 						});
 					}
 				}
@@ -3075,10 +3345,10 @@ Element *Element::previousInBlocks() const {
 
 Element *Element::previousDisplayedInBlocks() const {
 	auto result = previousInBlocks();
-	while (result && (result->data()->isEmpty() || result->isHidden())) {
+	while (result && ((result->data()->isEmpty() || result->isHidden()) && !isMessageHidden(data()))) {
 		result = result->previousInBlocks();
 	}
-	return result;
+	return result == this ? nullptr : result;
 }
 
 Element *Element::nextInBlocks() const {
@@ -3096,10 +3366,10 @@ Element *Element::nextInBlocks() const {
 
 Element *Element::nextDisplayedInBlocks() const {
 	auto result = nextInBlocks();
-	while (result && (result->data()->isEmpty() || result->isHidden())) {
+	while (result && ((result->data()->isEmpty() || result->isHidden()) && !isMessageHidden(data()))) {
 		result = result->nextInBlocks();
 	}
-	return result;
+	return result == this ? nullptr : result;
 }
 
 void Element::drawInfo(

@@ -665,6 +665,11 @@ storiesEmojiPan: EmojiPan(defaultEmojiPan) {
 		"photo_editor/camera-24x24",
 		storiesComposeWhiteText
 	}};
+	audioButtonIcon: icon {{
+		"photo_editor/widget_music",
+		storiesComposeWhiteText
+	}};
+	linkButtonIcon: icon {{ "limits/links", storiesComposeWhiteText }};
 	menu: storiesPopupMenuWithIcons;
 	menuAttention: storiesMenuWithIconsAttention;
 	expandedSeparator: mediaviewWideMenuSeparator;
@@ -721,6 +726,7 @@ storiesEmojiPan: EmojiPan(defaultEmojiPan) {
 		menuEmojiViewPack: icon {{ "menu/all_media", storiesComposeWhiteText }};
 		menuEmojiRemoveRecent: icon {{ "menu/cancel", storiesComposeWhiteText }};
 		menuMute: icon {{ "menu/mute", storiesComposeWhiteText }};
+		menuUnmute: icon {{ "menu/unmute", storiesComposeWhiteText }};
 		menuSchedule: icon {{ "menu/calendar", storiesComposeWhiteText }};
 		menuWhenOnline: icon {{ "menu/send_when_online", storiesComposeWhiteText }};
 		menuSpoiler: icon {{ "menu/spoiler_on", storiesComposeWhiteText }};

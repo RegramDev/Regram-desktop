@@ -33,6 +33,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "history/history_item.h"
 #include "history/history_item_components.h"
+#include "iv/iv_rich_page.h"
 #include "main/main_account.h"
 #include "main/main_domain.h"
 #include "main/main_session.h"
@@ -57,6 +58,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 
 #include "styles/style_layers.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace {
 
@@ -159,6 +165,9 @@ Data::SendError GetErrorForSending(
 			return tr::lng_slowmode_no_many(tr::now);
 		} else if (count > 1) {
 			const auto albumForward = [&] {
+				if (!request.forward || request.forward->empty()) {
+					return false;
+				}
 				const auto first = request.forward->front();
 				if (const auto groupId = first->groupId()) {
 					for (const auto &item : *request.forward) {
@@ -623,6 +632,11 @@ QString NewMessagePostAuthor(const Api::SendAction &action) {
 bool ShouldSendSilent(
 		not_null<PeerData*> peer,
 		const Api::SendOptions &options) {
+	const auto &ghost = AyuSettings::ghost(&peer->session());
+	if (ghost.shouldSendWithoutSound()) {
+		return !options.silent;
+	}
+
 	return options.silent
 		|| (peer->isBroadcast()
 			&& peer->owner().notifySettings().silentPosts(peer))
@@ -754,6 +768,10 @@ void ConfirmDeleteSelectedEphemeral(
 TextWithEntities DropDisallowedCustomEmoji(
 		not_null<PeerData*> to,
 		TextWithEntities text) {
+	if (true) { // AyuGram: allow all premium emojis (via tg://emoji?id=...)
+		return text;
+	}
+
 	if (to->session().premium() || to->isSelf()) {
 		return text;
 	}
@@ -815,6 +833,14 @@ HistoryItem *MessageByGlobalId(GlobalMsgId globalId) {
 		return session->data().message(globalId.itemId);
 	}
 	return nullptr;
+}
+
+std::vector<not_null<DocumentData*>> ItemRichPageAudio(
+		not_null<const HistoryItem*> item) {
+	const auto page = item->richPage();
+	return page
+		? Iv::CollectRichPageAudio(*page)
+		: std::vector<not_null<DocumentData*>>();
 }
 
 QDateTime ItemDateTime(not_null<const HistoryItem*> item) {
@@ -1014,15 +1040,16 @@ MTPMessageReplyHeader NewMessageReplyHeader(const Api::SendAction &action) {
 		const auto replyToTop = LookupReplyToTop(action.history, replyTo);
 		const auto topicPost = replyTo.topicRootId
 			&& (replyTo.topicRootId != Data::ForumTopic::kGeneralId);
+		const auto quoteNormalized = reverseLocalPremiumEmoji(replyTo.quote, action.history, true);
 		auto quoteEntities = Api::EntitiesToMTP(
 			&action.history->session(),
-			replyTo.quote.entities,
+			quoteNormalized.entities,
 			Api::ConvertOption::SkipLocal);
 		return MTP_messageReplyHeader(
 			MTP_flags(Flag::f_reply_to_msg_id
 				| (replyToTop ? Flag::f_reply_to_top_id : Flag())
 				| (externalPeerId ? Flag::f_reply_to_peer_id : Flag())
-				| (replyTo.quote.empty()
+				| (quoteNormalized.empty()
 					? Flag()
 					: (Flag::f_quote
 						| Flag::f_quote_text
@@ -1304,6 +1331,14 @@ void CheckReactionNotificationSchedule(
 	if (from == Api::ReactionsNotifyFrom::None) {
 		return;
 	}
+	const auto peer = item->history()->peer;
+	const auto &settings = AyuSettings::getInstance();
+	if ((peer->isChannel() && !peer->isMegagroup() && !settings.showChannelReactions())
+		|| (peer->isMegagroup() && !settings.showGroupReactions())
+		|| (peer->isUser() && !settings.showPrivateChatReactions())) {
+		item->markEffectWatched();
+		return;
+	}
 	for (const auto &[emoji, reactions] : item->recentReactions()) {
 		for (const auto &reaction : reactions) {
 			if (!reaction.unread) {
@@ -1433,9 +1468,9 @@ bool CanHoldItemNotification(not_null<const HistoryItem*> item) {
 }
 
 [[nodiscard]] TextWithEntities UnsupportedMessageText() {
-	const auto siteLink = u"https://desktop.telegram.org"_q;
+	const auto siteLink = u"https://github.com/RegramDev/Regram-desktop/releases"_q;
 	auto result = TextWithEntities{
-		tr::lng_message_unsupported(tr::now, lt_link, siteLink)
+		tr::lng_message_unsupported(tr::now, lt_link, siteLink).replace(u"Telegram"_q, u"Regram"_q)
 	};
 	TextUtilities::ParseEntities(result, Ui::ItemTextNoMonoOptions().flags);
 	result.entities.push_front(

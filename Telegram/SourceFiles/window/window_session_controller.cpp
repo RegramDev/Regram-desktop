@@ -6,6 +6,12 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_session_controller.h"
+#include "regram/nagram/chats/startup_folder.h"
+#include "regram/nagram/chats/sort.h"
+#include "regram/nagram/chats/recent_chats.h"
+#include "regram/nagram/chats/reading_position.h"
+#include "regram/nagram/chats/folders.h"
+#include "regram/nagram/privacy/protection.h"
 
 #include "apiwrap.h"
 #include "api/api_cloud_password.h"
@@ -130,6 +136,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_dialogs.h"
 #include "styles/style_layers.h" // st::boxLabel
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
+
 namespace Window {
 namespace {
 
@@ -145,7 +155,7 @@ base::options::toggle OptionExternalMediaViewer({
 [[nodiscard]] bool HasSavingRestriction(HistoryItem *item) {
 	return item
 		&& (item->forbidsSaving()
-			|| !item->history()->peer->allowsForwarding());
+			|| !Nagram::Privacy::AllowsCopy(item->history()->peer));
 }
 
 class MainWindowShow final : public ChatHelpers::Show {
@@ -1458,9 +1468,12 @@ void SessionNavigation::showByInitialId(
 		clearSectionStack(instant);
 		const auto type = id.sharedMediaType;
 		const auto topic = id.thread->asTopic();
+		const auto sublist = id.thread->asSublist();
 		showSection(
 			(topic
 				? std::make_shared<Info::Memento>(topic, type)
+				: sublist
+				? std::make_shared<Info::Memento>(sublist, type)
 				: std::make_shared<Info::Memento>(id.thread->peer(), type)),
 			instant);
 		parent->widget()->setMaximumWidth(st::maxWidthSharedMediaWindow);
@@ -1519,14 +1532,14 @@ auto SessionNavigation::showToast(Ui::Toast::Config &&config)
 
 auto SessionNavigation::showToast(const QString &text, crl::time duration)
 -> base::weak_ptr<Ui::Toast::Instance> {
-	return uiShow()->showToast(text);
+	return uiShow()->showToast(text, duration);
 }
 
 auto SessionNavigation::showToast(
 	TextWithEntities &&text,
 	crl::time duration)
 -> base::weak_ptr<Ui::Toast::Instance> {
-	return uiShow()->showToast(std::move(text));
+	return uiShow()->showToast(std::move(text), duration);
 }
 
 std::shared_ptr<ChatHelpers::Show> SessionNavigation::uiShow() {
@@ -1580,6 +1593,11 @@ SessionController::SessionController(
 , _defaultChatTheme(std::make_shared<Ui::ChatTheme>())
 , _chatStyle(std::make_unique<Ui::ChatStyle>(session->colorIndicesValue())) {
 	init();
+	if (_isPrimary) Nagram::Chats::WatchSorting(session, lifetime());
+	Nagram::Chats::WatchRecentChats(this);
+	Nagram::Chats::WatchReadingPositions(this);
+	Nagram::Chats::WatchFolders(this);
+	Nagram::Privacy::WatchRestrictions(this);
 
 	_chatStyleTheme = _defaultChatTheme;
 	_chatStyle->apply(_defaultChatTheme.get());
@@ -1929,7 +1947,7 @@ void SessionController::setupScreenshotProtection() {
 	) | rpl::map([](Dialogs::Key key) {
 		const auto peer = key.peer();
 		return peer
-			? (Data::AllowsForwardingValue(peer)
+			? (Nagram::Privacy::AllowsCopyValue(peer)
 				| rpl::map(!rpl::mappers::_1))
 			: (rpl::single(false) | rpl::type_erased);
 	}) | rpl::flatten_latest(), lifetime());
@@ -2038,6 +2056,7 @@ rpl::producer<> SessionController::filtersMenuChanged() const {
 }
 
 void SessionController::checkOpenedFilter() {
+	Nagram::Chats::VerifyStartupFolder(&session());
 	activateFirstChatsFilter();
 	if (const auto filterId = activeChatsFilterCurrent()) {
 		const auto &list = session().data().chatsFilters().list();
@@ -2057,7 +2076,8 @@ void SessionController::activateFirstChatsFilter() {
 		return;
 	}
 	_filtersActivated = true;
-	setActiveChatsFilter(session().data().chatsFilters().defaultId());
+	setActiveChatsFilter(Nagram::Chats::StartupFolder(
+		&session(), session().data().chatsFilters().defaultId()));
 }
 
 bool SessionController::uniqueChatsInSearchResults(
@@ -2092,7 +2112,7 @@ void SessionController::openFolder(not_null<Data::Folder*> folder) {
 		resetFakeUnreadWhileOpened();
 	}
 	if (activeChatsFilterCurrent() != 0) {
-		setActiveChatsFilter(0);
+		Nagram::Chats::ResetFilterForFolder(this);
 	} else if (adaptive().isOneColumn()) {
 		clearSectionStack(SectionShow::Way::ClearStack);
 	}
@@ -2185,6 +2205,9 @@ bool SessionController::showForumInDifferentWindow(
 		not_null<Data::Forum*> forum,
 		const SectionShow &params,
 		MsgId showAtMsgId) {
+	if (windowId().forum() == forum) {
+		return false;
+	}
 	const auto window = Core::App().windowForShowingForum(forum);
 	if (window == _window) {
 		return false;
@@ -3285,11 +3308,14 @@ not_null<MainWidget*> SessionController::content() const {
 }
 
 int SessionController::filtersWidth() const {
-	return _filters ? st::windowFiltersWidth : 0;
+	return _filters
+		? st::windowFiltersWidth
+		: 0;
 }
 
 bool SessionController::enoughSpaceForFilters() const {
-	return widget()->width() >= widget()->minimumWidth() + st::windowFiltersWidth;
+	return widget()->width() >= widget()->minimumWidth()
+		+ st::windowFiltersWidth;
 }
 
 rpl::producer<bool> SessionController::enoughSpaceForFiltersValue() const {
@@ -3317,6 +3343,7 @@ void SessionController::setActiveChatsFilter(
 		resetFakeUnreadWhileOpened();
 	}
 	_activeChatsFilter.force_assign(id);
+	Nagram::Chats::RememberFolder(&session(), id);
 	if (id || !changed) {
 		closeForum();
 		closeFolder();

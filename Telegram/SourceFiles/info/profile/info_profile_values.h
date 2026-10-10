@@ -140,12 +140,15 @@ struct LinkWithUrl {
 [[nodiscard]] rpl::producer<bool> CanViewParticipantsValue(
 	not_null<ChannelData*> megagroup);
 
-enum class BadgeType : uchar;
+enum class BadgeType : ushort;
 [[nodiscard]] rpl::producer<BadgeType> BadgeValue(not_null<PeerData*> peer);
 [[nodiscard]] rpl::producer<EmojiStatusId> EmojiStatusIdValue(
 	not_null<PeerData*> peer);
 
 [[nodiscard]] rpl::producer<QString> BirthdayLabelText(
+	rpl::producer<Data::Birthday> birthday);
+[[nodiscard]] rpl::producer<TextWithEntities> BirthdayValueMarkedText(
+	not_null<UserData*> user,
 	rpl::producer<Data::Birthday> birthday);
 [[nodiscard]] rpl::producer<QString> BirthdayValueText(
 	rpl::producer<Data::Birthday> birthday,

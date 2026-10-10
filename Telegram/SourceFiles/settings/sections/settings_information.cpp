@@ -75,6 +75,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QGuiApplication>
 #include <QtCore/QBuffer>
 
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "styles/style_info.h"
+
+
 namespace Settings {
 namespace {
 
@@ -95,7 +101,7 @@ struct InformationHighlightTargets {
 };
 
 constexpr auto kSaveBioTimeout = 1000;
-constexpr auto kPlayStatusLimit = 2;
+constexpr auto kPlayStatusLimit = 12;
 
 class ComposedBadge final : public Ui::RpWidget {
 public:
@@ -111,9 +117,11 @@ private:
 	rpl::variable<QString> _text;
 	rpl::event_stream<int> _unreadWidth;
 	rpl::event_stream<int> _premiumWidth;
+	rpl::event_stream<int> _exteraWidth;
 
 	QPointer<Ui::RpWidget> _unread;
 	Info::Profile::Badge _badge;
+	Info::Profile::Badge _exteraBadge;
 
 };
 
@@ -132,9 +140,18 @@ ComposedBadge::ComposedBadge(
 		session,
 		Info::Profile::BadgeContentForPeer(session->user()),
 		nullptr,
-		std::move(animationPaused),
+		animationPaused,
 		kPlayStatusLimit,
-		Info::Profile::BadgeType::Premium) {
+		Info::Profile::BadgeType::Premium)
+, _exteraBadge(
+		this,
+		st::infoPeerBadge,
+		session,
+		ExteraBadgeTypeFromPeer(session->user()),
+		nullptr,
+		std::move(animationPaused),
+		0,
+		Info::Profile::BadgeType::Extera | Info::Profile::BadgeType::ExteraSupporter | Info::Profile::BadgeType::ExteraCustom) {
 	if (hasUnread) {
 		_unread = Badge::CreateUnread(this, rpl::single(
 			rpl::empty
@@ -165,6 +182,16 @@ ComposedBadge::ComposedBadge(
 		}
 	}, lifetime());
 
+	_exteraBadge.updated(
+	) | rpl::on_next([=] {
+		if (const auto widget = _exteraBadge.widget()) {
+			widget->widthValue(
+			) | rpl::start_to_stream(_exteraWidth, widget->lifetime());
+		} else {
+			_exteraWidth.fire(0);
+		}
+	}, lifetime());
+
 	auto textWidth = _text.value() | rpl::map([=] {
 		return button->fullTextWidth();
 	});
@@ -173,11 +200,15 @@ ComposedBadge::ComposedBadge(
 		_premiumWidth.events_starting_with(_badge.widget()
 			? _badge.widget()->width()
 			: 0),
+		_exteraWidth.events_starting_with(_exteraBadge.widget()
+			? _exteraBadge.widget()->width()
+			: 0),
 		std::move(textWidth),
 		button->sizeValue()
 	) | rpl::on_next([=](
 			int unreadWidth,
 			int premiumWidth,
+			int exteraWidth,
 			int textWidth,
 			const QSize &buttonSize) {
 		const auto &st = button->st();
@@ -185,7 +216,14 @@ ComposedBadge::ComposedBadge(
 		const auto textRightPosition = st.padding.left()
 			+ textWidth
 			+ skip;
-		const auto minWidth = unreadWidth + premiumWidth + skip;
+		const auto exteraGap = exteraWidth
+			? st::infoVerifiedCheckPosition.x()
+			: 0;
+		const auto minWidth = unreadWidth
+			+ premiumWidth
+			+ exteraGap
+			+ exteraWidth
+			+ skip;
 		const auto maxTextWidth = buttonSize.width()
 			- minWidth
 			- st.padding.right();
@@ -198,6 +236,10 @@ ComposedBadge::ComposedBadge(
 
 		_badge.move(
 			0,
+			st.padding.top(),
+			buttonSize.height() - st.padding.top());
+		_exteraBadge.move(
+			premiumWidth,
 			st.padding.top(),
 			buttonSize.height() - st.padding.top());
 		if (_unread) {
@@ -268,6 +310,7 @@ void SetupPhoto(
 		not_null<Window::SessionController*> controller,
 		not_null<UserData*> self,
 		InformationHighlightTargets *targets) {
+	Ui::AddSkip(container); // fix avatar cutting on top
 	const auto wrap = container->add(object_ptr<Ui::FixedHeightWidget>(
 		container,
 		st::settingsInfoPhotoHeight));
@@ -508,31 +551,7 @@ void SetupChatAutomation(
 		controller->showSettings(Settings::ChatbotsId());
 	});
 
-	{
-		const auto badge = Ui::NewBadge::CreateNewBadge(
-			button,
-			tr::lng_premium_summary_new_badge()).get();
-		rpl::combine(
-			std::move(title),
-			button->widthValue()
-		) | rpl::on_next([=, &st](
-				const QString &text,
-				int width) {
-			const auto space = st.style.font->spacew;
-			const auto left = st.padding.left()
-				+ st.style.font->width(text)
-				+ space;
-			const auto available = width - left - st.padding.right();
-			badge->setVisible(available >= badge->width());
-			if (!badge->isHidden()) {
-				const auto top = st.padding.top()
-					+ st.style.font->ascent
-					- st::settingsPremiumNewBadge.style.font->ascent
-					- st::settingsPremiumNewBadgePadding.top();
-				badge->moveToLeft(left, top, width);
-			}
-		}, badge->lifetime());
-	}
+	Ui::NewBadge::AddAfterButtonText(button, std::move(title), st);
 
 	if (targets) {
 		targets->chatAutomation = button;
@@ -609,10 +628,9 @@ void SetupRows(
 		targets->name = nameButton;
 	}
 
-	const auto showChangePhone = [=] {
-		controller->show(
-			Ui::MakeInformBox(tr::lng_change_phone_error()));
-		controller->window().activate();
+	const auto copyPhone = [=] {
+		QGuiApplication::clipboard()->setText(self->phone());
+		controller->showToast(tr::lng_text_copied(tr::now), 500);
 	};
 	const auto phoneButton = AddRow(
 		container,
@@ -621,7 +639,7 @@ void SetupRows(
 			self,
 			Info::Profile::PhoneValue(self)),
 		tr::lng_profile_copy_phone(tr::now),
-		showChangePhone,
+		copyPhone,
 		{ &st::menuIconPhone },
 		true,
 		[=](not_null<Ui::PopupMenu*> menu) {
@@ -901,7 +919,7 @@ void SetupAccountsWrap(
 			pen.setWidthF(line);
 			p.setPen(pen);
 			p.setBrush(Qt::NoBrush);
-			p.drawEllipse(rect);
+			AyuUserpic::PaintShape(p, rect);
 		}
 	}, state->userpic.lifetime());
 
@@ -952,7 +970,8 @@ void SetupAccountsWrap(
 				};
 				window->show(
 					Ui::MakeConfirmBox({
-						.text = tr::lng_sure_logout(),
+						.text = Window::LogoutConfirmationText(
+							&session->account()),
 						.confirmed = crl::guard(session, callback),
 						.confirmText = tr::lng_settings_logout(),
 						.confirmStyle = &st::attentionBoxButton,

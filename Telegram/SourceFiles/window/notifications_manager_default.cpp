@@ -14,6 +14,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/emoji_suggestions_widget.h"
 #include "chat_helpers/message_field.h"
 #include "lang/lang_keys.h"
+#include "base/qt_signal_producer.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/platform/ui_platform_utility.h"
@@ -46,20 +47,36 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QGuiApplication>
 #include <QtGui/QScreen>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/streamer_mode/streamer_mode.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+
+
 namespace Window {
 namespace Notifications {
 namespace Default {
 namespace {
+
+[[nodiscard]] int notifyWidth() {
+	const auto corner = Core::App().settings().notificationsCorner();
+	return Core::Settings::IsTopCenterCorner(corner) ? st::notifyWidth * 1.5 : st::notifyWidth;
+}
 
 [[nodiscard]] QPoint notificationStartPosition() {
 	const auto corner = Core::App().settings().notificationsCorner();
 	const auto r = NotificationDisplayRect(Core::App().activePrimaryWindow());
 	const auto isLeft = Core::Settings::IsLeftCorner(corner);
 	const auto isTop = Core::Settings::IsTopCorner(corner);
-	const auto x = (isLeft == rtl())
-		? (r.x() + r.width() - st::notifyWidth - st::notifyDeltaX)
+	auto x = (isLeft == rtl())
+		? (r.x() + r.width() - notifyWidth() - st::notifyDeltaX)
 		: (r.x() + st::notifyDeltaX);
 	const auto y = isTop ? r.y() : (r.y() + r.height());
+
+	if (Core::Settings::IsTopCenterCorner(corner)) {
+		x = (r.x() + r.width() / 2 - notifyWidth() / 2);
+	}
+
 	return QPoint(x, y);
 }
 
@@ -80,6 +97,16 @@ Manager::Manager(System *system)
 	system->settingsChanged(
 	) | rpl::on_next([=](ChangeType change) {
 		settingsChanged(change);
+	}, _lifetime);
+
+	// Notifications are kept in the queue while there are no screens.
+	base::qt_signal_producer(
+		qApp,
+		&QGuiApplication::screenAdded
+	) | rpl::filter([=] {
+		return !_queuedNotifications.empty();
+	}) | rpl::on_next([=] {
+		showNextFromQueue();
 	}, _lifetime);
 }
 
@@ -207,6 +234,10 @@ void Manager::stopAllHiding() {
 }
 
 void Manager::showNextFromQueue() {
+	if (!QGuiApplication::primaryScreen()) {
+		// Creating a window without screens is a Qt fatal error.
+		return;
+	}
 	auto guard = gsl::finally([this] {
 		if (_positionsOutdated) {
 			moveWidgets();
@@ -678,7 +709,7 @@ Notification::Notification(
 	}
 
 	auto position = computePosition(st::notifyMinHeight);
-	updateGeometry(position.x(), position.y(), st::notifyWidth, st::notifyMinHeight);
+	updateGeometry(position.x(), position.y(), notifyWidth(), st::notifyMinHeight);
 
 	_userpicLoaded = !Ui::PeerUserpicLoading(_userpicView);
 	updateNotifyDisplay();
@@ -715,6 +746,10 @@ Notification::Notification(
 	}, lifetime());
 
 	show();
+
+	if (AyuSettings::getInstance().streamerMode()) {
+		AyuFeatures::StreamerMode::hideWidgetWindow(this);
+	}
 }
 
 void Notification::updateReplyGeometry() {
@@ -1005,7 +1040,7 @@ void Notification::updateNotifyDisplay() {
 				: TextWithEntities{ name };
 		};
 		auto title = options.hideNameAndPhoto
-			? TextWithEntities{ u"Telegram Desktop"_q }
+			? TextWithEntities{ u"Regram Desktop"_q }
 			: reminder
 			? tr::lng_notification_reminder(tr::now, tr::marked)
 			: topicWithChat();
@@ -1286,7 +1321,7 @@ HideAllButton::HideAllButton(
 	setCursor(style::cur_pointer);
 
 	auto position = computePosition(st::notifyHideAllHeight);
-	updateGeometry(position.x(), position.y(), st::notifyWidth, st::notifyHideAllHeight);
+	updateGeometry(position.x(), position.y(), notifyWidth(), st::notifyHideAllHeight);
 
 	style::PaletteChanged(
 	) | rpl::on_next([=] {
@@ -1294,6 +1329,10 @@ HideAllButton::HideAllButton(
 	}, lifetime());
 
 	show();
+
+	if (AyuSettings::getInstance().streamerMode()) {
+		AyuFeatures::StreamerMode::hideWidgetWindow(this);
+	}
 }
 
 void HideAllButton::startHiding() {

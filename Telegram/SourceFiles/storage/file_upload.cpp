@@ -31,6 +31,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "storage/storage_account.h"
 #include "apiwrap.h"
+#include "regram/nagram/network/runtime.h"
 
 #include <QtCore/QFileInfo>
 
@@ -57,8 +58,8 @@ constexpr auto kDocumentUploadPartSize3 = 256 * 1024;
 // 512kb for large document ( <= 1500mb )
 constexpr auto kDocumentUploadPartSize4 = 512 * 1024;
 
-// One part each half second, if not uploaded faster.
-constexpr auto kUploadRequestInterval = crl::time(250);
+// One part each 200ms, if not uploaded faster.
+constexpr auto kUploadRequestInterval = crl::time(200);
 
 // How much time without upload causes additional session kill.
 constexpr auto kKillSessionTimeout = 15 * crl::time(1000);
@@ -147,6 +148,10 @@ Uploader::Entry::Entry(
 
 void Uploader::Entry::setDocSize(int64 size) {
 	docSize = size;
+	if (const auto boosted = Nagram::Network::UploadPartSize(size)) {
+		setPartSize(boosted);
+		return;
+	}
 	constexpr auto limit0 = 1024 * 1024;
 	constexpr auto limit1 = 32 * limit0;
 	if (docSize >= limit0 || !setPartSize(kDocumentUploadPartSize0)) {
@@ -466,6 +471,11 @@ void Uploader::runTranscode(FullMsgId itemId) {
 							return !std::get_if<QImage>(&layer);
 						}),
 					end(fallback.overlay));
+				using StillSource = Media::Encode::StillSource;
+				if (const auto still = std::get_if<StillSource>(
+						&fallback.source)) {
+					still->music.clear();
+				}
 				result = Media::Encode::Run(std::move(fallback), nullptr);
 			}
 			bytes = std::move(result.bytes);

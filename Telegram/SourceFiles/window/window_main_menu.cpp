@@ -6,6 +6,10 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "window/window_main_menu.h"
+#include "regram/nagram/chats/recent_chats.h"
+#include "regram/nagram/media/extras.h"
+#include "regram/nagram/interface/main_menu.h"
+#include "regram/nagram/interface/appearance.h"
 
 #include "apiwrap.h"
 #include "base/event_filter.h"
@@ -34,6 +38,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/stories/info_stories_widget.h"
 #include "lang/lang_keys.h"
 #include "main/main_account.h"
+#include "main/main_app_config.h"
 #include "main/main_domain.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
@@ -52,6 +57,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/controls/userpic_button.h"
 #include "ui/effects/snowflakes.h"
 #include "ui/effects/toggle_arrow.h"
+#include "ui/new_badges.h"
 #include "ui/painter.h"
 #include "ui/text/text_options.h"
 #include "ui/text/text_utilities.h"
@@ -63,6 +69,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/widgets/scroll_area.h"
 #include "ui/widgets/shadow.h"
 #include "ui/wrap/slide_wrap.h"
+#include "wallet/wallet_panel.h"
 #include "window/themes/window_theme.h"
 #include "window/window_controller.h"
 #include "window/window_main_menu_helpers.h"
@@ -71,6 +78,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat.h" // popupMenuExpandedSeparator
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
+#include "styles/style_wallet.h"
 #include "styles/style_window.h"
 #include "styles/style_window_main_menu.h"
 
@@ -80,10 +88,21 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "boxes/abstract_box.h"
+#include "styles/style_ayu_icons.h"
+#include "lang_auto.h"
+#include "regram/ayu/ui/settings/settings_main.h"
+#include "regram/settings/home.h"
+#include "styles/style_info.h"
+
+
 namespace Window {
 namespace {
 
-constexpr auto kPlayStatusLimit = 2;
+constexpr auto kPlayStatusLimit = 12;
 
 [[nodiscard]] bool CanCheckSpecialEvent() {
 	static const auto result = [] {
@@ -101,20 +120,9 @@ constexpr auto kPlayStatusLimit = 2;
 
 [[nodiscard]] rpl::producer<TextWithEntities> SetStatusLabel(
 		not_null<Main::Session*> session) {
-	const auto self = session->user();
-	return session->changes().peerFlagsValue(
-		self,
-		Data::PeerUpdate::Flag::EmojiStatus
-	) | rpl::map([=] {
-		return !!self->emojiStatusId();
-	}) | rpl::distinct_until_changed() | rpl::map([](bool has) {
-		const auto makeLink = [](const QString &text) {
-			return tr::link(text);
-		};
-		return (has
-			? tr::lng_menu_change_status
-			: tr::lng_menu_set_status)(makeLink);
-	}) | rpl::flatten_latest();
+	return tr::lng_regram_settings() | rpl::map([](const QString& text) {
+		return tr::link(text);
+	});
 }
 
 } // namespace
@@ -308,6 +316,7 @@ MainMenu::MainMenu(
 	not_null<SessionController*> controller)
 : LayerWidget(parent)
 , _controller(controller)
+, _nagramTitle(Nagram::Interface::MainMenuTitle())
 , _userpicButton(
 	this,
 	_controller->session().user(),
@@ -324,6 +333,15 @@ MainMenu::MainMenu(
 	[=] { return controller->isGifPausedAtLeastFor(GifPauseReason::Layer); },
 	kPlayStatusLimit,
 	Info::Profile::BadgeType::Premium))
+, _exteraBadge(std::make_unique<Info::Profile::Badge>(
+	this,
+	st::infoPeerBadge,
+	&controller->session(),
+	ExteraBadgeTypeFromPeer(controller->session().user()),
+	nullptr,
+	[=] { return controller->isGifPausedAtLeastFor(GifPauseReason::Layer); },
+	0,
+	Info::Profile::BadgeType::Extera | Info::Profile::BadgeType::ExteraSupporter | Info::Profile::BadgeType::ExteraCustom))
 , _scroll(this, st::defaultSolidScroll)
 , _inner(_scroll->setOwnedWidget(
 	object_ptr<Ui::VerticalLayout>(_scroll.data())))
@@ -376,7 +394,8 @@ MainMenu::MainMenu(
 
 	rpl::combine(
 		heightValue(),
-		_inner->heightValue()
+		_inner->heightValue(),
+		_menu->heightValue()
 	) | rpl::on_next([=] {
 		updateInnerControlsGeometry();
 	}, _inner->lifetime());
@@ -384,8 +403,8 @@ MainMenu::MainMenu(
 	parentResized();
 
 	_telegram->setMarkedText(tr::link(
-		u"Telegram Desktop"_q,
-		u"https://desktop.telegram.org"_q));
+		u"Regram Desktop"_q,
+		u"https://github.com/RegramDev/Regram-desktop"_q));
 	_telegram->setLinksTrusted();
 	// The canary version is too long for the "Version {version}" form.
 	_version->setMarkedText(
@@ -407,18 +426,28 @@ MainMenu::MainMenu(
 	_version->setLink(
 		2,
 		std::make_shared<LambdaClickHandler>([=] {
-			controller->show(Box(AboutBox));
+			controller->show(Box(AboutBox, controller));
 		}));
 
 	rpl::combine(
 		_toggleAccounts->rightSkipValue(),
-		rpl::single(rpl::empty) | rpl::then(_badge->updated())
+		rpl::single(rpl::empty) | rpl::then(_badge->updated()),
+		rpl::single(rpl::empty) | rpl::then(_exteraBadge->updated())
 	) | rpl::on_next([=] {
 		moveBadge();
 	}, lifetime());
 	_badge->setPremiumClickCallback([=] {
 		chooseEmojiStatus();
 	});
+	{
+		const auto user = controller->session().user();
+		const auto isCustomBadge = isCustomBadgePeer(getBareID(user));
+		const auto isExtera = isExteraPeer(getBareID(user));
+		const auto isSupporter = isSupporterPeer(getBareID(user));
+		if (isExtera || isSupporter || isCustomBadge) {
+			_exteraBadge->setPremiumClickCallback(badgeClickHandler(user));
+		}
+	}
 
 	_controller->session().downloaderTaskFinished(
 	) | rpl::on_next([=] {
@@ -427,7 +456,9 @@ MainMenu::MainMenu(
 
 	initResetScaleButton();
 
-	if (CanCheckSpecialEvent() && CheckSpecialEvent()) {
+	if ((Nagram::Interface::AlwaysSeasonal()
+			|| (CanCheckSpecialEvent() && CheckSpecialEvent()))
+		&& Nagram::Interface::MainMenuSeasonal()) {
 		const auto snowLifetime = lifetime().make_state<rpl::lifetime>();
 		const auto rebuild = [=] {
 			const auto snowRaw = Ui::CreateChild<Ui::RpWidget>(this);
@@ -469,19 +500,42 @@ MainMenu::MainMenu(
 MainMenu::~MainMenu() = default;
 
 void MainMenu::moveBadge() {
-	if (!_badge->widget()) {
+	const auto badgeWidth = _badge->widget()
+		? _badge->widget()->width()
+		: 0;
+	const auto exteraBadgeWidth = _exteraBadge->widget()
+		? _exteraBadge->widget()->width()
+		: 0;
+	if (!badgeWidth && !exteraBadgeWidth) {
 		return;
 	}
+	const auto nameGap = badgeWidth ? st::semiboldFont->spacew : 0;
+	const auto exteraGap = exteraBadgeWidth
+		? st::infoVerifiedCheckPosition.x()
+		: 0;
+	const auto reserved = nameGap
+		+ badgeWidth
+		+ exteraGap
+		+ exteraBadgeWidth;
 	const auto available = width()
 		- st::mainMenuCoverNameLeft
 		- _toggleAccounts->rightSkip()
-		- _badge->widget()->width();
-	const auto left = st::mainMenuCoverNameLeft
-		+ std::min(_name.maxWidth() + st::semiboldFont->spacew, available);
-	_badge->move(
-		left,
-		st::mainMenuCoverNameTop,
-		st::mainMenuCoverNameTop + st::semiboldFont->height);
+		- reserved;
+	const auto nameLeft = st::mainMenuCoverNameLeft;
+	const auto nameEnd = nameLeft
+		+ std::min(_name.maxWidth(), available);
+	if (_badge->widget()) {
+		_badge->move(
+			nameEnd + nameGap,
+			st::mainMenuCoverNameTop,
+			st::mainMenuCoverNameTop + st::semiboldFont->height);
+	}
+	if (_exteraBadge->widget()) {
+		_exteraBadge->move(
+			nameEnd + nameGap + badgeWidth,
+			st::mainMenuCoverNameTop,
+			st::mainMenuCoverNameTop + st::semiboldFont->height);
+	}
 }
 
 void MainMenu::setupArchive() {
@@ -501,6 +555,7 @@ void MainMenu::setupArchive() {
 				controller->openFolder(f);
 			}
 			controller->window().hideSettingsAndLayer();
+			controller->removeLayerBlackout();
 		}
 	};
 	const auto checkArchive = [=] {
@@ -629,7 +684,7 @@ void MainMenu::setupAccountsToggle() {
 
 void MainMenu::setupSetEmojiStatus() {
 	_setEmojiStatus->overrideLinkClickHandler([=] {
-		chooseEmojiStatus();
+		_controller->showSettings(Regram::Settings::HomeId());
 	});
 }
 
@@ -652,69 +707,164 @@ void MainMenu::showFinished() {
 void MainMenu::setupMenu() {
 	using namespace Settings;
 
+	const auto &settings = AyuSettings::getInstance();
+
 	const auto controller = _controller;
 	const auto addAction = [&](
 			rpl::producer<QString> text,
-			IconDescriptor &&descriptor) {
+			IconDescriptor &&descriptor,
+			QString id = QString()) {
 		return AddButtonWithIcon(
-			_menu,
+			id.isEmpty()
+				? _menu.get()
+				: Nagram::Interface::AddMainMenuGroup(_menu, id).get(),
 			std::move(text),
 			st::mainMenuButton,
 			std::move(descriptor));
 	};
 	if (!_controller->session().supportMode()) {
-		_menu->add(
+		const auto profile = Nagram::Interface::AddMainMenuGroup(
+			_menu, u"profile"_q);
+		if (settings.showMyProfileInDrawer()) profile->add(
 			CreateButtonWithIcon(
-				_menu,
+				profile,
 				tr::lng_menu_my_profile(),
 				st::mainMenuButton,
 				{ &st::menuIconProfile })
 		)->setClickedCallback([=] {
 			controller->showSection(
-				Info::Stories::Make(controller->session().user()));
+				Info::Stories::MakeMyProfile(controller->session().user()));
 		});
 
-		SetupMenuBots(_menu, controller);
+		if (settings.showBotsInDrawer()) {
+		SetupMenuBots(Nagram::Interface::AddMainMenuGroup(
+			_menu, u"bots"_q), controller);
+		}
 
-		_menu->add(
-			object_ptr<Ui::PlainShadow>(_menu),
-			{ 0, st::mainMenuSkip, 0, st::mainMenuSkip });
+		if (!Nagram::Interface::MainMenuCustomOrder()
+			&& (settings.showMyProfileInDrawer() || settings.showBotsInDrawer())) {
+			_menu->add(
+				object_ptr<Ui::PlainShadow>(_menu),
+				{ 0, st::mainMenuSkip, 0, st::mainMenuSkip });
+		}
 
+		if (settings.showNewGroupInDrawer())
 		AddMyChannelsBox(addAction(
 			tr::lng_create_group_title(),
-			{ &st::menuIconGroups }
+			{ &st::menuIconGroups },
+			u"newGroup"_q
 		), controller, true)->addClickHandler([=](Qt::MouseButton which) {
 			if (which == Qt::LeftButton) {
 				controller->showNewGroup();
 			}
 		});
 
+		if (settings.showNewChannelInDrawer())
 		AddMyChannelsBox(addAction(
 			tr::lng_create_channel_title(),
-			{ &st::menuIconChannel }
+			{ &st::menuIconChannel },
+			u"newChannel"_q
 		), controller, false)->addClickHandler([=](Qt::MouseButton which) {
 			if (which == Qt::LeftButton) {
 				controller->showNewChannel();
 			}
 		});
 
+		if (settings.showContactsInDrawer())
 		addAction(
 			tr::lng_menu_contacts(),
-			{ &st::menuIconUserShow }
+			{ &st::menuIconUserShow },
+			u"contacts"_q
 		)->setClickedCallback([=] {
 			controller->show(PrepareContactsBox(controller));
 		});
+		if (settings.showCallsInDrawer())
 		addAction(
 			tr::lng_menu_calls(),
-			{ &st::menuIconPhone }
+			{ &st::menuIconPhone },
+			u"calls"_q
 		)->setClickedCallback([=] {
 			::Calls::ShowCallsBox(controller);
 		});
+		if (settings.showSavedMessagesInDrawer())
 		addAction(
 			tr::lng_saved_messages(),
-			{ &st::menuIconSavedMessages }
+			{ &st::menuIconSavedMessages },
+			u"savedMessages"_q
 		)->setClickedCallback([=] {
 			controller->showPeerHistory(controller->session().user());
+		});
+		Nagram::Chats::AddRecentChatsMenuItem(addAction, controller);
+		Nagram::Media::AddDownloadsMenuItem(addAction, controller);
+
+		if (settings.showLReadToggleInDrawer()) {
+			addAction(
+				tr::ayu_LReadMessages(),
+				{&st::ayuLReadMenuIcon}
+			)->setClickedCallback([=]() mutable
+			{
+				auto &ghost = AyuSettings::ghost(&controller->session());
+				const auto prev = ghost.sendReadMessages();
+				ghost.setSendReadMessages(false);
+
+				const auto chats = controller->session().data().chatsList();
+				MarkAsReadChatList(chats);
+
+				ghost.setSendReadMessages(prev);
+			});
+		}
+
+		if (settings.showSReadToggleInDrawer()) {
+			auto callback = [=](Fn<void()> &&close) mutable {
+				auto &ghost = AyuSettings::ghost(&controller->session());
+				const auto prev = ghost.sendReadMessages();
+				ghost.setSendReadMessages(true);
+
+				auto chats = controller->session().data().chatsList();
+				MarkAsReadChatList(chats);
+
+				// slight delay for forums to send packets
+				dispatchToMainThread(crl::guard(controller, [=] {
+					auto &ghost = AyuSettings::ghost(&controller->session());
+					ghost.setSendReadMessages(prev);
+				}), 200);
+				close();
+			};
+
+			addAction(
+				tr::ayu_SReadMessages(),
+				{&st::ayuSReadMenuIcon}
+			)->setClickedCallback([=]
+			{
+				auto box = Ui::MakeConfirmBox({
+					.text = tr::ayu_ReadConfirmationBoxQuestion(),
+					.confirmed = callback,
+					.confirmText = tr::ayu_ReadConfirmationBoxActionText()
+				});
+				Ui::show(std::move(box));
+			});
+		}
+		const auto session = &controller->session();
+		const auto wallet = _menu->add(
+			object_ptr<Ui::SlideWrap<Ui::SettingsButton>>(
+				_menu,
+				CreateButtonWithIcon(
+					_menu,
+					tr::lng_wallet_menu(),
+					st::mainMenuButton,
+					{ &st::walletMenuIcon })));
+		Ui::NewBadge::AddAfterButtonText(
+			wallet->entity(),
+			tr::lng_wallet_menu(),
+			st::mainMenuButton);
+		wallet->toggleOn(session->appConfig().value(
+		) | rpl::map([=] {
+			return session->appConfig().walletAvailable();
+		}) | rpl::distinct_until_changed());
+		wallet->finishAnimating();
+		wallet->entity()->setClickedCallback([=] {
+			controller->window().hideSettingsAndLayer();
+			Wallet::ShowWallet(session);
 		});
 	} else {
 		addAction(
@@ -742,14 +892,18 @@ void MainMenu::setupMenu() {
 	}
 	addAction(
 		tr::lng_menu_settings(),
-		{ &st::menuIconSettings }
+		{ &st::menuIconSettings },
+		u"settings"_q
 	)->setClickedCallback([=] {
 		controller->showSettings();
 	});
 
+	if (settings.showNightModeToggleInDrawer()) {
+
 	_nightThemeToggle = addAction(
 		tr::lng_menu_night_mode(),
-		{ &st::menuIconNightMode }
+		{ &st::menuIconNightMode },
+		u"nightMode"_q
 	)->toggleOn(_nightThemeSwitches.events_starting_with(
 		Window::Theme::IsNightMode()
 	));
@@ -776,7 +930,6 @@ void MainMenu::setupMenu() {
 			&_controller->window(),
 			toggle);
 	}, _nightThemeToggle->lifetime());
-
 	Core::App().settings().systemDarkModeValue(
 	) | rpl::on_next([=](std::optional<bool> darkMode) {
 		const auto darkModeEnabled
@@ -785,6 +938,45 @@ void MainMenu::setupMenu() {
 			_nightThemeSwitches.fire_copy(*darkMode);
 		}
 	}, _nightThemeToggle->lifetime());
+
+	}
+
+	if (settings.showGhostToggleInDrawer()) {
+		auto ghostActiveChanges = AyuSettings::getInstance().useGlobalGhostModeValue()
+			| rpl::map([controller = _controller](bool) {
+				return AyuSettings::ghost(&controller->session()).ghostModeActiveValue();
+			})
+			| rpl::flatten_latest();
+
+		const auto ghostModeToggle = addAction(
+			tr::ayu_GhostModeToggle(),
+			{&st::ayuGhostIcon}
+		)->toggleOn(std::move(ghostActiveChanges));
+
+		ghostModeToggle->toggledChanges(
+		) | rpl::on_next(
+			[controller = _controller](bool ghostMode)
+			{
+				auto &ghost = AyuSettings::ghost(&controller->session());
+				ghost.setGhostModeEnabled(ghostMode);
+			},
+			ghostModeToggle->lifetime());
+	}
+
+	if (settings.showStreamerToggleInDrawer()) {
+		const auto streamerModeToggle = addAction(
+			tr::ayu_StreamerModeToggle(),
+			{&st::ayuStreamerModeMenuIcon}
+		)->toggleOn(AyuSettings::getInstance().streamerModeValue());
+
+		streamerModeToggle->toggledChanges(
+		) | rpl::on_next(
+			[=](bool enabled)
+			{
+				AyuSettings::getInstance().setStreamerMode(enabled);
+			},
+			streamerModeToggle->lifetime());
+	}
 }
 
 void MainMenu::resizeEvent(QResizeEvent *e) {
@@ -892,20 +1084,31 @@ void MainMenu::drawName(Painter &p) {
 		_nameVersion = user->nameVersion();
 		_name.setText(
 			st::semiboldTextStyle,
-			user->name(),
+			_nagramTitle.isEmpty() ? user->name() : _nagramTitle,
 			Ui::NameTextOptions());
 		moveBadge();
 	}
 	p.setFont(st::semiboldFont);
 	p.setPen(st::windowBoldFg);
+	const auto badgeWidth = _badge->widget()
+		? _badge->widget()->width()
+		: 0;
+	const auto exteraBadgeWidth = _exteraBadge->widget()
+		? _exteraBadge->widget()->width()
+		: 0;
+	const auto nameGap = badgeWidth ? st::semiboldFont->spacew : 0;
+	const auto exteraGap = exteraBadgeWidth
+		? st::infoVerifiedCheckPosition.x()
+		: 0;
+	const auto reserved = nameGap
+		+ badgeWidth
+		+ exteraGap
+		+ exteraBadgeWidth;
 	_name.drawLeftElided(
 		p,
 		st::mainMenuCoverNameLeft,
 		st::mainMenuCoverNameTop,
-		(widthText
-			- (_badge->widget()
-				? (st::semiboldFont->spacew + _badge->widget()->width())
-				: 0)),
+		widthText - reserved,
 		width());
 }
 

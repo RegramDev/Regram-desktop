@@ -46,6 +46,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtWidgets/QApplication>
 
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "ui/boxes/confirm_box.h"
+#include "boxes/abstract_box.h"
+
+
 namespace ChatHelpers {
 namespace {
 
@@ -126,7 +132,11 @@ GifsListWidget::GifsListWidget(
 
 	session().data().stickers().savedGifsUpdated(
 	) | rpl::on_next([=] {
-		refreshSavedGifs();
+		if (underMouse()) {
+			_refreshDelayed = true;
+		} else {
+			refreshSavedGifs();
+		}
 	}, lifetime());
 
 	session().downloaderTaskFinished(
@@ -517,12 +527,28 @@ void GifsListWidget::selectInlineResult(
 		const auto media = document->activeMediaView();
 		const auto preview = Data::VideoPreviewState(media.get());
 		if (forceSend || (media && preview.loaded())) {
-			_fileChosen.fire({
-				.document = document,
-				.options = options,
-				.messageSendingFrom = messageSendingFrom(),
-				.needsCaption = needsCaption,
-			});
+			auto from = messageSendingFrom();
+			auto sendGIFCallback = crl::guard(
+				this,
+				[=] {
+					_fileChosen.fire({
+						.document = document,
+						.options = options,
+						.messageSendingFrom = from,
+						.needsCaption = needsCaption,
+					});
+				});
+
+			const auto &settings = AyuSettings::getInstance();
+			if (settings.gifConfirmation() && !needsCaption) {
+				_show->showBox(Ui::MakeConfirmBox({
+					.text = tr::ayu_ConfirmationGIF(),
+					.confirmed = sendGIFCallback,
+					.confirmText = tr::lng_send_button()
+				}));
+			} else {
+				sendGIFCallback();
+			}
 		} else if (!preview.usingThumbnail()) {
 			if (preview.loading()) {
 				document->cancel();
@@ -552,10 +578,16 @@ void GifsListWidget::mouseMoveEvent(QMouseEvent *e) {
 
 void GifsListWidget::leaveEventHook(QEvent *e) {
 	clearSelection();
+	if (base::take(_refreshDelayed)) {
+		refreshSavedGifs();
+	}
 }
 
 void GifsListWidget::leaveToChildEvent(QEvent *e, QWidget *child) {
 	clearSelection();
+	if (base::take(_refreshDelayed)) {
+		refreshSavedGifs();
+	}
 }
 
 void GifsListWidget::enterFromChildEvent(QEvent *e, QWidget *child) {
@@ -603,6 +635,7 @@ void GifsListWidget::clearHeavyData() {
 }
 
 void GifsListWidget::refreshSavedGifs() {
+	_refreshDelayed = false;
 	if (_section == Section::Gifs) {
 		clearInlineRows(false);
 

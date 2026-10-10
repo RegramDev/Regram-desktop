@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "platform/win/tray_win.h"
 
+#include "regram/nagram/interface/app_icon.h"
 #include "base/invoke_queued.h"
 #include "base/qt_signal_producer.h"
 #include "core/application.h"
@@ -14,6 +15,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "storage/localstorage.h"
+#include "tray.h"
 #include "ui/painter.h"
 #include "ui/ui_utility.h"
 #include "ui/widgets/popup_menu.h"
@@ -28,6 +30,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <private/qhighdpiscaling_p.h>
 #include <QSvgRenderer>
 #include <QBuffer>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/ui/ayu_logo.h"
+#include "styles/style_ayu_icons.h"
+
 
 namespace Platform {
 
@@ -88,15 +96,9 @@ bool DarkTasbarValueValid/* = false*/;
 [[nodiscard]] QImage MonochromeWithDot(QImage image, style::color color) {
 	auto p = QPainter(&image);
 	auto hq = PainterHighQualityEnabler(p);
-	const auto xm = image.width() / 16.;
-	const auto ym = image.height() / 16.;
 	p.setBrush(color);
 	p.setPen(Qt::NoPen);
-	p.drawEllipse(QRectF( // cx=3.9, cy=12.7, r=2.2
-		1.7 * xm,
-		10.5 * ym,
-		4.4 * xm,
-		4.4 * ym));
+	p.drawEllipse(Nagram::Interface::TrayUnreadDot(image.size()));
 	return image;
 }
 
@@ -109,6 +111,28 @@ bool DarkTasbarValueValid/* = false*/;
 	static auto ScaledLogoNoMargin = base::flat_map<int, QImage>();
 	static auto ScaledLogoDark = base::flat_map<int, QImage>();
 	static auto ScaledLogoLight = base::flat_map<int, QImage>();
+	static auto Generation = 0;
+	const auto generation = Nagram::Interface::AppIconGeneration();
+	if (Generation != generation) {
+		Generation = generation;
+		ScaledLogo.clear();
+		ScaledLogoNoMargin.clear();
+	}
+
+	static auto lastUsedIcon = AyuAssets::currentAppLogoName();
+
+	if (lastUsedIcon != AyuAssets::currentAppLogoName()) {
+		lastUsedIcon = AyuAssets::currentAppLogoName();
+		ScaledLogo = base::flat_map<int, QImage>();
+		ScaledLogoNoMargin = base::flat_map<int, QImage>();
+		ScaledLogoDark = base::flat_map<int, QImage>();
+		ScaledLogoLight = base::flat_map<int, QImage>();
+	}
+
+	const auto &settings = AyuSettings::getInstance();
+	if (settings.hideNotificationBadge()) {
+		args.count = 0;
+	}
 
 	const auto darkMode = IsDarkTaskbar();
 	auto &scaled = (monochrome && darkMode)
@@ -145,6 +169,7 @@ bool DarkTasbarValueValid/* = false*/;
 		return Window::WithSmallCounter(std::move(result), std::move(args));
 	}
 	QPainter p(&result);
+	PainterHighQualityEnabler hq(p); // AyuGram: fix for lq icons
 	const auto half = args.size / 2;
 	args.size = half;
 	p.drawPixmap(
@@ -169,7 +194,6 @@ void Tray::createIcon() {
 		}
 		_icon->init();
 		updateIcon();
-		_icon->updateToolTip(AppName.utf16());
 
 		using Reason = QPlatformSystemTrayIcon::ActivationReason;
 		base::qt_signal_producer(
@@ -229,6 +253,7 @@ void Tray::updateIcon() {
 			Core::App().settings().trayIconMonochrome(),
 			session && session->supportMode()));
 	_icon->updateIcon(forTrayIcon);
+	_icon->updateToolTip(Core::TrayIconToolTip());
 }
 
 void Tray::createMenu() {
@@ -271,7 +296,7 @@ void Tray::showTrayMessage() const {
 	if (!cSeenTrayTooltip() && _icon) {
 		_icon->showMessage(
 			AppName.utf16(),
-			tr::lng_tray_icon_text(tr::now),
+			tr::lng_nagram_tray_icon_text(tr::now),
 			QIcon(),
 			QPlatformSystemTrayIcon::Information,
 			kTooltipDelay);
@@ -417,6 +442,26 @@ QString Tray::QuitJumpListIconPath() {
 		st::winQuitIcon.instance(color, 100, true),
 		st::winQuitIcon.instance(color, 200, true),
 		st::winQuitIcon.instance(color, 300, true),
+	});
+	return path;
+}
+
+QString Tray::GhostJumpListIconPath() {
+	const auto dark = IsDarkTaskbar();
+	const auto key = !dark ? 0 : *dark ? 1 : 2;
+	const auto path = cWorkingDir() + u"tdata/temp/ghost_%1.ico"_q.arg(key);
+	if (QFile::exists(path)) {
+		return path;
+	}
+	const auto color = !dark
+		? st::trayCounterBg->c
+		: *dark
+		? QColor(255, 255, 255)
+		: QColor(0, 0, 0, 228);
+	WriteIco(path, {
+		st::winEnterWithGuestIcon.instance(color, 100, true),
+		st::winEnterWithGuestIcon.instance(color, 200, true),
+		st::winEnterWithGuestIcon.instance(color, 300, true),
 	});
 	return path;
 }

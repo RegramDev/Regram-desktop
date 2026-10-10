@@ -1,0 +1,1856 @@
+{
+  "scope": "Current Nagram main product features plus retained AyuGram and Regram iOS matrix; runtime acceptance is tracked separately",
+  "options": [
+    {
+      "key": "nagram.regramSuppressFilteredNotifications",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_regram_filter_mute_notifications",
+      "source": "Telegram/SourceFiles/regram/filters/runtime.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.regramIosFilters",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_regram_ios_filters",
+      "source": "Telegram/SourceFiles/regram/filters/runtime.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.unlimitedPinnedChats",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_unlimited_pinned_chats",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/local_pins_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.localPinnedChats",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_local_pinned_chats",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/local_pins_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.chatListCompact",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_compact_chat_list",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.chatPreviewLines",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_chat_preview_lines",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideSavedAndArchivedPreviews",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_saved_and_archived_previews",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideStories",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_stories",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideAllChatsFolder",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_all_chats_folder",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showArchiveInFolders",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_show_archive_in_folders",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.archiveInFolderList",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_archive_in_folder_list",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.savedInFolderList",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_saved_in_folder_list",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideFolderUnreadCounters",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_folder_unread_counters",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.startupFolderMode",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_startup_folder",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.startupFolderId",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_startup_folder",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.lastOpenedFolderId",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_startup_folder",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.chatSort",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_chat_sort",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.managedFolderIds",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_managed_only",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.recentFolderIds",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_recent_chats",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideSponsoredMessages",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_sponsored_messages",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideProxySponsor",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_proxy_sponsor",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hidePremiumPromotions",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_premium_promotions",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideBirthdaySuggestions",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_birthday_suggestions",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableCommunityGrouping",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_disable_community_grouping",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.compactFolderTabs",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_compact_folder_tabs",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableGlobalSearch",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_disable_global_search",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.chooseFolderAfterJoin",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_choose_folder_after_join",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hidePhoneSuggestion",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_hide_phone_suggestion",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableScrollToNextChannel",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_disable_scroll_to_next_channel",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableScrollToNextTopic",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_disable_scroll_to_next_topic",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.recentChats",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_recent_chats_option",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.recentChatsLimit",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_recent_chats_limit",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.recentChatsList",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_recent_chats",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.chatTools",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_chat_tools",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.recentChatsInShare",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_recent_in_share",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.saveReadingPosition",
+      "scope": "Device",
+      "category": "Chats",
+      "title_key": "lng_nagram_save_reading_position",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.readingPositions",
+      "scope": "Account",
+      "category": "Chats",
+      "title_key": "lng_nagram_save_reading_position",
+      "source": "Telegram/SourceFiles/regram/nagram/chats/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideAttachButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_attach_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideEmojiButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_emoji_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideRecordingButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_recording_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideBotCommandButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_bot_command_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideBotMenu",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_bot_menu",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideAutoDeleteButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_auto_delete_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideGiftButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_gift_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideAiButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_ai_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideSendAsButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_send_as_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideStarsReactionButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_stars_reaction_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideChannelMuteButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_hide_channel_mute_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.channelDiscussButton",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_channel_discuss_button",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableEmojiHover",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_disable_emoji_hover",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableAttachHover",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_disable_attach_hover",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.botCommandsToDraft",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_bot_commands_to_draft",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.inputPlaceholderMode",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_input_placeholder",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.formatToolbar",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_format_toolbar",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hiddenFormatItems",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_format_menu_items",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.inputChinese",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_input_chinese",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableAutoMarkdown",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_disable_auto_markdown",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableLinkPreview",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_disable_link_preview",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.spaceOnSend",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_space_on_send",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.spaceOnEdit",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_space_on_edit",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.defaultCodeLanguage",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_default_code_language",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.quickReplies",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_quick_replies",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.confirmSticker",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_confirm_sticker",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.confirmGif",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_confirm_gif",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.previewVoice",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_preview_voice",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.previewRoundVideo",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_preview_round_video",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.confirmPrivateCall",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_confirm_private_call",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.forwardBeforeComment",
+      "scope": "Device",
+      "category": "Compose",
+      "title_key": "lng_nagram_forward_before_comment",
+      "source": "Telegram/SourceFiles/regram/nagram/compose/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showRpcErrors",
+      "scope": "Device",
+      "category": "Services",
+      "title_key": "lng_nagram_show_rpc_errors",
+      "source": "Telegram/SourceFiles/regram/nagram/core/diagnostics.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.filters",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_nagram_filter_rules",
+      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.filtersGlobal",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_filter_global",
+      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.filterScopes",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_nagram_filter_scopes",
+      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hiddenMessages",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_nagram_hidden_messages",
+      "source": "Telegram/SourceFiles/regram/nagram/filters/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.bubbleRoundness",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_bubble_roundness",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.avatarRoundness",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_avatar_roundness",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.uniformAvatarShapes",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_uniform_avatar_shapes",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.textMessageWidth",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_text_message_width",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.wideChannelPosts",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_wide_channel_posts",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideBubbleTail",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_hide_bubble_tail",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.themeReplyColors",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_theme_reply_colors",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideReplyThumbnail",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_hide_reply_thumbnail",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.ignoreChatTheme",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_ignore_chat_theme",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.ignorePrivateChatTheme",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_ignore_private_chat_theme",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.ignoreChannelChatTheme",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_ignore_channel_chat_theme",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.accountNameInTitle",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_account_name_in_title",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.alwaysSeasonalDecorations",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_always_seasonal",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.mainMenu",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_main_menu",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.appIcon",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_app_icon",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideAppIconBadge",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_hide_app_icon_badge",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.notificationDelay",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_notification_delay",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.otherDeviceNotificationDelay",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_other_device_notification_delay",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.halfwidthUiPunctuation",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_halfwidth_ui_punctuation",
+      "source": "Telegram/SourceFiles/regram/nagram/interface/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.autoInlineBotEnabled",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_inline_auto",
+      "source": "Telegram/SourceFiles/regram/nagram/links/inline_rules.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.inlineBotRules",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_inline_rules",
+      "source": "Telegram/SourceFiles/regram/nagram/links/inline_rules.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.linkRules",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_link_rules",
+      "source": "Telegram/SourceFiles/regram/nagram/links/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableOfficialAutoLogin",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_disable_official_auto_login",
+      "source": "Telegram/SourceFiles/regram/nagram/links/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hashtagSearchPageChannel",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_hashtag_page_channel",
+      "source": "Telegram/SourceFiles/regram/nagram/links/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hashtagSearchPageChat",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_hashtag_page_chat",
+      "source": "Telegram/SourceFiles/regram/nagram/links/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.webAppWidthScale",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_web_app_width",
+      "source": "Telegram/SourceFiles/regram/nagram/links/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.webAppHeightScale",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_web_app_height",
+      "source": "Telegram/SourceFiles/regram/nagram/links/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.webAppAndroidPlatform",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_web_app_android_platform",
+      "source": "Telegram/SourceFiles/regram/nagram/links/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.webviewExternalPattern",
+      "scope": "Device",
+      "category": "Rules",
+      "title_key": "lng_nagram_webview_external",
+      "source": "Telegram/SourceFiles/regram/nagram/links/webview.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.voiceRecordBitrate",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_voice_record_bitrate",
+      "source": "Telegram/SourceFiles/regram/nagram/media/backend_options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.groupCallRawAudio",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_group_call_raw_audio",
+      "source": "Telegram/SourceFiles/regram/nagram/media/backend_options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.musicCoverUrl",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_music_cover_url",
+      "source": "Telegram/SourceFiles/regram/nagram/media/backend_options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.stickerExportPath",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_sticker_export_path",
+      "source": "Telegram/SourceFiles/regram/nagram/media/backend_options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.stickerExportAutoSync",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_sticker_export_auto_sync",
+      "source": "Telegram/SourceFiles/regram/nagram/media/backend_options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.stickerExportDirNaming",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_sticker_export_dir_naming",
+      "source": "Telegram/SourceFiles/regram/nagram/media/backend_options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.unlimitedFavedStickers",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_unlimited_faved_stickers",
+      "source": "Telegram/SourceFiles/regram/nagram/media/local_faved_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.localFavedStickers",
+      "scope": "Account",
+      "category": "Media",
+      "title_key": "lng_nagram_local_faved_stickers",
+      "source": "Telegram/SourceFiles/regram/nagram/media/local_faved_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.stickerScale",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_sticker_scale",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideStickerTime",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_hide_sticker_time",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.recentStickerLimit",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_recent_sticker_limit",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideGroupStickers",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_hide_group_stickers",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideRecommendedStickers",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_hide_recommended_stickers",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideRecommendedEmoji",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_hide_recommended_emoji",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideGifCategories",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_hide_gif_categories",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideGreetingSticker",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_hide_greeting_sticker",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableVideoAutoplay",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_disable_video_autoplay",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.gifPlaybackControls",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_gif_playback_controls",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.mp4FilePreview",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_mp4_file_preview",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.smallGifs",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_small_gifs",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.stickerPanelScale",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_sticker_panel_scale",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.downloadsInMainMenu",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_downloads_in_main_menu",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.blockExecutableAutoDownload",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_block_executable_auto_download",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.blockArchiveAutoDownload",
+      "scope": "Device",
+      "category": "Media",
+      "title_key": "lng_nagram_block_archive_auto_download",
+      "source": "Telegram/SourceFiles/regram/nagram/media/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.messageMenu",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.quickRatingFirst",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu_quick_rating_first",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.quickRatingSecond",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu_quick_rating_second",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.confirmRepeat",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu_confirm_repeat",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.compactMessageMenu",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu_compact",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.repeatWithoutQuote",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu_repeat_without_quote",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.noRepeatInChannels",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu_no_repeat_channels",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.scrollAfterRepeat",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_menu_scroll_after_repeat",
+      "source": "Telegram/SourceFiles/regram/nagram/menu/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.secondsInMessages",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_seconds_in_messages",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showForwardedMessageDate",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_show_forwarded_message_date",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showServiceTime",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_show_service_time",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showMessageId",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_show_message_id",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.senderOnlineStatus",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_sender_online",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.exactMessageCounters",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_exact_message_counters",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideMessageViews",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_message_views",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showForwardCount",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_show_forward_count",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideChannelSignature",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_channel_signature",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideEditedBadge",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_edited_badge",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.editedMark",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_edited_mark",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideReactions",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_reactions",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hidePrivateReactions",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_private_reactions",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideGroupReactions",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_group_reactions",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideChannelReactions",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_channel_reactions",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideReactionMenu",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_reaction_menu",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideReactionMenuWhenSelecting",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_reaction_menu_when_selecting",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disablePremiumStickerEffects",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_disable_premium_sticker_effects",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableEmojiInteractions",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_disable_emoji_interactions",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableMessageEffects",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_disable_message_effects",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.revealSpoilers",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_reveal_spoilers",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideQuickShare",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_quick_share",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideRecommendedChannels",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_recommended_channels",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hidePremiumBadges",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_premium_badges",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.editedIcon",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_edited_icon",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.simplifiedReplies",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_simplified_replies",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableVideoUserpics",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_disable_video_userpics",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.collapseRecommendedChannels",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_collapse_recommended_channels",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideSavedTags",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_saved_tags",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hidePrivateChatActivities",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_hide_private_chat_activities",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.readingSpacing",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_reading_spacing",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.readingChinese",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_reading_chinese",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.ipStrategy",
+      "scope": "Device",
+      "category": "Network",
+      "title_key": "lng_nagram_ip_strategy",
+      "source": "Telegram/SourceFiles/regram/nagram/network/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.disableBackupAddresses",
+      "scope": "Device",
+      "category": "Network",
+      "title_key": "lng_nagram_disable_backup_addresses",
+      "source": "Telegram/SourceFiles/regram/nagram/network/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.useSystemDns",
+      "scope": "Device",
+      "category": "Network",
+      "title_key": "lng_nagram_use_system_dns",
+      "source": "Telegram/SourceFiles/regram/nagram/network/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.customDoh",
+      "scope": "Device",
+      "category": "Network",
+      "title_key": "lng_nagram_custom_doh",
+      "source": "Telegram/SourceFiles/regram/nagram/network/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.downloadSpeedBoost",
+      "scope": "Device",
+      "category": "Network",
+      "title_key": "lng_nagram_download_speed_boost",
+      "source": "Telegram/SourceFiles/regram/nagram/network/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.uploadSpeedBoost",
+      "scope": "Device",
+      "category": "Network",
+      "title_key": "lng_nagram_upload_speed_boost",
+      "source": "Telegram/SourceFiles/regram/nagram/network/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.peerAliases",
+      "scope": "Account",
+      "category": "Privacy",
+      "title_key": "lng_nagram_peer_alias",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/alias.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.demoMode",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_demo_mode",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideReadTime",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_hide_read_time",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideSharePhonePrompt",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_hide_share_phone_prompt",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.doNotSharePhone",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_do_not_share_phone",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.forceCopy",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_force_copy",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.ignoreContentRestrictions",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_ignore_restrictions",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.skipSensitiveWarning",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_skip_sensitive_warning",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.profileIdFormat",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_profile_id_format",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showProfileDc",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_show_profile_dc",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.showRegistrationDate",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_show_registration_date",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideProfileGifts",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_hide_profile_gifts",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.hideCreateTodo",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_hide_create_todo",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.nameOrder",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_name_order",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.persianCalendar",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_persian_calendar",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.moderateDefaults",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_moderate_defaults",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.adminShortcuts",
+      "scope": "Device",
+      "category": "Privacy",
+      "title_key": "lng_nagram_admin_shortcuts_option",
+      "source": "Telegram/SourceFiles/regram/nagram/privacy/options.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.autoTranslate",
+      "scope": "Device",
+      "category": "Services",
+      "title_key": "lng_nagram_auto_translate",
+      "source": "Telegram/SourceFiles/regram/nagram/services/auto_translate_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.autoTranslateAccount",
+      "scope": "Account",
+      "category": "Services",
+      "title_key": "lng_nagram_auto_translate_account",
+      "source": "Telegram/SourceFiles/regram/nagram/services/auto_translate_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.autoTranslateChats",
+      "scope": "Account",
+      "category": "Services",
+      "title_key": "lng_nagram_auto_translate_chats",
+      "source": "Telegram/SourceFiles/regram/nagram/services/auto_translate_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.services",
+      "scope": "Device",
+      "category": "Services",
+      "title_key": "lng_nagram_services",
+      "source": "Telegram/SourceFiles/regram/nagram/services/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.preferSystemAi",
+      "scope": "Device",
+      "category": "Services",
+      "title_key": "lng_nagram_system_ai",
+      "source": "Telegram/SourceFiles/regram/nagram/services/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.translationContext",
+      "scope": "Device",
+      "category": "Services",
+      "title_key": "lng_nagram_service_use_context",
+      "source": "Telegram/SourceFiles/regram/nagram/services/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.chatTranslationUseService",
+      "scope": "Device",
+      "category": "Services",
+      "title_key": "lng_nagram_chat_translation_service",
+      "source": "Telegram/SourceFiles/regram/nagram/services/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.snapshotCloudTheme",
+      "scope": "Account",
+      "category": "Menu",
+      "title_key": "lng_nagram_snapshot_cloud_theme",
+      "source": "Telegram/SourceFiles/regram/nagram/snapshot/cloud_theme_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.snapshotCloudAccount",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_snapshot_cloud_theme",
+      "source": "Telegram/SourceFiles/regram/nagram/snapshot/cloud_theme_model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.snapshot",
+      "scope": "Device",
+      "category": "Menu",
+      "title_key": "lng_nagram_snapshot",
+      "source": "Telegram/SourceFiles/regram/nagram/snapshot/snapshot.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.cloudSyncState",
+      "scope": "Account",
+      "category": "Services",
+      "title_key": "lng_nagram_sync_title",
+      "source": "Telegram/SourceFiles/regram/nagram/sync/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.cloudSyncAuto",
+      "scope": "Account",
+      "category": "Services",
+      "title_key": "lng_nagram_sync_auto",
+      "source": "Telegram/SourceFiles/regram/nagram/sync/model.h",
+      "accepted": false
+    },
+    {
+      "key": "nagram.quietHours",
+      "scope": "Device",
+      "category": "Interface",
+      "title_key": "lng_nagram_quiet_hours",
+      "source": "Telegram/SourceFiles/regram/nagram/notifications/model.h",
+      "accepted": false,
+      "unit_tests": "passed",
+      "application_validation": "Qt settings and consumer smoke tests passed where applicable; real network/system notification acceptance pending"
+    },
+    {
+      "key": "nagram.keywordAlerts",
+      "scope": "Account",
+      "category": "Rules",
+      "title_key": "lng_nagram_keyword_alerts",
+      "source": "Telegram/SourceFiles/regram/nagram/notifications/model.h",
+      "accepted": false,
+      "unit_tests": "passed",
+      "application_validation": "Qt settings and consumer smoke tests passed where applicable; real network/system notification acceptance pending"
+    },
+    {
+      "key": "nagram.sendTranslation",
+      "scope": "Device",
+      "category": "Services",
+      "title_key": "lng_nagram_send_translation",
+      "source": "Telegram/SourceFiles/regram/nagram/services/send_translation_model.h",
+      "accepted": false,
+      "unit_tests": "passed",
+      "application_validation": "Qt settings and consumer smoke tests passed where applicable; real network/system notification acceptance pending"
+    },
+    {
+      "key": "nagram.sendTranslationChats",
+      "scope": "Account",
+      "category": "Services",
+      "title_key": "lng_nagram_send_translation_chats",
+      "source": "Telegram/SourceFiles/regram/nagram/services/send_translation_model.h",
+      "accepted": false,
+      "unit_tests": "passed",
+      "application_validation": "Qt settings and consumer smoke tests passed where applicable; real network/system notification acceptance pending"
+    },
+    {
+      "key": "nagram.moveWhoReactedToTop",
+      "scope": "Device",
+      "category": "Messages",
+      "title_key": "lng_nagram_move_who_reacted_to_top",
+      "source": "Telegram/SourceFiles/regram/nagram/messages/options.h",
+      "accepted": false,
+      "unit_tests": "passed",
+      "application_validation": "Qt settings and consumer smoke tests passed where applicable; real network/system notification acceptance pending"
+    }
+  ],
+  "advanced_settings": [
+    {
+      "group": "GhostModeAccountSettings",
+      "keys": [
+        "markReadAfterAction",
+        "sendOfflinePacketAfterOnline",
+        "sendOfflinePacketAfterOnlineLocked",
+        "sendOnlinePackets",
+        "sendOnlinePacketsLocked",
+        "sendReadMessages",
+        "sendReadMessagesLocked",
+        "sendReadStories",
+        "sendReadStoriesLocked",
+        "sendUploadProgress",
+        "sendUploadProgressLocked",
+        "sendWithoutSound",
+        "suggestGhostModeBeforeViewingStory",
+        "useScheduledMessages"
+      ],
+      "source": "Telegram/SourceFiles/regram/ayu/ayu_settings.cpp",
+      "accepted": false
+    },
+    {
+      "group": "MessageShotSettings",
+      "keys": [
+        "cloudThemeAccessHash",
+        "cloudThemeAccountId",
+        "cloudThemeDocumentId",
+        "cloudThemeId",
+        "cloudThemeTitle",
+        "embeddedThemeAccentColor",
+        "embeddedThemeType",
+        "revealSpoilers",
+        "showBackground",
+        "showColorfulReplies",
+        "showDate",
+        "showHeaderDecorations",
+        "showReactions"
+      ],
+      "source": "Telegram/SourceFiles/regram/ayu/ayu_settings.cpp",
+      "accepted": false
+    },
+    {
+      "group": "AyuSettings",
+      "keys": [
+        "adaptiveCoverColor",
+        "appIcon",
+        "avatarCorners",
+        "channelBottomButton",
+        "collapseSimilarChannels",
+        "crashReporting",
+        "deletedMark",
+        "disableAds",
+        "disableCustomBackgrounds",
+        "disableGreetingSticker",
+        "disableNotificationsDelay",
+        "disableOpenLinkWarning",
+        "disableStories",
+        "editedMark",
+        "filterZalgo",
+        "filtersEnabled",
+        "filtersEnabledInChats",
+        "ghostModeSettings",
+        "gifConfirmation",
+        "hideAllChatsFolder",
+        "hideFastShare",
+        "hideFromBlocked",
+        "hideNotificationBadge",
+        "hideNotificationCounters",
+        "hidePremiumStatuses",
+        "hideSimilarChannels",
+        "improveLinkPreviews",
+        "increaseWebviewHeight",
+        "increaseWebviewWidth",
+        "localPremium",
+        "materialSwitches",
+        "messageBubbleRadius",
+        "messageShotSettings",
+        "monoFont",
+        "quickAdminShortcuts",
+        "removeMessageTail",
+        "replaceBottomInfoWithIcons",
+        "roundConfirmation",
+        "saveDeletedMessages",
+        "saveForBots",
+        "saveMessagesHistory",
+        "semiTransparentDeletedMessages",
+        "shadowBanIds",
+        "showAddFilterInContextMenu",
+        "showAiEditorButtonInMessageField",
+        "showAttachButtonInMessageField",
+        "showAttachPopup",
+        "showAutoDeleteButtonInMessageField",
+        "showBotsInDrawer",
+        "showCallsInDrawer",
+        "showChannelReactions",
+        "showCommandsButtonInMessageField",
+        "showContactsInDrawer",
+        "showEmojiButtonInMessageField",
+        "showEmojiPopup",
+        "showGhostToggleInDrawer",
+        "showGhostToggleInTray",
+        "showGiftButtonInMessageField",
+        "showGroupReactions",
+        "showHideMessageInContextMenu",
+        "showLReadToggleInDrawer",
+        "showMessageDetailsInContextMenu",
+        "showMessageSeconds",
+        "showMessageShot",
+        "showMicrophoneButtonInMessageField",
+        "showMyProfileInDrawer",
+        "showNewChannelInDrawer",
+        "showNewGroupInDrawer",
+        "showNightModeToggleInDrawer",
+        "showOnlyAddedEmojisAndStickers",
+        "showPeerId",
+        "showPrivateChatReactions",
+        "showReactionsPanelInContextMenu",
+        "showRepeatMessageInContextMenu",
+        "showSReadToggleInDrawer",
+        "showSavedMessagesInDrawer",
+        "showStreamerToggleInDrawer",
+        "showStreamerToggleInTray",
+        "showUserMessagesInContextMenu",
+        "showViewsPanelInContextMenu",
+        "simpleQuotesAndReplies",
+        "singleCornerRadius",
+        "spoofWebviewAsAndroid",
+        "stickerConfirmation",
+        "streamerMode",
+        "translationProvider",
+        "unlimitedRecentStickers",
+        "useGlobalGhostMode",
+        "voiceConfirmation",
+        "wideMultiplier"
+      ],
+      "source": "Telegram/SourceFiles/regram/ayu/ayu_settings.cpp",
+      "accepted": false
+    }
+  ],
+  "modules": [
+    {
+      "name": "nagram",
+      "source_directories": [
+        "chats",
+        "compose",
+        "core",
+        "display",
+        "export",
+        "filters",
+        "interface",
+        "links",
+        "media",
+        "menu",
+        "messages",
+        "network",
+        "privacy",
+        "services",
+        "settings",
+        "snapshot",
+        "sync",
+        "tests",
+        "notifications"
+      ],
+      "accepted": false
+    },
+    {
+      "name": "ayu",
+      "source_directories": [
+        ".",
+        "data",
+        "features/filters",
+        "features/forward",
+        "features/message_shot",
+        "features/streamer_mode",
+        "features/streamer_mode/platform/linux",
+        "features/streamer_mode/platform/win",
+        "features/translator",
+        "features/translator/implementations",
+        "ui",
+        "ui/boxes",
+        "ui/components",
+        "ui/context_menu",
+        "ui/message_history",
+        "ui/settings",
+        "ui/settings/filters",
+        "ui/utils",
+        "utils"
+      ],
+      "accepted": false
+    }
+  ],
+  "reference_nagram": "5d0222ca152396aa213f3455528ce09c544cce30"
+}

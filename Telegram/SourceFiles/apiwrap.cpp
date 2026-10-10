@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "apiwrap.h"
+#include "regram/nagram/compose/forward.h"
 
 #include "api/api_authorizations.h"
 #include "api/api_attached_stickers.h"
@@ -81,6 +82,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_components.h"
 #include "history/history_item_helpers.h"
 #include "history/view/controls/history_view_forward_panel.h"
+#include "regram/nagram/compose/options.h"
+#include "regram/nagram/compose/text.h"
+#include "regram/nagram/messages/content.h"
 #include "iv/editor/iv_editor_session.h"
 #include "iv/iv_rich_message_serializer.h"
 #include "main/main_session.h"
@@ -107,6 +111,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/download_manager_mtproto.h"
 #include "storage/file_upload.h"
 #include "storage/storage_account.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/ayu_worker.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+#include "regram/ayu/features/forward/ayu_forward.h"
+
 
 namespace {
 
@@ -498,7 +509,18 @@ void ApiWrap::toggleHistoryArchived(
 		if (archived) {
 			history->setFolder(_session->data().folder(archiveId));
 		} else {
-			history->clearFolder();
+			const auto &settings = AyuSettings::getInstance();
+			if (settings.hideAllChatsFolder()) {
+				if (const auto window = Core::App().activeWindow()) {
+					if (const auto controller = window->sessionController()) {
+						const auto filters = &_session->data().chatsFilters();
+						const auto lookup_id = filters->lookupId(controller->session().premium() ? 0 : 1);
+						controller->setActiveChatsFilter(lookup_id);
+					}
+				}
+			} else {
+				history->clearFolder();
+			}
 		}
 		if (const auto data = _historyArchivedRequests.take(history)) {
 			data->second();
@@ -1436,15 +1458,24 @@ void ApiWrap::migrateFail(not_null<PeerData*> peer, const QString &error) {
 
 void ApiWrap::markContentsRead(
 		const base::flat_set<not_null<HistoryItem*>> &items) {
+	const auto &ghost = AyuSettings::ghost(&session());
+
 	auto markedIds = QVector<MTPint>();
 	auto channelMarkedIds = base::flat_map<
 		not_null<ChannelData*>,
 		QVector<MTPint>>();
 	markedIds.reserve(items.size());
 	for (const auto &item : items) {
+		const auto passthrough = (item->isUnreadMention() || item->hasUnreadReaction()) && !item->isUnreadMedia();
+
 		if (!item->markContentsRead(true) || !item->isRegular()) {
 			continue;
 		}
+
+		if (!ghost.sendReadMessages() && !passthrough) {
+			continue;
+		}
+
 		if (const auto channel = item->history()->peer->asChannel()) {
 			channelMarkedIds[channel].push_back(MTP_int(item->id));
 		} else {
@@ -1467,9 +1498,17 @@ void ApiWrap::markContentsRead(
 }
 
 void ApiWrap::markContentsRead(not_null<HistoryItem*> item) {
+	const auto passthrough = (item->isUnreadMention() || item->hasUnreadReaction()) && !item->isUnreadMedia();
+
 	if (!item->markContentsRead(true) || !item->isRegular()) {
 		return;
 	}
+
+	const auto &ghost = AyuSettings::ghost(&session());
+	if (!ghost.sendReadMessages() && !passthrough) {
+		return;
+	}
+
 	const auto ids = MTP_vector<MTPint>(1, MTP_int(item->id));
 	if (const auto channel = item->history()->peer->asChannel()) {
 		request(MTPchannels_ReadMessageContents(
@@ -1944,7 +1983,10 @@ void ApiWrap::joinChannel(not_null<ChannelData*> channel) {
 
 		using Flag = ChannelDataFlag;
 		chatParticipants().loadSimilarPeers(channel);
-		channel->setFlags(channel->flags() | Flag::SimilarExpanded);
+		if (!Nagram::Messages::CollapseRecommendedChannels()
+			&& !AyuSettings::getInstance().collapseSimilarChannels()) {
+			channel->setFlags(channel->flags() | Flag::SimilarExpanded);
+		}
 	}
 }
 
@@ -2126,7 +2168,12 @@ void ApiWrap::saveDraftToCloudDelayed(not_null<Data::Thread*> thread) {
 	if (ShouldSkipPlainDraftCloudSave(_session, thread)) {
 		return;
 	}
-	_draftsSaveRequestIds.emplace(base::make_weak(thread), 0);
+	const auto [i, inserted] = _draftSaves.emplace(
+		base::make_weak(thread),
+		DraftSaveState());
+	if (!inserted && i->second.requestId) {
+		i->second.changedWhileSaving = true;
+	}
 	if (!_draftsSaveTimer.isActive()) {
 		_draftsSaveTimer.callOnce(kSaveCloudDraftTimeout);
 	}
@@ -2360,7 +2407,7 @@ mtpRequestId ApiWrap::saveDraftToCloud(
 	if (!requestId) {
 		return 0;
 	}
-	_draftsSaveRequestIds.emplace_or_assign(weak, requestId);
+	_draftSaves.emplace_or_assign(weak, DraftSaveState{ requestId });
 	return requestId;
 }
 
@@ -2463,9 +2510,9 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 		if (cloudDraft) {
 			cloudDraft->saveRequestId = id;
 		}
-		const auto i = _draftsSaveRequestIds.find(weak);
-		if (i != _draftsSaveRequestIds.cend()) {
-			i->second = id;
+		const auto i = _draftSaves.find(weak);
+		if (i != _draftSaves.cend()) {
+			i->second.requestId = id;
 		}
 	};
 	const auto failCleanup = [=](
@@ -2487,11 +2534,17 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 				}
 			}
 		}
-		const auto i = _draftsSaveRequestIds.find(weak);
-		if (i != _draftsSaveRequestIds.cend()
-			&& i->second == requestId) {
-			_draftsSaveRequestIds.erase(i);
+		const auto i = _draftSaves.find(weak);
+		if (i != _draftSaves.cend()
+			&& i->second.requestId == requestId) {
+			const auto changed = i->second.changedWhileSaving;
+			_draftSaves.erase(i);
 			checkQuitPreventFinished();
+			if (changed) {
+				if (const auto strong = weak.get()) {
+					saveDraftToCloudDelayed(strong);
+				}
+			}
 		}
 		if (callbacks && callbacks->fail) {
 			callbacks->fail(error);
@@ -2528,11 +2581,17 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 					history->draftSavedToCloud(topicRootId, monoforumPeerId);
 				}
 			}
-			const auto i = _draftsSaveRequestIds.find(weak);
-			if (i != _draftsSaveRequestIds.cend()
-				&& i->second == requestId) {
-				_draftsSaveRequestIds.erase(i);
+			const auto i = _draftSaves.find(weak);
+			if (i != _draftSaves.cend()
+				&& i->second.requestId == requestId) {
+				const auto changed = i->second.changedWhileSaving;
+				_draftSaves.erase(i);
 				checkQuitPreventFinished();
+				if (changed) {
+					if (const auto strong = weak.get()) {
+						saveDraftToCloudDelayed(strong);
+					}
+				}
 			}
 			if (callbacks && callbacks->done) {
 				callbacks->done();
@@ -2573,18 +2632,18 @@ mtpRequestId ApiWrap::savePreparedDraftToCloud(
 }
 
 void ApiWrap::saveDraftsToCloud() {
-	for (auto i = begin(_draftsSaveRequestIds); i != end(_draftsSaveRequestIds);) {
+	for (auto i = begin(_draftSaves); i != end(_draftSaves);) {
 		const auto weak = i->first;
 		const auto thread = weak.get();
 		if (!thread) {
-			i = _draftsSaveRequestIds.erase(i);
+			i = _draftSaves.erase(i);
 			continue;
-		} else if (i->second) {
+		} else if (i->second.requestId) {
 			++i;
 			continue; // sent already - keep in-flight saves tracked so
 			          // quit prevention waits for their done/fail handler.
 		} else if (ShouldSkipPlainDraftCloudSave(_session, thread)) {
-			i = _draftsSaveRequestIds.erase(i);
+			i = _draftSaves.erase(i);
 			continue;
 		}
 
@@ -2604,26 +2663,30 @@ void ApiWrap::saveDraftsToCloud() {
 				monoforumPeerId,
 				nullptr);
 		}
-		i->second = savePreparedDraftToCloud(thread, *cloudDraft, true);
-		if (!i->second) {
-			i = _draftsSaveRequestIds.erase(i);
+		const auto requestId = savePreparedDraftToCloud(
+			thread,
+			*cloudDraft,
+			true);
+		if (!requestId) {
+			i = _draftSaves.erase(i);
 			continue;
 		}
+		i->second = DraftSaveState{ requestId };
 		++i;
 	}
 }
 
 bool ApiWrap::isQuitPrevent() {
-	if (_draftsSaveRequestIds.empty()) {
+	if (_draftSaves.empty()) {
 		return false;
 	}
 	LOG(("ApiWrap prevents quit, saving drafts..."));
 	saveDraftsToCloud();
-	return !_draftsSaveRequestIds.empty();
+	return !_draftSaves.empty();
 }
 
 void ApiWrap::checkQuitPreventFinished() {
-	if (_draftsSaveRequestIds.empty()) {
+	if (_draftSaves.empty()) {
 		if (Core::Quitting()) {
 			LOG(("ApiWrap doesn't prevent quit any more."));
 		}
@@ -3440,6 +3503,16 @@ void ApiWrap::resolveJumpToDate(
 		Dialogs::Key chat,
 		const QDate &date,
 		Fn<void(not_null<PeerData*>, MsgId)> callback) {
+	resolveJumpToTime(
+		chat,
+		TimeId(date.startOfDay().toSecsSinceEpoch()),
+		std::move(callback));
+}
+
+void ApiWrap::resolveJumpToTime(
+		Dialogs::Key chat,
+		TimeId when,
+		Fn<void(not_null<PeerData*>, MsgId)> callback) {
 	if (const auto peer = chat.peer()) {
 		const auto topic = chat.topic();
 		const auto sublist = chat.sublist();
@@ -3447,27 +3520,27 @@ void ApiWrap::resolveJumpToDate(
 		const auto monoforumPeerId = sublist
 			? sublist->sublistPeer()->id
 			: PeerId();
-		resolveJumpToHistoryDate(
+		resolveJumpToHistoryTime(
 			peer,
 			rootId,
 			monoforumPeerId,
-			date,
+			when,
 			std::move(callback));
 	}
 }
 
 template <typename Callback>
-void ApiWrap::requestMessageAfterDate(
+void ApiWrap::requestMessageAfterTime(
 	not_null<PeerData*> peer,
 	MsgId topicRootId,
 	PeerId monoforumPeerId,
-	const QDate &date,
+	TimeId when,
 	Callback &&callback) {
 	// API returns a message with date <= offset_date.
 	// So we request a message with offset_date = desired_date - 1 and add_offset = -1.
 	// This should give us the first message with date >= desired_date.
 	const auto offsetId = 0;
-	const auto offsetDate = static_cast<int>(date.startOfDay().toSecsSinceEpoch()) - 1;
+	const auto offsetDate = when - 1;
 	const auto addOffset = -1;
 	const auto limit = 1;
 	const auto maxId = 0;
@@ -3555,37 +3628,37 @@ void ApiWrap::requestMessageAfterDate(
 	}
 }
 
-void ApiWrap::resolveJumpToHistoryDate(
+void ApiWrap::resolveJumpToHistoryTime(
 		not_null<PeerData*> peer,
 		MsgId topicRootId,
 		PeerId monoforumPeerId,
-		const QDate &date,
+		TimeId when,
 		Fn<void(not_null<PeerData*>, MsgId)> callback) {
 	if (const auto channel = peer->migrateTo()) {
-		return resolveJumpToHistoryDate(
+		return resolveJumpToHistoryTime(
 			channel,
 			topicRootId,
 			monoforumPeerId,
-			date,
+			when,
 			std::move(callback));
 	}
 	const auto jumpToDateInPeer = [=] {
-		requestMessageAfterDate(
+		requestMessageAfterTime(
 			peer,
 			topicRootId,
 			monoforumPeerId,
-			date,
+			when,
 			[=](MsgId itemId) { callback(peer, itemId); });
 	};
 	const auto migrated = (topicRootId || monoforumPeerId)
 		? nullptr
 		: peer->migrateFrom();
 	if (migrated) {
-		requestMessageAfterDate(
+		requestMessageAfterTime(
 			migrated,
 			MsgId(),
 			PeerId(),
-			date,
+			when,
 			[=](MsgId itemId) {
 				if (itemId) {
 					callback(migrated, itemId);
@@ -3707,6 +3780,45 @@ void ApiWrap::requestSharedMedia(
 	_sharedMediaRequests.emplace(key);
 }
 
+void ApiWrap::requestPinnedMessagesIfNeeded(
+		not_null<PeerData*> peer,
+		MsgId messageId,
+		MsgId topicRootId,
+		PeerId monoforumPeerId) {
+	if (!IsServerMsgId(messageId)) {
+		return;
+	}
+	const auto requestOne = [&](MsgId topic, PeerId mono) {
+		const auto snapshot = _session->storage().snapshot(
+			Storage::SharedMediaQuery(
+				Storage::SharedMediaKey(
+					peer->id,
+					topic,
+					mono,
+					SharedMediaType::Pinned,
+					messageId),
+				0,
+				0));
+		if (!snapshot.count || snapshot.messageIds.contains(messageId)) {
+			return;
+		}
+		requestSharedMedia(
+			peer,
+			topic,
+			mono,
+			SharedMediaType::Pinned,
+			messageId,
+			SliceType::Around);
+	};
+	requestOne(MsgId(0), PeerId(0));
+	if (topicRootId && peer->forumTopicFor(topicRootId)) {
+		requestOne(topicRootId, PeerId(0));
+	}
+	if (monoforumPeerId && peer->monoforumSublistFor(monoforumPeerId)) {
+		requestOne(MsgId(0), monoforumPeerId);
+	}
+}
+
 void ApiWrap::sharedMediaDone(
 		not_null<PeerData*> peer,
 		MsgId topicRootId,
@@ -3779,7 +3891,7 @@ void ApiWrap::sendAction(const SendAction &action) {
 			: nullptr;
 		if (topic) {
 			topic->readTillEnd();
-		} else if (sublist) {
+		} else if (sublist && sublist->parentChat()) {
 			sublist->readTillEnd();
 		} else {
 			_session->data().histories().readInbox(action.history);
@@ -3827,6 +3939,22 @@ void ApiWrap::forwardMessages(
 		FnMut<void()> &&successCallback) {
 	Expects(!draft.items.empty());
 
+	const auto fullAyuForward = AyuForward::isFullAyuForwardNeeded(draft.items.front());
+	if (fullAyuForward) {
+		crl::async([=] {
+			AyuForward::forwardMessages(_session, action, false, draft);
+		});
+		return;
+	}
+
+	const auto ayuIntelligentForwardNeeded = AyuForward::isAyuForwardNeeded(draft.items);
+	if (ayuIntelligentForwardNeeded) {
+		crl::async([=] {
+			AyuForward::intelligentForward(_session, action, draft);
+		});
+		return;
+	}
+
 	auto &histories = _session->data().histories();
 
 	for (auto i = begin(draft.items); i != end(draft.items);) {
@@ -3869,10 +3997,9 @@ void ApiWrap::forwardMessages(
 	}
 
 	const auto count = int(draft.items.size());
+	auto localForwards = Nagram::Compose::LocalForwards(draft);
 	const auto genClientSideMessage = action.generateLocal
-		&& (count == 1)
-		&& !draft.items.front()->isEphemeral()
-		&& (draft.options == Data::ForwardOptions::PreserveInfo);
+		&& localForwards.possible();
 	const auto history = action.history;
 	const auto peer = history->peer;
 
@@ -4012,6 +4139,7 @@ void ApiWrap::forwardMessages(
 				if (shared && !--shared->requestsLeft) {
 					shared->callback();
 				}
+
 				if (peer->isSelf() && _session->premium()) {
 					ProcessRecentSelfForwards(
 						_session,
@@ -4049,7 +4177,7 @@ void ApiWrap::forwardMessages(
 				const auto newId = FullMsgId(
 					peer->id,
 					_session->data().nextLocalMessageId());
-				history->addNewLocalMessage({
+				history->addNewLocalMessage(localForwards.fields({
 					.id = newId.msg,
 					.flags = flags,
 					.from = NewMessageFromId(action),
@@ -4064,7 +4192,7 @@ void ApiWrap::forwardMessages(
 					.suggest = HistoryMessageSuggestInfo(action.options),
 					// forwarded messages don't have effects
 					//.effectId = action.options.effectId,
-				}, item);
+				}, item), item);
 				_session->data().registerMessageRandomId(randomId, newId);
 				if (!localIds) {
 					localIds = std::make_shared<base::flat_map<uint64, FullMsgId>>();
@@ -4188,8 +4316,10 @@ void ApiWrap::sendVoiceMessage(
 		crl::time duration,
 		bool video,
 		const SendAction &action) {
+	auto scheduledAction = action;
+	applyGhostScheduling(_session, scheduledAction.options, 17);
 	const auto caption = TextWithTags();
-	const auto to = FileLoadTaskOptions(action);
+	const auto to = FileLoadTaskOptions(scheduledAction);
 	_fileLoader->addTask(
 		std::make_unique<FileLoadTask>(FileLoadTask::VoiceArgs{
 			.session = &session(),
@@ -4393,6 +4523,7 @@ void ApiWrap::sendUploadedDocument(
 		if (!item->media() || !item->media()->document()) {
 			return;
 		}
+
 		const auto media = Api::PrepareUploadedDocument(
 			item,
 			std::move(info));
@@ -4416,6 +4547,7 @@ void ApiWrap::cancelLocalItem(not_null<HistoryItem*> item) {
 void ApiWrap::sendShortcutMessages(
 		not_null<PeerData*> peer,
 		BusinessShortcutId id) {
+	markReadAfterAction(peer->owner().history(peer));
 	auto ids = QVector<MTPint>();
 	auto randomIds = QVector<MTPlong>();
 	request(MTPmessages_SendQuickReplyMessages(
@@ -4513,6 +4645,11 @@ void ApiWrap::sendRichMessage(
 	const auto submittedSummary = item->originalText();
 
 	StripEphemeralReply(_session, action.replyTo);
+	const auto forwardFirst = Nagram::ForDevice().Get(
+		Nagram::Compose::kForwardBeforeComment);
+	if (forwardFirst) {
+		finishForwarding(action);
+	}
 
 	const auto history = item->history();
 	const auto peer = history->peer;
@@ -4682,12 +4819,17 @@ void ApiWrap::sendRichMessage(
 			});
 	};
 	performRequest(performRequest, richMessage, false);
-	finishForwarding(action);
+	if (!forwardFirst) {
+		finishForwarding(action);
+	}
 }
 
 void ApiWrap::sendMessage(
 		MessageToSend &&message,
 		std::optional<MsgId> localMessageId) {
+	applyGhostScheduling(_session, message.action.options);
+	const auto clearReplyTo = prependPseudoReply(message);
+
 	const auto history = message.action.history;
 	const auto peer = history->peer;
 	const auto &textWithTags = message.textWithTags;
@@ -4708,9 +4850,23 @@ void ApiWrap::sendMessage(
 		? replyTo->topicRootId()
 		: Data::ForumTopic::kGeneralId;
 	const auto topic = peer->forumTopicFor(topicRootId);
+	const auto canSendTexts = topic
+		? Data::CanSendTexts(topic)
+		: Data::CanSendTexts(peer);
+
+	if (clearReplyTo) {
+		message.action.replyTo.messageId = FullMsgId(
+			message.action.replyTo.messageId.peer,
+			message.action.replyTo.topicRootId);
+		action.replyTo.messageId = FullMsgId(
+			action.replyTo.messageId.peer,
+			action.replyTo.topicRootId);
+	}
+
 	const auto ephemeral = _session->ephemeralMessages().wouldSend(message);
 	if (!ephemeral
-		&& !(topic ? Data::CanSendTexts(topic) : Data::CanSendTexts(peer))) {
+		&& !canSendTexts
+		&& !AyuForward::isForwarding(peer->id)) {
 		return;
 	} else if (_session->ephemeralMessages().trySend(message)) {
 		if (clearCloudDraft) {
@@ -4721,6 +4877,11 @@ void ApiWrap::sendMessage(
 	if (Api::SendDice(message)) {
 		return;
 	}
+	const auto forwardFirst = Nagram::ForDevice().Get(
+		Nagram::Compose::kForwardBeforeComment);
+	if (forwardFirst) {
+		finishForwarding(action);
+	}
 	local().saveRecentSentHashtags(textWithTags.text);
 
 	auto sending = TextWithEntities();
@@ -4728,6 +4889,7 @@ void ApiWrap::sendMessage(
 		textWithTags.text,
 		TextUtilities::ConvertTextTagsToEntities(textWithTags.tags)
 	};
+	left = Nagram::Compose::PrepareText(left, false);
 	auto prepareFlags = Ui::ItemTextOptions(
 		history,
 		_session->user()).flags;
@@ -4773,6 +4935,8 @@ void ApiWrap::sendMessage(
 			mediaFlags |= MTPmessages_SendMedia::Flag::f_reply_to;
 		}
 		const auto ignoreWebPage = message.webPage.removed
+			|| (Nagram::ForDevice().Get(
+				Nagram::Compose::kDisableLinkPreview) && !message.webPage.manual)
 			|| (exactWebPage && !isLast);
 		const auto manualWebPage = exactWebPage
 			&& !ignoreWebPage
@@ -4812,9 +4976,10 @@ void ApiWrap::sendMessage(
 			sendFlags |= MTPmessages_SendMessage::Flag::f_silent;
 			mediaFlags |= MTPmessages_SendMedia::Flag::f_silent;
 		}
+		const auto sendingNormalized = reverseLocalPremiumEmoji(sending, history);
 		const auto sentEntities = Api::EntitiesToMTP(
 			_session,
-			sending.entities,
+			sendingNormalized.entities,
 			Api::ConvertOption::SkipLocal);
 		if (!sentEntities.v.isEmpty()) {
 			sendFlags |= MTPmessages_SendMessage::Flag::f_entities;
@@ -4944,7 +5109,7 @@ void ApiWrap::sendMessage(
 			action.options.shortcutId);
 		if (exactWebPage
 			&& !ignoreWebPage
-			&& (manualWebPage || sending.empty())) {
+			&& (manualWebPage || sending.empty() || message.webPage.previewChanged)) {
 			histories.sendPreparedMessage(
 				history,
 				action.replyTo,
@@ -4992,7 +5157,9 @@ void ApiWrap::sendMessage(
 		isFirst = false;
 	}
 
-	finishForwarding(action);
+	if (!forwardFirst) {
+		finishForwarding(action);
+	}
 }
 
 void ApiWrap::sendBotStart(
@@ -5018,6 +5185,7 @@ void ApiWrap::sendBotStart(
 		if (chat) {
 			message.textWithTags.text += '@' + bot->username();
 		}
+
 		sendMessage(std::move(message));
 		return;
 	}
@@ -5032,6 +5200,8 @@ void ApiWrap::sendBotStart(
 		MTP_string(token)
 	)).done([=](const MTPUpdates &result) {
 		applyUpdates(result);
+
+		AyuWorker::markAsOnline(_session);
 	}).fail([=](const MTP::Error &error) {
 		if (chat) {
 			const auto type = error.type();
@@ -5286,6 +5456,8 @@ void ApiWrap::sendMediaWithRandomId(
 		return;
 	}
 
+	applyGhostScheduling(_session, options);
+
 	const auto history = item->history();
 	const auto replyTo = item->replyTo();
 	const auto peer = history->peer;
@@ -5299,9 +5471,10 @@ void ApiWrap::sendMediaWithRandomId(
 
 	auto caption = item->originalText();
 	TextUtilities::Trim(caption);
+	const auto captionNormalized = reverseLocalPremiumEmoji(caption, history);
 	auto sentEntities = Api::EntitiesToMTP(
 		_session,
-		caption.entities,
+		captionNormalized.entities,
 		Api::ConvertOption::SkipLocal);
 
 	const auto updateRecentStickers = Api::HasAttachedStickers(media);
@@ -5390,9 +5563,10 @@ void ApiWrap::sendMultiPaidMedia(
 
 	auto caption = item->originalText();
 	TextUtilities::Trim(caption);
+	const auto captionNormalized = reverseLocalPremiumEmoji(caption, history);
 	auto sentEntities = Api::EntitiesToMTP(
 		_session,
-		caption.entities,
+		captionNormalized.entities,
 		Api::ConvertOption::SkipLocal);
 	const auto starsPaid = std::min(
 		peer->starsPerMessageChecked(),
@@ -5558,6 +5732,9 @@ void ApiWrap::sendAlbumIfReady(not_null<SendingAlbum*> album) {
 		_sendingAlbums.remove(groupId);
 		return;
 	}
+
+	applyGhostScheduling(_session, album->options);
+
 	const auto history = sample->history();
 	const auto sendAs = album->options.sendAs;
 	const auto starsPaid = std::min(

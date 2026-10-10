@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_text_helper.h"
+#include "regram/nagram/messages/content.h"
 
 #include "core/click_handler_types.h"
 #include "data/data_document.h"
@@ -21,7 +22,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace HistoryView {
 
 void InitElementTextPart(not_null<Element*> view, Ui::Text::String &text) {
+	if (view->context() == Context::MediaEditor) {
+		text.setSpoilerRevealed(true, anim::type::instant);
+	}
 	if (text.hasSpoilers()) {
+		text.setSpoilerRevealed(view->delegate()->elementSpoilersRevealed(
+			).value_or(Nagram::Messages::RevealTextSpoilers()),
+			anim::type::instant);
 		text.setSpoilerLinkFilter([weak = base::make_weak(view)](
 				const ClickContext &context) {
 			const auto button = context.button;

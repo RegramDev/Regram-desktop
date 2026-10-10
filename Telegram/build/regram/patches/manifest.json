@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "patches": [
+    {
+      "module": "Telegram/codegen",
+      "base": "dbd1d53137cd581cfdbeebe93bcaf54abf55ec74",
+      "patch": "Telegram/build/regram/patches/codegen.patch"
+    },
+    {
+      "module": "Telegram/lib_ui",
+      "base": "24310a3196c6632f58101a3ec1c553c4565bc9be",
+      "patch": "Telegram/build/regram/patches/lib_ui.patch"
+    },
+    {
+      "module": "Telegram/lib_tl",
+      "base": "29746d31247c915a9ec870241399a9d103c39f87",
+      "patch": "Telegram/build/regram/patches/lib_tl.patch"
+    }
+  ]
+}

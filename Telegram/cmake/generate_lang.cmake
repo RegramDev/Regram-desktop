@@ -26,10 +26,15 @@ function(generate_lang target_name lang_file src_loc)
         codegen_lang
         -o${gen_dst}
         ${lang_file}
+    COMMAND
+        ${CMAKE_COMMAND}
+        -D lang_source=${gen_dst}/lang_auto.cpp
+        -P ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/nagram_lang_patch.cmake
     COMMENT "Generating lang (${target_name})"
     DEPENDS
         codegen_lang
         ${lang_file}
+        ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/nagram_lang_patch.cmake
     )
     generate_target(${target_name} lang ${gen_timestamp} "${gen_files}" ${gen_dst})
 

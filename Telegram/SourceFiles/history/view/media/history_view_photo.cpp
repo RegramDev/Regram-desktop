@@ -45,6 +45,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/ui_integration.h"
 #include "styles/style_chat.h"
 
+// AyuGram includes
+#include "regram/ayu/features/message_shot/message_shot.h"
+#include "regram/ayu/ui/ayu_userpic.h"
+
+
 namespace HistoryView {
 namespace {
 
@@ -325,6 +330,7 @@ QSize Photo::countCurrentSize(int newWidth) {
 	const auto showEnlarge = (_parent->media() != this)
 		&& _parent->data()->media()
 		&& !_parent->data()->isSponsored()
+		&& (_parent->context() != Context::MediaEditor)
 		&& _parent->data()->media()->webpage()
 		&& _parent->data()->media()->webpage()->suggestEnlargePhoto()
 		&& (newWidth >= enlargeOuter)
@@ -357,13 +363,14 @@ void Photo::draw(Painter &p, const PaintContext &context) const {
 	const auto preview = _data->extendedMediaPreview();
 	const auto loaded = preview || _dataMedia->loaded();
 	const auto displayLoading = !preview && _data->displayLoading();
+	const auto mediaEditor = (_parent->context() == Context::MediaEditor);
 
 	const auto hostedInstantView = IsHostedInstantViewMedia(_parent);
 	auto inWebPage = (_parent->media() != this);
 	auto paintx = 0, painty = 0, paintw = width(), painth = height();
 	auto bubble = _parent->hasBubble();
 
-	if (displayLoading) {
+	if (displayLoading && !mediaEditor) {
 		ensureAnimation();
 		if (!_animation->radial.animating()) {
 			_animation->radial.start(_dataMedia->progress());
@@ -375,16 +382,14 @@ void Photo::draw(Painter &p, const PaintContext &context) const {
 	if (_serviceWidth > 0) {
 		paintUserpicFrame(p, context, rthumb.topLeft());
 	} else {
-		const auto rounding = hostedInstantView
-			? std::optional<Ui::BubbleRounding>(Ui::BubbleRounding())
-			: inWebPage
+		const auto rounding = (inWebPage && !hostedInstantView)
 			? std::optional<Ui::BubbleRounding>()
-			: adjustedBubbleRounding();
+			: std::optional<Ui::BubbleRounding>(adjustedBubbleRounding());
 		if (!bubble && !hostedInstantView) {
 			Assert(rounding.has_value());
 			fillImageShadow(p, rthumb, *rounding, context);
 		}
-		const auto revealed = _spoiler
+		const auto revealed = (_spoiler && !mediaEditor)
 			? _spoiler->revealAnimation.value(_spoiler->revealed ? 1. : 0.)
 			: 1.;
 		if (revealed < 1.) {
@@ -410,6 +415,7 @@ void Photo::draw(Painter &p, const PaintContext &context) const {
 		&& _spoiler
 		&& !_spoiler->revealed;
 	const auto paintInCenter = !_sensitiveSpoiler
+		&& !mediaEditor
 		&& (radial || (!loaded && !_data->loading()) || ttlCovered);
 	if (paintInCenter || showEnlarge) {
 		p.setPen(Qt::NoPen);
@@ -426,7 +432,7 @@ void Photo::draw(Painter &p, const PaintContext &context) const {
 			p.setBrush(over ? st->msgDateImgBgOver() : st->msgDateImgBg());
 		}
 	}
-	if (paintInCenter) {
+	if (paintInCenter && !AyuFeatures::MessageShot::isTakingShot()) {
 		const auto radialOpacity = (radial && loaded && !_data->uploading())
 			? _animation->radial.opacity() :
 			1.;
@@ -461,12 +467,12 @@ void Photo::draw(Painter &p, const PaintContext &context) const {
 				sti->historyFileThumbRadialFg,
 				context.paused);
 		}
-	} else if (_sensitiveSpoiler || preview) {
+	} else if ((_sensitiveSpoiler || preview) && !mediaEditor) {
 		drawSpoilerTag(p, rthumb, context, [&] {
 			return spoilerTagBackground();
 		});
 	}
-	if (ttlCovered) {
+	if (ttlCovered && !mediaEditor) {
 		PaintTtlLabel(
 			p,
 			QPoint(paintx, painty),
@@ -557,13 +563,18 @@ void Photo::validateUserpicImageCache(QSize size, bool forum) const {
 		args = args.blurred();
 	}
 	original = Images::Prepare(std::move(original), size * ratio, args);
-	if (forumValue) {
+	const auto shape = forumValue
+		? Ui::PeerUserpicShape::Forum
+		: Ui::PeerUserpicShape::Circle;
+	if (AyuUserpic::ShouldOverrideShape(shape)) {
+		original = Images::Round(
+			std::move(original),
+			ImageRoundRadius::AyuUserpic);
+	} else {
 		original = Images::Round(
 			std::move(original),
 			Images::CornersMask(std::min(size.width(), size.height())
 				* Ui::ForumUserpicRadiusMultiplier()));
-	} else {
-		original = Images::Circle(std::move(original));
 	}
 	_imageCache = std::move(original);
 	_imageCacheForum = forumValue;
@@ -657,7 +668,16 @@ void Photo::paintUserpicFrame(
 		const auto ratio = style::DevicePixelRatio();
 		auto request = ::Media::Streaming::FrameRequest();
 		request.outer = request.resize = size * ratio;
-		if (forum) {
+		const auto shape = forum
+			? Ui::PeerUserpicShape::Forum
+			: Ui::PeerUserpicShape::Circle;
+		if (AyuUserpic::ShouldOverrideShape(shape)) {
+			AyuUserpic::ApplyFrameRounding(
+				request,
+				_streamed->roundingCorners,
+				_streamed->roundingMask,
+				size);
+		} else if (forum) {
 			const auto radius = int(std::min(size.width(), size.height())
 				* Ui::ForumUserpicRadiusMultiplier());
 			if (_streamed->roundingCorners[0].width() != radius * ratio) {
@@ -834,8 +854,9 @@ void Photo::drawGrouped(
 	const auto preview = _data->extendedMediaPreview();
 	const auto loaded = preview || _dataMedia->loaded();
 	const auto displayLoading = !preview && _data->displayLoading();
+	const auto mediaEditor = (_parent->context() == Context::MediaEditor);
 
-	if (displayLoading) {
+	if (displayLoading && !mediaEditor) {
 		ensureAnimation();
 		if (!_animation->radial.animating()) {
 			_animation->radial.start(_dataMedia->progress());
@@ -843,7 +864,7 @@ void Photo::drawGrouped(
 	}
 	const auto radial = isRadialAnimation();
 
-	const auto revealed = _spoiler
+	const auto revealed = (_spoiler && !mediaEditor)
 		? _spoiler->revealAnimation.value(_spoiler->revealed ? 1. : 0.)
 		: 1.;
 	if (revealed < 1.) {
@@ -876,11 +897,12 @@ void Photo::drawGrouped(
 		&& _spoiler
 		&& !_spoiler->revealed;
 	const auto paintInCenter = !_sensitiveSpoiler
+		&& !mediaEditor
 		&& (radial
 			|| (!loaded && !_data->loading())
 			|| _data->waitingForAlbum()
 			|| ttlCovered);
-	if (paintInCenter) {
+	if (paintInCenter && !AyuFeatures::MessageShot::isTakingShot()) {
 		const auto radialOpacity = radial
 			? _animation->radial.opacity()
 			: 1.;
@@ -946,7 +968,7 @@ void Photo::drawGrouped(
 				context.paused);
 		}
 	}
-	if (ttlCovered) {
+	if (ttlCovered && !mediaEditor) {
 		PaintTtlLabel(
 			p,
 			geometry.topLeft(),
@@ -995,6 +1017,14 @@ bool Photo::dataLoaded() const {
 }
 
 bool Photo::needInfoDisplay() const {
+	if (AyuFeatures::MessageShot::ignoreRender(AyuFeatures::MessageShot::RenderPart::Date)) {
+		return false;
+	}
+
+	if (AyuFeatures::MessageShot::isTakingShot()) {
+		return true;
+	}
+
 	if (_parent->data()->isFakeAboutView()) {
 		return false;
 	}
@@ -1199,14 +1229,19 @@ void Photo::hideSpoilers() {
 	}
 }
 
+void Photo::revealSpoilers() {
+	if (_spoiler) {
+		_spoiler->revealed = true;
+	}
+}
+
 bool Photo::needsBubble() const {
 	if (_storyId) {
 		return true;
 	}
 	const auto item = _parent->data();
 	return !item->isService()
-		&& (item->repliesAreComments()
-			|| item->externalReply()
+		&& (_parent->hasCommentsButton()
 			|| item->viaBot()
 			|| !item->emptyText()
 			|| _parent->displayReply()

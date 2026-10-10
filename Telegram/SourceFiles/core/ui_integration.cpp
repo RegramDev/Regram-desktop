@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "core/ui_integration.h"
+#include "regram/nagram/links/open.h"
+#include "regram/nagram/links/behavior.h"
 
 #include "api/api_text_entities.h"
 #include "core/local_url_handlers.h"
@@ -38,6 +40,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtCore/QDateTime>
 #include <QtCore/QLocale>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/ayu_url_handlers.h"
+#include "regram/ayu/features/streamer_mode/streamer_mode.h"
+
 
 namespace Core {
 namespace {
@@ -72,6 +80,7 @@ const auto kBadPrefix = u"http://"_q;
 		{});
 	if (token.isEmpty()
 		|| domain.isEmpty()
+		|| Nagram::Links::AutoLoginDisabled()
 		|| !ranges::contains(domains, domain)) {
 		return url;
 	}
@@ -400,6 +409,8 @@ std::shared_ptr<ClickHandler> UiIntegration::createLinkHandler(
 		return (my && my->session)
 			? std::make_shared<BankCardClickHandler>(my->session, data.text)
 			: nullptr;
+	case EntityType::TonAddress:
+		return std::make_shared<TonAddressClickHandler>(data.text);
 	case EntityType::FormattedDate: {
 		const auto [date, flags] = DeserializeFormattedDateData(data.data);
 		if (date) {
@@ -411,8 +422,13 @@ std::shared_ptr<ClickHandler> UiIntegration::createLinkHandler(
 }
 
 bool UiIntegration::handleUrlClick(
-		const QString &url,
+		const QString &original,
 		const QVariant &context) {
+	// Only our own token may be added below, never one that came with it,
+	// unless the url itself was given to us by the server for this login.
+	const auto url = context.value<ClickHandlerContext>().keepWebAuthTokens
+		? original
+		: UrlWithoutWebAuthTokens(original);
 	const auto local = Core::TryConvertUrlToLocal(url);
 	if (Core::InternalPassportOrOAuthLink(local)) {
 		return true;
@@ -430,6 +446,8 @@ bool UiIntegration::handleUrlClick(
 	} else if (local.startsWith(u"internal:"_q, Qt::CaseInsensitive)) {
 		Core::App().openInternalUrl(local, context);
 		return true;
+	} else if (Nagram::Links::HandleExternalLink(url, context)) {
+		return true;
 	} else if (Iv::PreferForUri(url)
 		&& !context.value<ClickHandlerContext>().ignoreIv) {
 		const auto my = context.value<ClickHandlerContext>();
@@ -439,11 +457,15 @@ bool UiIntegration::handleUrlClick(
 		}
 	}
 
+	if (AyuUrlHandlers::TryHandleSpotify(url)) {
+		return true;
+	}
+
 	auto parsed = UrlForAutoLogin(url);
 	const auto domain = DomainForAutoLogin(parsed);
 	const auto skip = context.value<ClickHandlerContext>().skipBotAutoLogin;
 	if (skip || !BotAutoLogin(url, domain, context)) {
-		File::OpenUrl(
+		File::OpenUrlWithOwnAutoLogin(
 			UrlWithAutoLoginToken(url, std::move(parsed), domain, context));
 	}
 	return true;
@@ -469,6 +491,12 @@ bool UiIntegration::copyPreOnClick(const QVariant &context) {
 
 rpl::producer<> UiIntegration::forcePopupMenuHideRequests() {
 	return Core::App().passcodeLockChanges() | rpl::to_empty;
+}
+
+void UiIntegration::preparePopupMenu(not_null<QWidget*> widget) {
+	if (AyuSettings::getInstance().streamerMode()) {
+		AyuFeatures::StreamerMode::hideWidgetWindow(widget);
+	}
 }
 
 const Ui::Emoji::One *UiIntegration::defaultEmojiVariant(

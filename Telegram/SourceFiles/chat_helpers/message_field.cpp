@@ -6,6 +6,12 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/message_field.h"
+#include "regram/core/local_premium.h"
+
+#include "regram/nagram/compose/options.h"
+#include "regram/nagram/compose/text.h"
+#include "regram/nagram/links/inline_bot.h"
+#include "regram/nagram/services/draft_translation.h"
 
 #include "history/history_widget.h"
 #include "history/history.h" // History::session
@@ -66,6 +72,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QClipboard>
 #include <QtWidgets/QApplication>
 
+// AyuGram includes
+#include "regram/ayu/features/forward/ayu_forward.h"
+
+
 namespace {
 
 using namespace Ui::Text;
@@ -73,7 +83,7 @@ using namespace Ui::Text;
 using EditLinkAction = Ui::InputField::EditLinkAction;
 using EditLinkSelection = Ui::InputField::EditLinkSelection;
 
-constexpr auto kParseLinksTimeout = crl::time(1000);
+constexpr auto kParseLinksTimeout = crl::time(500);
 constexpr auto kTypesDuration = 4 * crl::time(1000);
 constexpr auto kCodeLanguageLimit = 32;
 
@@ -109,7 +119,7 @@ constexpr auto kLinkProtocols = {
 				if (!emoji) {
 					i = all.erase(i);
 					continue;
-				} else if (!session->premium()) {
+				} else if (!Regram::Premium::ForLocalFeatures(*session)) {
 					const auto document = session->data().document(emoji);
 					if (document->isPremiumEmoji()) {
 						if (!allowPremiumEmoji
@@ -567,17 +577,25 @@ auto InitMessageFieldHandlers(MessageFieldHandlersArgs &&args)
 	}, [paused] {
 		return On(PowerSaving::kChatSpoiler) || paused();
 	});
+	Nagram::Compose::InstallFieldHooks(field);
+	if (args.show) {
+		Nagram::InstallDraftTranslation(field, args.show);
+	}
 	field->setInstantReplaces(Ui::InstantReplaces::Default());
 	field->setInstantReplacesEnabled(
 		Core::App().settings().replaceEmojiValue(),
 		Core::App().settings().systemTextReplaceValue());
-	field->setMarkdownReplacesEnabled(rpl::single(Ui::MarkdownEnabledState{
-		Ui::MarkdownEnabled{
-			std::move(args.allowMarkdownTags),
-			args.allowTypedMarkdown,
-			args.instantMarkdown
-		}
-	}));
+	field->setMarkdownReplacesEnabled(
+		Nagram::ForDevice().Value(Nagram::Compose::kDisableAutoMarkdown)
+		| rpl::map([
+			tags = std::move(args.allowMarkdownTags),
+			typed = args.allowTypedMarkdown,
+			instant = args.instantMarkdown
+		](bool disabled) {
+			return Ui::MarkdownEnabledState{ Ui::MarkdownEnabled{
+				tags, typed && !disabled, instant && !disabled
+			} };
+		}));
 	if (const auto &show = args.show) {
 		field->setEditLinkCallback(
 			DefaultEditLinkCallback(
@@ -927,6 +945,7 @@ InlineBotQuery ParseInlineBotQuery(
 		result.username = QString();
 	}
 	result.query = QString();
+	Nagram::Links::FillAutomaticInlineQuery(session, full, result);
 	return result;
 }
 
@@ -1412,6 +1431,69 @@ std::unique_ptr<Ui::AbstractButton> BoostsToLiftWriteRestriction(
 		const auto window = show->resolveWindow();
 		window->resolveBoostState(peer->asChannel(), boosts);
 	});
+	return result;
+}
+
+std::unique_ptr<Ui::AbstractButton> AyuForwardWriteRestriction(
+	not_null<QWidget *> parent,
+	const PeerId &peer,
+	const Main::Session &session) {
+	using namespace Ui;
+
+	// status and part
+	const auto pair = AyuForward::stateName(peer);
+
+	auto result = std::make_unique<FlatButton>(
+		parent,
+		QString(),
+		st::historyComposeButton);
+	const auto raw = result.get();
+
+	const auto title = CreateChild<FlatLabel>(
+		raw,
+		pair.first,
+		st::frozenRestrictionTitle);
+	title->setTextColorOverride(st::historyComposeButton.color->c);
+
+
+	title->setAttribute(Qt::WA_TransparentForMouseEvents);
+	title->show();
+	const auto subtitle = CreateChild<FlatLabel>(
+		raw,
+		pair.second,
+		st::frozenRestrictionSubtitle);
+	subtitle->setAttribute(Qt::WA_TransparentForMouseEvents);
+	subtitle->show();
+
+
+	raw->sizeValue() | rpl::on_next([=](QSize size) {
+
+		const auto toggle = [&](auto &&widget, bool shown) {
+			if (widget->isHidden() == shown) {
+				widget->setVisible(shown);
+			}
+		};
+		const auto small = 2 * st::defaultDialogRow.photoSize;
+		const auto shown = (size.width() > small);
+
+		toggle(title, shown);
+		toggle(subtitle, shown);
+
+		const auto skip = st::defaultDialogRow.padding.left();
+		const auto available = size.width() - skip * 2;
+		title->resizeToWidth(available);
+		subtitle->resizeToWidth(available);
+		const auto height = title->height() + subtitle->height();
+		const auto top = (size.height() - height) / 2;
+		title->moveToLeft(skip, top, size.width());
+		subtitle->moveToLeft(skip, top + title->height(), size.width());
+
+	}, title->lifetime());
+
+	raw->setClickedCallback([&] {
+		AyuForward::cancelForward(peer, session);
+	});
+
 	return result;
 }
 

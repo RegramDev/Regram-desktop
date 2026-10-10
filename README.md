@@ -1,45 +1,10 @@
-# [Telegram Desktop][telegram_desktop] – Official Messenger
+# Regram Desktop
 
-This is the complete source code and the build instructions for the official [Telegram][telegram] messenger desktop client, based on the [Telegram API][telegram_api] and the [MTProto][telegram_proto] secure protocol.
+Regram Desktop is an independent Telegram client based on [Telegram Desktop][telegram_desktop]. Development follows the [iOS porting plan](docs/regram/regram-desktop-plan.md) and [feature matrix](docs/regram/regram-desktop-feature-matrix.md). See the [implementation and platform verification record](docs/regram/progress.md), [build notes](docs/regram/building.md) and [pinned Nagram/AyuGram references](docs/regram/references.md).
 
-[![Version](https://badge.fury.io/gh/telegramdesktop%2Ftdesktop.svg)](https://github.com/telegramdesktop/tdesktop/releases)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/Windows./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/MacOS./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Build Status](https://github.com/telegramdesktop/tdesktop/workflows/Linux./badge.svg)](https://github.com/telegramdesktop/tdesktop/actions)
-[![Built with Depot](https://img.shields.io/badge/Built%20with-Depot.dev-46A75A)](https://depot.dev)
+The initial upstream baseline was v7.2.9; the current source baseline is v7.3.0. Regram keeps the upstream Qt interface. Regram uses independent application and data identifiers, and upstream automatic updates are disabled. Porting and platform verification are in progress; the upstream download links below refer to Telegram's own releases.
 
-[![Preview of Telegram Desktop][preview_image]][preview_image_url]
-
-The source code is published under GPLv3 with OpenSSL exception, the license is available [here][license].
-
-## Supported systems
-
-The latest version is available for
-
-* [Windows 7 and above (64 bit)](https://telegram.org/dl/desktop/win64) ([portable](https://telegram.org/dl/desktop/win64_portable))
-* [Windows 7 and above (32 bit)](https://telegram.org/dl/desktop/win) ([portable](https://telegram.org/dl/desktop/win_portable))
-* [macOS 10.13 and above](https://telegram.org/dl/desktop/mac)
-* [Linux static build for 64 bit](https://telegram.org/dl/desktop/linux)
-* [Snap](https://snapcraft.io/telegram-desktop)
-* [Flatpak](https://flathub.org/apps/details/org.telegram.desktop)
-
-## Old system versions
-
-Version **4.9.9** was the last that supports older systems
-
-* [macOS 10.12](https://updates.tdesktop.com/tmac/tsetup.4.9.9.dmg)
-* [Linux with glibc < 2.28 static build](https://updates.tdesktop.com/tlinux/tsetup.4.9.9.tar.xz)
-
-Version **2.4.4** was the last that supports older systems
-
-* [OS X 10.10 and 10.11](https://updates.tdesktop.com/tosx/tsetup-osx.2.4.4.dmg)
-* [Linux static build for 32 bit](https://updates.tdesktop.com/tlinux32/tsetup32.2.4.4.tar.xz)
-
-Version **1.8.15** was the last that supports older systems
-
-* [Windows XP and Vista](https://updates.tdesktop.com/tsetup/tsetup.1.8.15.exe) ([portable](https://updates.tdesktop.com/tsetup/tportable.1.8.15.zip))
-* [OS X 10.8 and 10.9](https://updates.tdesktop.com/tmac/tsetup.1.8.15.dmg)
-* [OS X 10.6 and 10.7](https://updates.tdesktop.com/tmac32/tsetup32.1.8.15.dmg)
+The source code retains the upstream GPLv3 license with OpenSSL exception and third-party notices. Target platforms are Windows x64, macOS arm64/x64 and Linux x64; support and release packages are declared only after their own verification.
 
 ## Third-party
 
@@ -66,6 +31,8 @@ Version **1.8.15** was the last that supports older systems
 * CMake ([New BSD License](https://github.com/Kitware/CMake/blob/master/Copyright.txt))
 * Hunspell ([LGPL](https://github.com/hunspell/hunspell/blob/master/COPYING.LESSER))
 * Ada ([Apache License 2.0](https://github.com/ada-url/ada/blob/main/LICENSE-APACHE))
+* zxcvbn-c ([MIT License](https://github.com/tsyrogit/zxcvbn-c/blob/master/LICENSE.txt))
+* FrequencyWords by Hermit Dave ([Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/))
 
 ## Build instructions
 
@@ -97,3 +64,4 @@ Version **1.8.15** was the last that supports older systems
 
 CI infrastructure sponsored by [Depot](https://depot.dev) — fast GitHub Actions runners.
 
+当前 Nagram 功能接入与性能验证：[记录](docs/regram/nagram-latest.md)。

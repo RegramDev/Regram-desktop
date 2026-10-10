@@ -35,6 +35,7 @@ struct ReactionFlyAnimationArgs {
 	bool flyKeepSize = false;
 	bool effectOnly = false;
 	bool forceFirstFrame = false;
+	bool haptic = false;
 
 	[[nodiscard]] ReactionFlyAnimationArgs translated(QPoint point) const;
 };
@@ -48,6 +49,13 @@ struct ReactionFlyCenter {
 	int size = 0;
 	bool forceFirstFrame = false;
 };
+
+// The arc every fly takes, its apex `top` above the higher end.
+struct FlyParabola {
+	float64 a = 0.;
+	float64 b = 0.;
+};
+[[nodiscard]] FlyParabola ComputeFlyParabola(int from, int to, int top);
 
 class ReactionFlyAnimation final {
 public:
@@ -132,6 +140,9 @@ private:
 	bool _forceFirstFrame = false;
 	bool _effectOnly = false;
 	bool _valid = false;
+	bool _haptic = false;
+
+	bool _hapticExecuted = false;
 
 	mutable Parabolic _cached;
 

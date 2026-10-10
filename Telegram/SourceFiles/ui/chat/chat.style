@@ -18,6 +18,7 @@ msgNameStyle: semiboldTextStyle;
 msgServiceFont: semiboldFont;
 msgServiceNameFont: semiboldFont;
 msgServicePhotoWidth: 100px;
+msgServiceUserpicSuggestionPhotoWidth: 100px;
 msgDateFont: font(13px);
 msgMinWidth: 160px;
 msgPhotoSize: 33px;
@@ -170,7 +171,7 @@ maxMediaSize: 430px;
 maxStickerSize: 224px;
 maxAnimatedEmojiSize: 112px;
 maxGifSize: 320px;
-maxVideoMessageSize: 240px;
+maxVideoMessageSize: 360px;
 maxSignatureSize: 144px;
 maxWallPaperWidth: 160px;
 maxWallPaperHeight: 240px;
@@ -349,7 +350,7 @@ historyStatusFgActive: windowActiveTextFg;
 historyStatusFgTyping: historyStatusFgActive;
 
 historyUnreadBarHeight: 32px;
-historyUnreadBarMargin: 8px;
+historyUnreadBarMargin: 3px;
 historyUnreadBarFont: semiboldFont;
 
 historyForwardChooseMargins: margins(30px, 10px, 30px, 10px);

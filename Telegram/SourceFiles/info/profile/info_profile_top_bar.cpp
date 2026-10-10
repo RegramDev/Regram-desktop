@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_top_bar.h"
+#include "regram/nagram/privacy/options.h"
 
 #include "api/api_peer_colors.h"
 #include "api/api_peer_photo.h"
@@ -49,7 +50,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "editor/video/video_editor_layer.h"
 #include "history/history.h"
 #include "info/info_memento.h"
-#include "info/profile/info_profile_badge_tooltip.h"
 #include "info/profile/info_profile_badge.h"
 #include "info/profile/info_profile_birthday_effect.h"
 #include "info/profile/info_profile_cover.h" // LargeCustomEmojiMargins
@@ -88,6 +88,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/top_background_gradient.h"
 #include "ui/ui_utility.h"
 #include "ui/widgets/buttons.h"
+#include "ui/widgets/glare_tooltip.h"
 #include "ui/widgets/horizontal_fit_container.h"
 #include "ui/widgets/labels.h"
 #include "ui/widgets/marquee_label.h"
@@ -109,6 +110,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QClipboard>
 #include <QtGui/QGuiApplication>
+
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+#include "regram/ayu/utils/telegram_helpers.h"
+
 
 namespace Info::Profile {
 namespace {
@@ -376,6 +382,13 @@ TopBar::TopBar(
 	VerifiedContentForPeer(_peer),
 	nullptr,
 	_gifPausedChecker))
+, _exteraBadge(std::make_unique<Badge>(
+	this,
+	st::infoPeerBadge,
+	&_peer->session(),
+	ExteraBadgeTypeFromPeer(_peer),
+	nullptr,
+	_gifPausedChecker))
 , _hasActions(!_savedMessages
 	&& descriptor.source != Source::Stories
 	&& descriptor.source != Source::Preview
@@ -507,6 +520,17 @@ TopBar::TopBar(
 			std::move(badgeUpdates),
 			_botVerify->updated());
 	}
+	if (_exteraBadge) {
+		const auto isCustomBadge = isCustomBadgePeer(getBareID(_peer));
+		const auto isExtera = isExteraPeer(getBareID(_peer));
+		const auto isSupporter = isSupporterPeer(getBareID(_peer));
+		if (isExtera || isSupporter || isCustomBadge) {
+			_exteraBadge->setPremiumClickCallback(badgeClickHandler(_peer));
+		}
+		badgeUpdates = rpl::merge(
+			std::move(badgeUpdates),
+			_exteraBadge->updated());
+	}
 	_title->naturalWidthValue() | rpl::on_next([=](int w) {
 		_title->resizeToWidth(w);
 	}, _title->lifetime());
@@ -523,14 +547,25 @@ TopBar::TopBar(
 	setupSwipeBack(controller);
 	setupUserpicButton(controller);
 	if (_hasActions) {
-		_peer->session().changes().peerFlagsValue(
-			_peer,
-			Data::PeerUpdate::Flag::FullInfo
-				| Data::PeerUpdate::Flag::ChannelAmIn
+		rpl::merge(
+			_peer->session().changes().peerFlagsValue(
+				_peer,
+				Data::PeerUpdate::Flag::FullInfo
+					| Data::PeerUpdate::Flag::ChannelAmIn) | rpl::to_empty,
+			Nagram::ForDevice().Value(
+				Nagram::Privacy::kHideProfileGifts) | rpl::to_empty
 		) | rpl::on_next([=] {
 			setupActions(controller);
 		}, lifetime());
 	}
+	Nagram::ForDevice().Value(
+		Nagram::Privacy::kHideProfileGifts
+	) | rpl::on_next([=](bool hidden) {
+		for (auto &gift : _pinnedToTopGifts) {
+			gift.button->setVisible(!hidden);
+		}
+		update();
+	}, lifetime());
 	if (_source == Source::Community) {
 		Shortcuts::Requests(
 		) | rpl::filter([=] {
@@ -666,6 +701,7 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 	{
 		const auto membersLinkCallback = _statusLabel->membersLinkCallback();
 		const auto hiddenLinkCallback = _statusLabel->hiddenLinkCallback();
+		const auto onlineCount = _statusLabel->onlineCount();
 		{
 			_statusLabel = nullptr;
 			delete _status.release();
@@ -711,6 +747,7 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 			// setColorized) overwrite _status only when there is no custom
 			// status.
 			_statusLabel->setColorized(!shouldOverrideStatus);
+			_statusLabel->setOnlineCount(onlineCount);
 		}
 	}
 
@@ -729,6 +766,11 @@ void TopBar::adjustColors(const std::optional<QColor> &edgeColor) {
 	_verified->setOverrideStyle(shouldOverrideBadges
 		? _verifiedSt
 		? _verifiedSt.get()
+		: &st::infoColoredPeerBadge
+		: nullptr);
+	_exteraBadge->setOverrideStyle(shouldOverrideBadges
+		? _badgeSt
+		? _badgeSt.get()
 		: &st::infoColoredPeerBadge
 		: nullptr);
 
@@ -1183,34 +1225,18 @@ void TopBar::setupActions(not_null<Window::SessionController*> controller) {
 	if (chechMax()) {
 		return;
 	}
-	{
-		const auto channel = peer->asBroadcast();
-		if (!user && !channel) {
-		} else if (user
-			&& (user->isInaccessible()
-				|| user->isSelf()
-				|| user->isBot()
-				|| user->isServiceUser()
-				|| user->isNotificationsUser()
-				|| user->isRepliesChat()
-				|| user->isVerifyCodes()
-				|| !user->session().premiumCanBuy())) {
-		} else if (channel
-			&& (channel->isForbidden()
-				|| !channel->stargiftsAvailable()
-				|| channel->amCreator())) {
-		} else {
-			const auto giftButton = Ui::CreateChild<TopBarActionButton>(
-				this,
-				tr::lng_profile_action_short_gift(tr::now),
-				st::infoProfileTopBarActionGift);
-			giftButton->setClickedCallback([=] {
-				Ui::ShowStarGiftBox(controller, peer);
-			});
-			giftButton->setAccessibleName(tr::lng_profile_action_short_gift(tr::now));
-			_actions->add(giftButton);
-			buttons.push_back(giftButton);
-		}
+	if (Ui::CanSendStarGiftTo(peer)
+		&& !Nagram::ForDevice().Get(Nagram::Privacy::kHideProfileGifts)) {
+		const auto giftButton = Ui::CreateChild<TopBarActionButton>(
+			this,
+			tr::lng_profile_action_short_gift(tr::now),
+			st::infoProfileTopBarActionGift);
+		giftButton->setClickedCallback([=] {
+			Ui::ShowStarGiftBox(controller, peer);
+		});
+		giftButton->setAccessibleName(tr::lng_profile_action_short_gift(tr::now));
+		_actions->add(giftButton);
+		buttons.push_back(giftButton);
 	}
 	if (chechMax()) {
 		return;
@@ -1481,7 +1507,7 @@ void TopBar::setupUserpicButton(
 						&controller->window(),
 						editorData(type),
 						choosePhotoCallback(type),
-						qvariant_cast<QImage>(data->imageData()));
+						QGuiApplication::clipboard()->image());
 				});
 				menu->addAction(
 					std::move(text)(tr::now),
@@ -1680,21 +1706,32 @@ void TopBar::setupUniqueBadgeTooltip() {
 		const auto id = (collectible && widget && premium)
 			? collectible->id
 			: uint64();
-		if (_badgeCollectibleId == id) {
+		if (_badgeTooltip && _badgeCollectibleId == id) {
+			if (widget) {
+				_badgeTooltip->trackWidget(widget);
+			}
 			return;
 		}
 		hideBadgeTooltip();
-		if (!collectible || _localCollectible) {
+		if (!id || _localCollectible) {
 			return;
 		}
-		_badgeTooltip = std::make_unique<BadgeTooltip>(
+		_badgeTooltip = std::make_unique<Ui::GlareTooltip>(
 			this,
-			collectible,
-			widget);
+			st::infoGiftTooltip,
+			st::infoGiftTooltipFont,
+			collectible->title,
+			Ui::GlareTooltipColors{
+				.edge = collectible->edgeColor,
+				.center = collectible->centerColor,
+				.rim = collectible->textColor,
+				.text = QColor(255, 255, 255),
+			});
+		_badgeCollectibleId = id;
+		_badgeTooltip->trackWidget(widget);
 		const auto raw = _badgeTooltip.get();
 		raw->fade(true);
-		_badgeTooltipHide->callOnce(kGiftBadgeGlares * raw->glarePeriod()
-			- st::infoGiftTooltip.duration * 1.5);
+		_badgeTooltipHide->callOnce(raw->glaresDuration(kGiftBadgeGlares));
 		raw->setOpacity(_progress.current());
 	}, lifetime());
 
@@ -1705,6 +1742,7 @@ void TopBar::setupUniqueBadgeTooltip() {
 
 void TopBar::hideBadgeTooltip() {
 	_badgeTooltipHide->cancel();
+	_badgeCollectibleId = 0;
 	if (auto old = base::take(_badgeTooltip)) {
 		const auto raw = old.get();
 		_badgeOldTooltips.push_back(std::move(old));
@@ -1717,7 +1755,7 @@ void TopBar::hideBadgeTooltip() {
 			const auto i = ranges::find(
 				_badgeOldTooltips,
 				raw,
-				&std::unique_ptr<BadgeTooltip>::get);
+				&std::unique_ptr<Ui::GlareTooltip>::get);
 			if (i != end(_badgeOldTooltips)) {
 				_badgeOldTooltips.erase(i);
 			}
@@ -1962,6 +2000,7 @@ void TopBar::updateTitlePosition(float64 progressCurrent) {
 	const auto verifiedWidget = _verified ? _verified->widget() : nullptr;
 	const auto badgeWidget = _badge ? _badge->widget() : nullptr;
 	const auto botVerifyWidget = _botVerify ? _botVerify->widget() : nullptr;
+	const auto exteraWidget = _exteraBadge ? _exteraBadge->widget() : nullptr;
 	auto badgesWidth = 0;
 	if (verifiedWidget) {
 		badgesWidth += verifiedWidget->width();
@@ -1974,6 +2013,9 @@ void TopBar::updateTitlePosition(float64 progressCurrent) {
 	}
 	if (verifiedWidget || badgeWidget) {
 		badgesWidth += st::infoVerifiedCheckPosition.x();
+	}
+	if (exteraWidget) {
+		badgesWidth += exteraWidget->width();
 	}
 	const auto titleWidth = width()
 		- interpolatedPadding
@@ -2006,6 +2048,9 @@ void TopBar::updateTitlePosition(float64 progressCurrent) {
 	if (verifiedWidget || badgeWidget) {
 		totalElementsWidth += st::infoVerifiedCheckPosition.x();
 	}
+	if (exteraWidget) {
+		totalElementsWidth += exteraWidget->width();
+	}
 	totalElementsWidth += botVerifySkip;
 
 	auto titleLeft = anim::interpolate(
@@ -2031,6 +2076,13 @@ void TopBar::updateTitlePosition(float64 progressCurrent) {
 			badgeLeft + (badgeWidget ? badgeWidget->width() : 0),
 			badgeTop,
 			badgeBottom);
+	}
+	if (_exteraBadge) {
+		const auto exteraBadgeLeft = badgeLeft
+			+ (badgeWidget ? badgeWidget->width() : 0)
+			+ (badgeWidget || verifiedWidget ? st::infoVerifiedCheckPosition.x() : 0)
+			+ (verifiedWidget ? verifiedWidget->width() : 0);
+		_exteraBadge->move(exteraBadgeLeft, badgeTop, badgeBottom);
 	}
 }
 
@@ -2799,38 +2851,55 @@ void TopBar::paintUserpic(QPainter &p, const QRect &geometry) {
 		}
 	}
 	const auto key = _peer->userpicUniqueKey(_userpicView);
+	const auto ayuState = AyuUserpic::PackedState();
 	const auto overlayActive = _uploadOverlay && _uploadOverlay->shown();
 	const auto awaitingCloud = _waitingUserpicCloudLoad
 		&& !_peer->userpicCloudImage(_userpicView);
-	if (!overlayActive && !awaitingCloud && _userpicUniqueKey != key) {
+	if (!overlayActive
+		&& !awaitingCloud
+		&& (_userpicUniqueKey != key || _userpicAyuState != ayuState)) {
 		_waitingUserpicCloudLoad = false;
 		_userpicUniqueKey = key;
+		_userpicAyuState = ayuState;
 		const auto fullSize = st::infoProfileTopBarPhotoSize;
 		const auto scaled = fullSize * style::DevicePixelRatio();
 		auto image = QImage();
 		if (const auto broadcast = _peer->monoforumBroadcast()) {
+			const auto ayuOverride = AyuUserpic::ShouldOverrideShape(
+				Ui::PeerUserpicShape::Monoforum);
 			image = PeerData::GenerateUserpicImage(
 				broadcast,
 				_userpicView,
 				scaled,
-				0);
-			if (_monoforumMask.isNull()) {
-				_monoforumMask = Ui::MonoforumShapeMask(Size(scaled));
+				ayuOverride
+					? std::optional<int>(
+						AyuUserpic::ComputeRadius(scaled))
+					: std::optional<int>(0));
+			if (!ayuOverride) {
+				if (_monoforumMask.isNull()) {
+					_monoforumMask = Ui::MonoforumShapeMask(Size(scaled));
+				}
+				constexpr auto kFormat = QImage::Format_ARGB32_Premultiplied;
+				if (image.format() != kFormat) {
+					image = std::move(image).convertToFormat(kFormat);
+				}
+				auto q = QPainter(&image);
+				q.setCompositionMode(
+					QPainter::CompositionMode_DestinationIn);
+				q.drawImage(
+					Rect(image.size() / image.devicePixelRatio()),
+					_monoforumMask);
+				q.end();
 			}
-			constexpr auto kFormat = QImage::Format_ARGB32_Premultiplied;
-			if (image.format() != kFormat) {
-				image = std::move(image).convertToFormat(kFormat);
-			}
-			auto q = QPainter(&image);
-			q.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-			q.drawImage(
-				Rect(image.size() / image.devicePixelRatio()),
-				_monoforumMask);
-			q.end();
 		} else {
 			const auto radius = (_source == Source::Community)
 				? std::optional<int>(
-					int(scaled * Ui::ForumUserpicRadiusMultiplier()))
+					AyuUserpic::ShouldOverrideShape(
+						Ui::PeerUserpicShape::Forum)
+						? AyuUserpic::ComputeRadius(scaled)
+						: int(
+							scaled
+							* Ui::ForumUserpicRadiusMultiplier()))
 				: std::nullopt;
 			image = PeerData::GenerateUserpicImage(
 				_peer,
@@ -3186,9 +3255,6 @@ void TopBar::fillTopBarMenu(
 }
 
 void TopBar::updateVideoUserpic() {
-	if (width() <= 0) {
-		return;
-	}
 	const auto id = _peer->userpicPhotoId();
 	if (!id) {
 		_videoUserpicPlayer = nullptr;
@@ -3519,7 +3585,8 @@ void TopBar::setupNewGifts(
 
 			return base;
 		}());
-		entry.button->show();
+		entry.button->setVisible(!Nagram::ForDevice().Get(
+			Nagram::Privacy::kHideProfileGifts));
 
 		entry.button->setClickedCallback([=, giftData = gift, peer = _peer] {
 			::Settings::ShowSavedStarGiftBox(controller, peer, giftData);
@@ -3651,7 +3718,9 @@ void TopBar::paintPinnedToTopGifts(
 		QPainter &p,
 		const QRect &clip,
 		const QRect &userpicRect) {
-	if (_pinnedToTopGifts.empty() || _source == Source::Preview) {
+	if (_pinnedToTopGifts.empty()
+		|| _source == Source::Preview
+		|| Nagram::ForDevice().Get(Nagram::Privacy::kHideProfileGifts)) {
 		return;
 	}
 

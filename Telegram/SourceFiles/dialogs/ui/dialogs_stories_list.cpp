@@ -31,6 +31,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/debug_log.h"
 
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+
+
 namespace Dialogs::Stories {
 namespace {
 
@@ -359,7 +363,7 @@ List::Layout List::computeLayout(float64 expanded) const {
 		.expandedRatio = expandedRatio,
 		.expandRatio = expandRatio,
 		.ratio = ratio,
-		.titleOpacity = (1. - expanded),
+		.titleOpacity = _changingFromTop ? 0. : (1. - expanded),
 		.segmentsSpinProgress = segmentsSpinProgress,
 		.thumbnailLeft = thumbnailLeft,
 		.photoLeft = photoLeft,
@@ -398,6 +402,13 @@ void List::paintEvent(QPaintEvent *e) {
 	const auto layered = (layout.single < (photo + 4 * line))
 		|| (hidden > 0.);
 	auto p = QPainter(this);
+	if (_changingFromTop) {
+		p.setClipRect(
+			0,
+			_geometryFull.y() - y(),
+			width(),
+			_lastExpandedHeight);
+	}
 	if (layered) {
 		ensureLayer();
 		auto q = QPainter(&_layer);
@@ -595,7 +606,7 @@ void List::paint(
 					p.setPen(QPen(gradient, line));
 				}
 				p.setBrush(Qt::NoBrush);
-				p.drawEllipse(outer);
+				AyuUserpic::PaintShape(p, outer);
 			} else {
 				validateSegments(itemFull, gradient, line, true);
 				Ui::PaintOutlineSegments(
@@ -640,7 +651,7 @@ void List::paint(
 			p.setCompositionMode(QPainter::CompositionMode_Source);
 			p.setPen(Qt::NoPen);
 			p.setBrush(st::transparent);
-			p.drawEllipse(rect);
+			AyuUserpic::PaintShape(p, rect);
 			p.setCompositionMode(QPainter::CompositionMode_SourceOver);
 		}
 		if (hasReadLine) {
@@ -1173,10 +1184,25 @@ rpl::producer<> List::collapsedGeometryChanged() const {
 }
 
 void List::updateGeometry() {
+	_changingFromTop = false;
 	switch (_state) {
 	case State::Small: setGeometry(countSmallGeometry()); break;
 	case State::Changing: {
-		_changingGeometryFrom = countSmallGeometry();
+		const auto small = countSmallGeometry();
+		_changingFromTop = !parentWidget()->rect().intersects(small);
+		if (_changingFromTop) {
+			const auto title = _title.isEmpty()
+				? 0
+				: (_titleWidth + _st.small.left);
+			const auto thumbs = small.width() - title;
+			_changingGeometryFrom = QRect(
+				_geometryFull.x() + (_geometryFull.width() - thumbs) / 2,
+				_geometryFull.y() - small.height(),
+				thumbs,
+				small.height());
+		} else {
+			_changingGeometryFrom = small;
+		}
 		setGeometry(_geometryFull.united(_changingGeometryFrom));
 	} break;
 	case State::Full: setGeometry(_geometryFull);

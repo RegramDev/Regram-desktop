@@ -6,6 +6,10 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_context_menu.h"
+#include "regram/nagram/menu/actions.h"
+#include "regram/nagram/menu/selection.h"
+#include "regram/nagram/messages/reactions.h"
+#include "regram/nagram/privacy/protection.h"
 
 #include "api/api_attached_stickers.h"
 #include "api/api_editing.h"
@@ -120,6 +124,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/forward/ayu_forward.h"
+#include "regram/ayu/ui/context_menu/context_menu.h"
+
 
 namespace HistoryView {
 namespace {
@@ -376,12 +386,14 @@ void AddPhotoActions(
 				&photo->session(),
 				[=] { SavePhotoToFile(photo); }),
 			&st::menuIconSaveImage);
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Image);
 		menu->addAction(tr::lng_context_copy_image(tr::now), [=] {
 			const auto item = photo->owner().message(contextId);
 			if (!list->showCopyMediaRestriction(item)) {
 				CopyImage(photo);
 			}
 		}, &st::menuIconCopy);
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Image);
 	}
 	if (photo->hasAttachedStickers()) {
 		const auto controller = list->controller();
@@ -393,6 +405,7 @@ void AddPhotoActions(
 			tr::lng_context_attached_stickers(tr::now),
 			std::move(callback),
 			&st::menuIconStickers);
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::StickerPack);
 	}
 }
 
@@ -470,6 +483,7 @@ void AddDocumentActions(
 				: tr::lng_context_pack_add(tr::now)),
 			[=] { ShowStickerPackInfo(document, list); },
 			&st::menuIconStickers);
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::StickerPack);
 	}
 	const auto sending = item && item->isSending();
 	if (!sending && document->sticker() && !document->sticker()->set) {
@@ -505,6 +519,7 @@ void AddDocumentActions(
 			tr::lng_context_attached_stickers(tr::now),
 			std::move(callback),
 			&st::menuIconStickers);
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::StickerPack);
 	}
 	if (item && !list->hasCopyMediaRestriction(item)) {
 		const auto controller = list->controller();
@@ -551,6 +566,7 @@ void AddPostLinkAction(
 			: tr::lng_context_copy_post_link)(tr::now),
 		[=] { CopyPostLink(controller, itemId, context); },
 		&st::menuIconLink);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::CopyLink);
 }
 
 MessageIdsList ExtractIdsList(const SelectedItems &items) {
@@ -584,6 +600,7 @@ bool AddForwardSelectedAction(
 			ExtractIdsList(request.selectedItems),
 			callback);
 	}, &st::menuIconForward);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Forward);
 	return true;
 }
 
@@ -618,6 +635,7 @@ bool AddForwardMessageAction(
 					: MessageIdsList{ 1, itemId }));
 		}
 	}, &st::menuIconForward);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Forward);
 	return true;
 }
 
@@ -868,6 +886,7 @@ bool AddReplyToMessageAction(
 			.todoItemId = todoListTaskId,
 		}, base::IsCtrlPressed());
 	}, &st::menuIconReply);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Reply);
 	return true;
 }
 
@@ -978,6 +997,7 @@ bool AddEditMessageAction(
 		}
 		list->editMessageRequestNotify(item->fullId());
 	}, &st::menuIconEdit);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Edit);
 	return true;
 }
 
@@ -1040,6 +1060,7 @@ bool AddPinMessageAction(
 					Window::UnpinMessages(controller, ids, clear);
 				}),
 				&st::menuIconUnpin);
+			Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Pin);
 			return true;
 		}
 	}
@@ -1055,6 +1076,7 @@ bool AddPinMessageAction(
 	menu->addAction(isPinned ? tr::lng_context_unpin_msg(tr::now) : tr::lng_context_pin_msg(tr::now), crl::guard(controller, [=] {
 		Window::ToggleMessagePinned(controller, pinItemId, !isPinned);
 	}), isPinned ? &st::menuIconUnpin : &st::menuIconPin);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Pin);
 	return true;
 }
 
@@ -1124,6 +1146,7 @@ bool AddDeleteSelectedAction(
 		box->setDeleteConfirmedCallback(clear);
 		request.navigation->parentController()->show(std::move(box));
 	}, &st::menuIconDelete);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Delete);
 	return true;
 }
 
@@ -1199,6 +1222,7 @@ bool AddDeleteMessageAction(
 		callback,
 		item->ttlDestroyAt(),
 		[=] { delete menu; }));
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Delete);
 	return true;
 }
 
@@ -1274,6 +1298,7 @@ void AddReportAction(
 		tr::lng_context_report_msg(tr::now),
 		callback,
 		&st::menuIconReport);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Report);
 }
 
 void AddBlockSenderAction(
@@ -1295,6 +1320,7 @@ void AddBlockSenderAction(
 				Box(Window::BlockSenderFromRepliesBox, controller, itemId));
 		}
 	}), &st::menuIconBlock);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::BlockSender);
 }
 
 bool AddClearSelectionAction(
@@ -1307,6 +1333,7 @@ bool AddClearSelectionAction(
 	menu->addAction(tr::lng_context_clear_selection(tr::now), [=] {
 		list->cancelSelection();
 	}, &st::menuIconSelect);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Select);
 	return true;
 }
 
@@ -1336,12 +1363,14 @@ bool AddSelectMessageAction(
 			}
 		}
 	}, &st::menuIconSelect);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Select);
 	if (!request.selectedItems.empty() && list->canSelectItemsUpTo(item)) {
 		menu->addAction(tr::lng_context_select_msg_bulk(tr::now), [=] {
 			if (const auto item = owner->message(itemId)) {
 				list->selectItemsUpTo(item);
 			}
 		}, &st::menuIconSelect);
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Select);
 	}
 	return true;
 }
@@ -1380,6 +1409,7 @@ bool AddViewStatisticsAction(
 	menu->addAction(tr::lng_stats_title(tr::now), crl::guard(controller, [=] {
 		controller->showSection(Info::Statistics::Make(channel, itemId, {}));
 	}), &st::menuIconStats);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Statistics);
 	return true;
 }
 
@@ -1402,6 +1432,15 @@ void AddMessageActions(
 		not_null<Ui::PopupMenu*> menu,
 		const ContextMenuRequest &request,
 		not_null<ListWidget*> list) {
+	if (request.item) {
+		const auto context = request.view ? request.view->context() : Context::History;
+		AyuUi::AddHistoryAction(menu, request.item);
+		AyuUi::AddHideMessageAction(menu, request.item);
+		AyuUi::AddUserMessagesAction(menu, request.item);
+		AyuUi::AddRepeatMessageAction(menu, request.item, context);
+		AyuUi::AddMessageDetailsAction(menu, request.item);
+	}
+
 	AddPostLinkAction(menu, request);
 	AddForwardAction(menu, request, list);
 	AddOfferAction(menu, request, list);
@@ -1422,6 +1461,11 @@ void AddMessageActions(
 		AddEphemeralAboutAction(menu, request.item);
 	}
 	AddRescheduleAction(menu, request, list);
+
+	if (request.item) {
+		AyuUi::AddReadUntilAction(menu, request.item);
+		AyuUi::AddBurnAction(menu, request.item);
+	}
 }
 
 void AddCopyLinkAction(
@@ -1775,6 +1819,21 @@ void FillContextMenuItems(
 	const auto hasWhoReactedItem = item
 		&& Api::WhoReactedExists(item, Api::WhoReactedList::All);
 
+	const auto whoReactedAtTop = Nagram::Messages::WhoReactedAtTop();
+	const auto addWhoReactedActions = [=] {
+		if (hasWhoReactedItem) {
+			AddWhoReactedAction(result, list, item, list->controller());
+		} else if (item) {
+			MaybeAddWhenEditedForwardedAction(
+				result,
+				item,
+				list->controller());
+		}
+	};
+	if (!skipWhoReacted && whoReactedAtTop) {
+		addWhoReactedActions();
+	}
+
 	AddReplyToMessageAction(result, request, list);
 	if (item) {
 		const auto media = item->media();
@@ -1819,6 +1878,7 @@ void FillContextMenuItems(
 		result->addAction(text, [=] {
 			list->copySelectedText();
 		}, &st::menuIconCopy);
+		Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Copy);
 	}
 	if (request.overSelection
 		&& view
@@ -1834,6 +1894,7 @@ void FillContextMenuItems(
 					list->hasCopyRestrictionForSelected()));
 			}
 		}, &st::menuIconTranslate);
+		Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Translate);
 	}
 
 	AddTopMessageActions(result, request, list);
@@ -1862,30 +1923,16 @@ void FillContextMenuItems(
 			result->addAction(tr::lng_profile_copy_phone(tr::now), [=] {
 				QGuiApplication::clipboard()->setText(phone);
 			}, &st::menuIconCopy);
-		} else if (const auto gift = itemMedia
-			? itemMedia->gift()
-			: nullptr) {
-			const auto peer = view->data()->history()->peer;
-			const auto user = peer->asUser();
-			if (!user
-				|| (!user->isInaccessible()
-					&& !user->isNotificationsUser())) {
-				const auto controller = list->controller();
-				const auto starGiftUpgrade = gift->upgrade
-					&& (gift->type == Data::GiftType::StarGift);
-				const auto isGift = gift->slug.isEmpty() || !gift->channel;
-				const auto out = view->data()->out();
-				const auto outgoingGift = isGift
-					&& (starGiftUpgrade ? !out : out);
-				if (outgoingGift
-					&& gift->type != Data::GiftType::BirthdaySuggest) {
-					result->addAction(
-						tr::lng_context_gift_send(tr::now),
-						crl::guard(controller, [=] {
-							Ui::ShowStarGiftBox(controller, peer);
-						}),
-						&st::menuIconGiftPremium);
-				}
+		} else if (itemMedia && itemMedia->gift()) {
+			AddGiftMessageAction(result, view->data(), list->controller());
+		}
+		if (view->data()->isRegular()
+			&& view->data()->Has<HistoryServiceGramTransfer>()) {
+			if (const auto user = view->data()->history()->peer->asUser()) {
+				Window::AddSendMoneyAction(
+					list->controller(),
+					user,
+					Ui::Menu::CreateAddActionCallback(result));
 			}
 		}
 		if (const auto document = media ? media->getDocument() : nullptr) {
@@ -1910,6 +1957,7 @@ void FillContextMenuItems(
 						}
 					}
 				}, &st::menuIconCopy);
+				Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Copy);
 			}
 
 			const auto translate = mediaHasTextForCopy
@@ -1932,6 +1980,7 @@ void FillContextMenuItems(
 							list->hasCopyRestriction(view->data())));
 					}
 				}, &st::menuIconTranslate);
+				Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Translate);
 			}
 		}
 	}
@@ -1951,15 +2000,8 @@ void FillContextMenuItems(
 		const auto added = (result->actions().size() > wasAmount);
 		AddSelectRestrictionAction(result, item, !added);
 	}
-	if (!skipWhoReacted) {
-		if (hasWhoReactedItem) {
-			AddWhoReactedAction(result, list, item, list->controller());
-		} else if (item) {
-			MaybeAddWhenEditedForwardedAction(
-				result,
-				item,
-				list->controller());
-		}
+	if (!skipWhoReacted && !whoReactedAtTop) {
+		addWhoReactedActions();
 	}
 }
 
@@ -1976,7 +2018,7 @@ base::unique_qptr<Ui::PopupMenu> FillContextMenu(
 
 	auto result = base::make_unique_q<Ui::PopupMenu>(
 		list,
-		st::popupMenuWithIcons);
+		Nagram::Menu::MessageMenuStyle());
 
 	// Build the full message menu.
 	FillContextMenuItems(result, list, request, hasPollOption);
@@ -2011,6 +2053,15 @@ base::unique_qptr<Ui::PopupMenu> FillContextMenu(
 				});
 		});
 	}
+	Nagram::Menu::Apply(result.get(),
+		(request.pointState != PointState::Outside
+			&& request.selectedItems.empty()) ? item : nullptr,
+		list->controller(),
+		(request.pointState != PointState::Outside && request.overSelection)
+			? ExtractIdsList(request.selectedItems) : MessageIdsList(),
+		crl::guard(list, [=](HistoryItem *item) {
+			Nagram::Menu::Selection::Select(list, item);
+		}));
 	return result;
 }
 
@@ -2329,6 +2380,43 @@ void AttachPollOptionTabs(
 	}, tabs->lifetime());
 }
 
+void AddGiftMessageAction(
+		not_null<Ui::PopupMenu*> menu,
+		not_null<HistoryItem*> item,
+		not_null<Window::SessionController*> controller) {
+	const auto media = item->media();
+	const auto gift = media ? media->gift() : nullptr;
+	if (!gift || gift->type == Data::GiftType::BirthdaySuggest) {
+		return;
+	}
+	const auto peer = item->history()->peer;
+	const auto user = peer->asUser();
+	const auto isGift = gift->slug.isEmpty() || !gift->channel;
+	if (!isGift
+		|| (user
+			&& (user->isInaccessible() || user->isNotificationsUser()))) {
+		return;
+	}
+	const auto starGiftUpgrade = gift->upgrade
+		&& (gift->type == Data::GiftType::StarGift);
+	const auto out = item->out();
+	const auto outgoingGift = starGiftUpgrade ? !out : out;
+	if (!outgoingGift
+		&& (gift->type == Data::GiftType::ChatTheme
+			|| gift->type == Data::GiftType::GiftOffer
+			|| !Ui::CanSendStarGiftTo(peer))) {
+		return;
+	}
+	menu->addAction(
+		(outgoingGift
+			? tr::lng_context_gift_send(tr::now)
+			: tr::lng_gift_send_title(tr::now)),
+		crl::guard(controller, [=] {
+			Ui::ShowStarGiftBox(controller, peer);
+		}),
+		&st::menuIconGiftPremium);
+}
+
 void AddPollActions(
 		not_null<Ui::PopupMenu*> menu,
 		not_null<PollData*> poll,
@@ -2351,7 +2439,7 @@ void AddPollActions(
 					item->history()->peer,
 					MsgId(),
 					std::move(text),
-					item->forbidsForward()));
+					Nagram::Privacy::ForbidsCopy(item)));
 			}, &st::menuIconTranslate);
 		}
 	}
@@ -2487,6 +2575,11 @@ void AddWhoReactedAction(
 		not_null<QWidget*> context,
 		not_null<HistoryItem*> item,
 		not_null<Window::SessionController*> controller) {
+	const auto &settings = AyuSettings::getInstance();
+	if (!AyuUi::needToShowItem(settings.showViewsPanelInContextMenu())) {
+		return;
+	}
+
 	const auto whoReadIds = std::make_shared<Api::WhoReadList>();
 	const auto weak = base::make_weak(menu.get());
 	const auto user = item->history()->peer;
@@ -2541,7 +2634,7 @@ void AddWhoReactedAction(
 						whoReadIds)));
 		}
 	};
-	if (!menu->empty()) {
+	if (!menu->empty() && !Nagram::Messages::WhoReactedAtTop()) {
 		menu->addSeparator(&st::expandedMenuSeparator);
 	}
 	if (item->history()->peer->isUser()) {
@@ -2550,18 +2643,18 @@ void AddWhoReactedAction(
 			item,
 			controller,
 			false);
-		menu->addAction(Ui::WhenReadContextAction(
+		Nagram::Menu::Tag(menu->addAction(Ui::WhenReadContextAction(
 			menu.get(),
 			Api::WhoReacted(item, context, st::defaultWhoRead, whoReadIds),
-			showOrPremium));
+			showOrPremium)), Nagram::Menu::ActionId::SeenBy);
 	} else {
-		menu->addAction(Ui::WhoReactedContextAction(
+		Nagram::Menu::Tag(menu->addAction(Ui::WhoReactedContextAction(
 			menu.get(),
 			Api::WhoReacted(item, context, st::defaultWhoRead, whoReadIds),
 			Data::ReactedMenuFactory(&controller->session()),
 			participantChosen,
 			showAllChosen,
-			moderateReactionChosen));
+			moderateReactionChosen)), Nagram::Menu::ActionId::SeenBy);
 		AddWhenEditedForwardedAuthorActionHelper(
 			menu,
 			item,
@@ -2932,6 +3025,9 @@ void AddEmojiPacksAction(
 			Data::StickersType::Emoji));
 	});
 	menu->addAction(std::move(button));
+	if (source == EmojiPacksSource::Message) {
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::StickerPack);
+	}
 }
 
 void AddEmojiPacksAction(
@@ -2951,7 +3047,10 @@ void AddSelectRestrictionAction(
 		not_null<HistoryItem*> item,
 		bool addIcon) {
 	const auto peer = item->history()->peer;
-	if ((peer->allowsForwarding() && !item->forbidsForward())
+	if ((Nagram::Privacy::AllowsCopy(peer)
+			&& !Nagram::Privacy::ForbidsCopy(item)
+			&& !peer->isAyuNoForwards()
+			&& !AyuForward::isAyuForwardNeeded(item))
 		|| item->isSponsored()) {
 		return;
 	}
@@ -2966,21 +3065,9 @@ void AddSelectRestrictionAction(
 		((addIcon && !user)
 			? st::historySponsoredAboutMenuLabelPosition
 			: st::historyHasCustomEmojiPosition),
-		(peer->isMegagroup()
-			? tr::lng_context_noforwards_info_group(tr::now, tr::rich)
-			: (peer->isChannel())
-			? tr::lng_context_noforwards_info_channel(tr::now, tr::rich)
-			: (user && user->isBot())
-			? tr::lng_context_noforwards_info_bot(tr::now, tr::rich)
-			: user
-			? ((user->flags() & UserDataFlag::NoForwardsMyEnabled)
-				? tr::lng_context_noforwards_info_mine(tr::now, tr::rich)
-				: tr::lng_context_noforwards_info_his(
-					tr::now,
-					lt_user,
-					tr::bold(user->shortName()),
-					tr::rich))
-			: tr::lng_context_noforwards_info_channel(tr::now, tr::rich)),
+		tr::ayu_UnforwardableContextMenuText(
+			tr::now,
+			tr::rich),
 		(addIcon && !user) ? &st::menuIconCopyright : nullptr);
 	button->setAttribute(Qt::WA_TransparentForMouseEvents);
 	menu->addAction(std::move(button));
@@ -3074,9 +3161,7 @@ TextWithEntities TransribedText(not_null<HistoryItem*> item) {
 }
 
 bool ItemHasTtl(HistoryItem *item) {
-	return (item && item->media())
-		? (item->media()->ttlSeconds() > 0)
-		: false;
+	return false; // AyuGram: allow downloading files with ttl
 }
 
 } // namespace HistoryView

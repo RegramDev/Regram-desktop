@@ -87,7 +87,7 @@ private:
 
 	int _oldCount;
 
-	std::vector<SampleWidget*> _cornerSamples[4];
+	std::vector<SampleWidget*> _cornerSamples[5];
 
 };
 

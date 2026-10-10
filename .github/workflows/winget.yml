@@ -4,6 +4,7 @@ on:
     types: [released, prereleased]
 jobs:
   publish:
+    if: github.repository == 'telegramdesktop/tdesktop'
     runs-on: windows-latest # action can only be run on windows
     steps:
       - if: github.event.action == 'released'

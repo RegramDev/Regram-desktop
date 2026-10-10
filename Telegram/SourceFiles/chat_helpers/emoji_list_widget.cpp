@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "chat_helpers/emoji_list_widget.h"
+#include "regram/core/local_premium.h"
+#include "regram/nagram/media/options.h"
 
 #include "window/window_media_preview.h"
 #include "api/api_peer_photo.h"
@@ -62,6 +64,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_menu_icons.h"
 
 #include <QtWidgets/QApplication>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 namespace ChatHelpers {
 namespace {
@@ -608,8 +614,13 @@ EmojiListWidget::EmojiListWidget(
 	}, lifetime());
 
 	rpl::combine(
-		Data::AmPremiumValue(&session()),
+		Regram::Premium::ForLocalFeaturesValue(&session()),
 		session().premiumPossibleValue()
+	) | rpl::skip(1) | rpl::on_next([=] {
+		refreshCustom();
+		resizeToWidth(width());
+	}, lifetime());
+	Nagram::ForDevice().Value(Nagram::Media::kHideRecommendedEmoji
 	) | rpl::skip(1) | rpl::on_next([=] {
 		refreshCustom();
 		resizeToWidth(width());
@@ -736,7 +747,7 @@ void EmojiListWidget::applyNextSearchQuery() {
 			});
 		}
 	}
-	if (_mode != Mode::Full || session().premium()) {
+	if (_mode != Mode::Full || Regram::Premium::ForLocalFeatures(session())) {
 		appendPremiumSearchResults();
 	}
 
@@ -1136,7 +1147,7 @@ void EmojiListWidget::showSearchResults() {
 				});
 			}
 		}
-		if (_mode != Mode::Full || session().premium()) {
+		if (_mode != Mode::Full || Regram::Premium::ForLocalFeatures(session())) {
 			appendPremiumSearchResults();
 		}
 		fillCloudSearchResults();
@@ -2368,7 +2379,7 @@ void EmojiListWidget::paint(
 	validateEmojiPaintContext(context);
 	paintSearchShortcuts(p, clip);
 
-	_paintAsPremium = session().premium();
+	_paintAsPremium = Regram::Premium::ForLocalFeatures(session());
 
 	auto [fromColumn, toColumn] = Ui::RowsInRange(
 		clip.x() - _rowsLeft,
@@ -3069,7 +3080,7 @@ void EmojiListWidget::selectEmoji(EmojiChosen data) {
 
 void EmojiListWidget::selectCustom(FileChosen data) {
 	const auto document = data.document;
-	const auto skip = (document->isPremiumEmoji() && !session().premium());
+	const auto skip = (document->isPremiumEmoji() && !Regram::Premium::ForLocalFeatures(session()));
 	if (!skip && _mode == Mode::Full) {
 		auto &settings = Core::App().settings();
 		settings.incrementRecentEmoji({ RecentEmojiDocument{
@@ -3507,13 +3518,17 @@ void EmojiListWidget::refreshCustom() {
 	const auto onlyUnicodeEmoji = _onlyUnicodeEmoji || !premiumPossible;
 	const auto premiumMayBeBought = (!onlyUnicodeEmoji)
 		&& premiumPossible
-		&& !session->premium()
+		&& !Regram::Premium::ForLocalFeatures(*session)
 		&& !_allowWithoutPremium;
 	const auto owner = &session->data();
 	const auto &sets = owner->stickers().sets();
+	const auto &settings = AyuSettings::getInstance();
 	const auto push = [&](uint64 setId, bool installed) {
 		const auto megagroup = _megagroupSet
 			&& (setId == Data::Stickers::MegagroupSetId);
+		if (settings.showOnlyAddedEmojisAndStickers() && !installed && !megagroup) {
+			return;
+		}
 		const auto lookupId = megagroup
 			? _megagroupSet->mgInfo->emojiSet.id
 			: setId;
@@ -3620,8 +3635,10 @@ void EmojiListWidget::refreshCustom() {
 	for (const auto setId : owner->stickers().emojiSetsOrder()) {
 		push(setId, true);
 	}
-	for (const auto setId : owner->stickers().featuredEmojiSetsOrder()) {
-		push(setId, false);
+	if (!Nagram::ForDevice().Get(Nagram::Media::kHideRecommendedEmoji)) {
+		for (const auto setId : owner->stickers().featuredEmojiSetsOrder()) {
+			push(setId, false);
+		}
 	}
 	refreshMegagroupStickers(push, GroupStickersPlace::Hidden);
 
@@ -3794,7 +3811,7 @@ void EmojiListWidget::refreshEmojiStatusCollectibles() {
 		.title = collectibles->title,
 		.list = std::move(set),
 		.canRemove = false,
-		.premiumRequired = !session().premium(),
+		.premiumRequired = !Regram::Premium::ForLocalFeatures(session()),
 	});
 }
 
@@ -4032,10 +4049,17 @@ void EmojiListWidget::setSelected(OverState newSelected) {
 		: style::cur_default);
 
 	const auto updateSelected = [&] {
+		// _selected may be stale here: applyNextSearchQuery() and the
+		// shortcut-set refresh clear _searchSets before resetting it.
+		const auto sections = sectionsCount();
 		if (const auto sticker = std::get_if<OverEmoji>(&_selected)) {
-			rtlupdate(emojiRect(sticker->section, sticker->index));
+			if (sticker->section < sections) {
+				rtlupdate(emojiRect(sticker->section, sticker->index));
+			}
 		} else if (const auto button = std::get_if<OverButton>(&_selected)) {
-			rtlupdate(buttonRect(button->section));
+			if (button->section < sections) {
+				rtlupdate(buttonRect(button->section));
+			}
 		} else if (const auto shortcut
 				= std::get_if<OverSearchShortcut>(&_selected)) {
 			if (shortcut->index >= 0
@@ -4052,7 +4076,7 @@ void EmojiListWidget::setSelected(OverState newSelected) {
 
 	const auto hasSelection = !v::is_null(_selected);
 	if (hasSelection && Core::App().settings().suggestEmoji()) {
-		Ui::Tooltip::Show(1000, this);
+		Ui::Tooltip::Show(350, this);
 	}
 
 	setCursor(hasSelection ? style::cur_pointer : style::cur_default);

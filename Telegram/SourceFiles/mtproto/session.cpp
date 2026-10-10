@@ -13,6 +13,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/core_settings.h"
 #include "base/unixtime.h"
+#include "regram/nagram/network/runtime.h"
 
 namespace MTP {
 namespace details {
@@ -244,8 +245,8 @@ void Session::refreshOptions() {
 	const auto useTcp = (proxyType != ProxyData::Type::Http);
 	const auto useHttp = (proxyType != ProxyData::Type::Mtproto)
 		&& (proxyType != ProxyData::Type::Web);
-	const auto useIPv4 = true;
-	const auto useIPv6 = settings.tryIPv6();
+	const auto useIPv4 = Nagram::Network::UseIPv4(true);
+	const auto useIPv6 = Nagram::Network::UseIPv6(settings.tryIPv6());
 	_data->setOptions(SessionOptions(
 		_instance->systemLangCode(),
 		_instance->cloudLangCode(),

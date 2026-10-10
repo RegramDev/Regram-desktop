@@ -14,6 +14,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_send.h"
 #include "ui/ui_utility.h"
 
+// AyuGram includes
+#include "regram/ayu/ui/settings/settings_main.h"
+
+
 namespace Info {
 namespace Settings {
 
@@ -213,7 +217,8 @@ const Ui::RoundRect *Widget::bottomSkipRounding() const {
 
 rpl::producer<bool> Widget::desiredShadowVisibility() const {
 	return (_type == ::Settings::MainId()
-		|| _type == ::Settings::InformationId())
+		|| _type == ::Settings::InformationId()
+		|| _type == ::Settings::AyuMain::Id())
 		? ContentWidget::desiredShadowVisibility()
 		: rpl::single(true);
 }
@@ -234,6 +239,10 @@ void Widget::checkBeforeCloseByEscape(Fn<void()> close) {
 
 rpl::producer<QString> Widget::title() {
 	return _inner->title();
+}
+
+rpl::producer<QString> Widget::titleBadge() {
+	return _inner->titleBadge();
 }
 
 void Widget::paintEvent(QPaintEvent *e) {

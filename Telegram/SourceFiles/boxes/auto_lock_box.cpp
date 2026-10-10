@@ -19,7 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 namespace {
 
 constexpr auto kCustom = std::numeric_limits<int>::max();
-constexpr auto kOptions = { 60, 300, 3600, 18000, kCustom };
+constexpr auto kOptions = { 5, 60, 300, 3600, 18000, kCustom };
 constexpr auto kDefaultCustom = "10:00"_cs;
 
 auto TimeString(int seconds) {
@@ -51,6 +51,9 @@ void AutoLockBox::prepare() {
 		const auto text = [&] {
 			if (seconds == kCustom) {
 				return QString();
+			}
+			if (seconds < 60) {
+				return tr::lng_seconds(tr::now, lt_count, seconds);
 			}
 			const auto minutes = (seconds % 3600);
 			return (minutes

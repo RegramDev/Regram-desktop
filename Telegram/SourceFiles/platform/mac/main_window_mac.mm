@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "platform/mac/main_window_mac.h"
+#include "regram/nagram/interface/notifications.h"
 
 #include "data/data_session.h"
 #include "core/application.h"
@@ -40,6 +41,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <CoreFoundation/CFURL.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/hidsystem/ev_keymap.h>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 @interface MainWindowObserver : NSObject {
 }
@@ -301,7 +306,8 @@ void MainWindow::unreadCounterChangedHook() {
 }
 
 void MainWindow::updateDockCounter() {
-	const auto counter = Core::App().unreadBadge();
+	const auto counter = AyuSettings::getInstance().hideNotificationBadge()
+		? 0 : Nagram::Interface::AppIconBadge(Core::App().unreadBadge());
 
 	const auto string = !counter
 		? QString()

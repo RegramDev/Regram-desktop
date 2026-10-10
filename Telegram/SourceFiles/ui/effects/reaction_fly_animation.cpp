@@ -17,6 +17,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/random.h"
 #include "styles/style_chat.h"
 
+// AyuGram includes
+#include "base/platform/base_platform_haptic.h"
+
+
 namespace Ui {
 namespace {
 
@@ -39,6 +43,7 @@ ReactionFlyAnimationArgs ReactionFlyAnimationArgs::translated(QPoint point) cons
 		.flyUp = flyUp,
 		.centerSizeMultiplier = centerSizeMultiplier,
 		.flyKeepSize = flyKeepSize,
+		.haptic = haptic,
 	};
 }
 
@@ -75,7 +80,8 @@ ReactionFlyAnimation::ReactionFlyAnimation(
 , _scaleOutDuration(args.scaleOutDuration)
 , _scaleOutTarget(args.scaleOutTarget)
 , _flyKeepSize(args.flyKeepSize)
-, _forceFirstFrame(args.forceFirstFrame) {
+, _forceFirstFrame(args.forceFirstFrame)
+, _haptic(args.haptic) {
 	const auto &list = owner->list(::Data::Reactions::Type::All);
 	auto centerIcon = (DocumentData*)nullptr;
 	auto aroundAnimation = (DocumentData*)nullptr;
@@ -355,14 +361,7 @@ void ReactionFlyAnimation::generateMiniCopies(
 	}
 }
 
-int ReactionFlyAnimation::computeParabolicTop(
-		Parabolic &cache,
-		int from,
-		int to,
-		int top,
-		float64 progress) const {
-	const auto t = progress;
-
+FlyParabola ComputeFlyParabola(int from, int to, int top) {
 	// result = a * t * t + b * t + c
 
 	// y = a * t * t + b * t
@@ -374,26 +373,42 @@ int ReactionFlyAnimation::computeParabolicTop(
 	// b = 2 * t_0 * y_1 / (2 * t_0 - 1)
 	// t_0 = (y_0 / y_1) +- sqrt((y_0 / y_1) * (y_0 / y_1 - 1))
 	const auto y_1 = to - from;
+	const auto y_0 = std::min(0, y_1) - top;
+	const auto ratio = y_1 ? (float64(y_0) / y_1) : 0.;
+	const auto root = y_1 ? sqrt(ratio * (ratio - 1)) : 0.;
+	const auto t_0 = !y_1
+		? 0.5
+		: (y_1 > 0)
+		? (ratio + root)
+		: (ratio - root);
+	const auto a = y_1 ? (y_1 / (1 - 2 * t_0)) : (-4 * y_0);
+	const auto b = y_1 - a;
+	return { a, b };
+}
+
+int ReactionFlyAnimation::computeParabolicTop(
+		Parabolic &cache,
+		int from,
+		int to,
+		int top,
+		float64 progress) const {
+	const auto t = progress;
+	const auto y_1 = to - from;
 	if (cache.key != y_1) {
-		const auto y_0 = std::min(0, y_1) - top;
-		const auto ratio = y_1 ? (float64(y_0) / y_1) : 0.;
-		const auto root = y_1 ? sqrt(ratio * (ratio - 1)) : 0.;
-		const auto t_0 = !y_1
-			? 0.5
-			: (y_1 > 0)
-			? (ratio + root)
-			: (ratio - root);
-		const auto a = y_1 ? (y_1 / (1 - 2 * t_0)) : (-4 * y_0);
-		const auto b = y_1 - a;
+		const auto parabola = ComputeFlyParabola(from, to, top);
 		cache.key = y_1;
-		cache.a = a;
-		cache.b = b;
+		cache.a = parabola.a;
+		cache.b = parabola.b;
 	}
 
 	return int(base::SafeRound(cache.a * t * t + cache.b * t + from));
 }
 
 void ReactionFlyAnimation::startAnimations() {
+	if (_haptic && !_hapticExecuted) {
+		base::Platform::Haptic();
+		_hapticExecuted = true;
+	}
 	if (const auto center = _center.get()) {
 		center->animate(callback());
 	}

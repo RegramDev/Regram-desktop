@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/chat/chat_style_radius.h"
+#include "regram/nagram/interface/roundness.h"
 #include "ui/chat/chat_style.h"
 #include "base/options.h"
 
@@ -16,6 +17,36 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Ui {
 namespace {
+
+constexpr auto kBubbleRadiusSliderMax = 16;
+
+int AppliedBubbleRadius = 16;
+int BubbleRadiusOverride = -1;
+
+[[nodiscard]] int ClampBubbleRadiusValue(int value) {
+	return (value < 0)
+		? 0
+		: (value > kBubbleRadiusSliderMax)
+		? kBubbleRadiusSliderMax
+		: value;
+}
+
+[[nodiscard]] int EffectiveBubbleRadiusValue() {
+	return (BubbleRadiusOverride >= 0)
+		? BubbleRadiusOverride
+		: AppliedBubbleRadius;
+}
+
+[[nodiscard]] int MapBubbleRadius(int sliderValue, int maximum) {
+	if (sliderValue <= 0 || maximum <= 0) {
+		return 0;
+	} else if (sliderValue >= kBubbleRadiusSliderMax) {
+		return maximum;
+	}
+	const auto result = (sliderValue * maximum + (kBubbleRadiusSliderMax / 2))
+		/ kBubbleRadiusSliderMax;
+	return (result < 0) ? 0 : (result > maximum) ? maximum : result;
+}
 
 base::options::toggle UseSmallMsgBubbleRadius({
 	.id = kOptionUseSmallMsgBubbleRadius,
@@ -28,34 +59,82 @@ base::options::toggle UseSmallMsgBubbleRadius({
 
 const char kOptionUseSmallMsgBubbleRadius[] = "use-small-msg-bubble-radius";
 
+void SetAppliedBubbleRadius(int value) {
+	AppliedBubbleRadius = ClampBubbleRadiusValue(value);
+}
+
+void SetBubbleRadiusOverride(int value) {
+	BubbleRadiusOverride = ClampBubbleRadiusValue(value);
+}
+
+void ClearBubbleRadiusOverride() {
+	BubbleRadiusOverride = -1;
+}
+
 int BubbleRadiusSmall() {
-	return st::bubbleRadiusSmall;
+	if (Nagram::Interface::BubblePercent()) {
+		return Nagram::Interface::AdjustBubbleRadius(st::bubbleRadiusSmall);
+	}
+	static auto cachedValue = -1;
+	static auto cachedRadius = st::bubbleRadiusSmall;
+	const auto value = EffectiveBubbleRadiusValue();
+	if (cachedValue != value) {
+		cachedValue = value;
+		cachedRadius = MapBubbleRadius(value, st::bubbleRadiusSmall);
+	}
+	return cachedRadius;
 }
 
 int BubbleRadiusLarge() {
-	static const auto result = [] {
-		if (UseSmallMsgBubbleRadius.value()) {
-			return st::bubbleRadiusSmall;
-		} else {
-			return st::bubbleRadiusLarge;
-		}
-	}();
-	return result;
+	if (Nagram::Interface::BubblePercent()) {
+		return Nagram::Interface::AdjustBubbleRadius(st::bubbleRadiusLarge);
+	}
+	static auto cachedValue = -1;
+	static auto cachedRadius = st::bubbleRadiusLarge;
+	const auto value = EffectiveBubbleRadiusValue();
+	if (cachedValue != value) {
+		cachedValue = value;
+		cachedRadius = MapBubbleRadius(value, st::bubbleRadiusLarge);
+	}
+	return cachedRadius;
+}
+
+int BubbleCornerRadius(BubbleCornerRounding corner) {
+	switch (corner) {
+	case BubbleCornerRounding::None:
+	case BubbleCornerRounding::Tail: return 0;
+	case BubbleCornerRounding::Small: return BubbleRadiusSmall();
+	case BubbleCornerRounding::Large: return BubbleRadiusLarge();
+	}
+	Unexpected("Corner in BubbleCornerRadius.");
 }
 
 int MsgFileThumbRadiusSmall() {
-	return st::msgFileThumbRadiusSmall;
+	if (Nagram::Interface::BubblePercent()) {
+		return Nagram::Interface::AdjustBubbleRadius(st::msgFileThumbRadiusSmall);
+	}
+	static auto cachedValue = -1;
+	static auto cachedRadius = st::msgFileThumbRadiusSmall;
+	const auto value = EffectiveBubbleRadiusValue();
+	if (cachedValue != value) {
+		cachedValue = value;
+		cachedRadius = MapBubbleRadius(value, st::msgFileThumbRadiusSmall);
+	}
+	return cachedRadius;
 }
 
 int MsgFileThumbRadiusLarge() {
-	static const auto result = [] {
-		if (UseSmallMsgBubbleRadius.value()) {
-			return st::msgFileThumbRadiusSmall;
-		} else {
-			return st::msgFileThumbRadiusLarge;
-		}
-	}();
-	return result;
+	if (Nagram::Interface::BubblePercent()) {
+		return Nagram::Interface::AdjustBubbleRadius(st::msgFileThumbRadiusLarge);
+	}
+	static auto cachedValue = -1;
+	static auto cachedRadius = st::msgFileThumbRadiusLarge;
+	const auto value = EffectiveBubbleRadiusValue();
+	if (cachedValue != value) {
+		cachedValue = value;
+		cachedRadius = MapBubbleRadius(value, st::msgFileThumbRadiusLarge);
+	}
+	return cachedRadius;
 }
 
 }

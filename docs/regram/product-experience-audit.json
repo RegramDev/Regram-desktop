@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-10-10",
+  "scope": "Core macOS product journeys, bounded live coverage; audit only",
+  "verdict": "Hold",
+  "verdict_scope": "Do not claim all imported functionality is accepted for release while PEA-01 remains. Development/testing can continue.",
+  "product": {
+    "name": "Regram",
+    "bundle_version": "7.3.0",
+    "configuration": "Debug",
+    "qt": "6.11.2",
+    "host_os": "macOS 27.0",
+    "host_cpu": "Apple M3",
+    "declared_minimum_macos": "12.0",
+    "minimum_os_runtime_verified": false
+  },
+  "evidence_levels": [
+    "Live-confirmed",
+    "Code-confirmed",
+    "Documented",
+    "Hypothesis"
+  ],
+  "counts": {
+    "P0": 0,
+    "P1": 1,
+    "P2": 4,
+    "P3": 0
+  },
+  "findings": [
+    {
+      "id": "PEA-01",
+      "severity": "P1",
+      "title": "Google/Yandex message translation cache can return pre-edit text",
+      "evidence_level": "Code-confirmed",
+      "runtime_reproduction": "Blocked: no remote translation request in this audit",
+      "source": [
+        {
+          "path": "Telegram/SourceFiles/regram/ayu/features/translator/ayu_translator.cpp",
+          "line": 144
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/ayu/features/translator/ayu_translator.cpp",
+          "line": 288
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/ayu/features/translator/ayu_translator.cpp",
+          "line": 309
+        }
+      ],
+      "expected": "Translation corresponds to the current source text and entities.",
+      "actual": "Message cache key omits the source version; cached originalText is not checked before translatedText is returned.",
+      "impact": "A successful result can describe superseded or opposite instructions.",
+      "recovery": "Changing the inherited provider clears the process cache; restarting also clears it. Code-traced, not newly exercised.",
+      "decision": "Invalidate or version the cache and isolate account/provider/request identity.",
+      "acceptance": "A controlled successful translation followed by an edit of the same peer/message/language returns the new result; changing entities, account or provider does not reuse stale results."
+    },
+    {
+      "id": "PEA-02",
+      "severity": "P2",
+      "title": "Inherited Google/Yandex draft translation loses original text entities",
+      "evidence_level": "Code-confirmed",
+      "source": [
+        {
+          "path": "Telegram/SourceFiles/regram/ayu/features/translator/implementations/google.cpp",
+          "line": 91
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/ayu/features/translator/html_parser.cpp",
+          "line": 13
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/nagram/services/draft_translation.cpp",
+          "line": 41
+        }
+      ],
+      "decision": "Protect structured spans consistently or disclose losses before applying the translation.",
+      "acceptance": "Synthetic hidden links, code and formatting survive translation across supported providers; cancellation preserves the draft."
+    },
+    {
+      "id": "PEA-03",
+      "severity": "P2",
+      "title": "Preference backup omits advanced device settings without naming the omission",
+      "evidence_level": "Code-confirmed + Documented",
+      "source": [
+        {
+          "path": "Telegram/SourceFiles/regram/nagram/settings/config.cpp",
+          "line": 163
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/nagram/core/exchange.cpp",
+          "line": 101
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/ayu/ayu_settings.cpp",
+          "line": 466
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/settings/shared.cpp",
+          "line": 24
+        }
+      ],
+      "decision": "Include suitable advanced device preferences or enumerate exclusions and provide restore verification.",
+      "acceptance": "Synthetic source and fresh destination profiles restore all included preferences, with explicit excluded categories. Existing omitted preferences are not described as deleted by import."
+    },
+    {
+      "id": "PEA-04",
+      "severity": "P2",
+      "title": "Compatible filter scope editor requires internal typed chat identifiers",
+      "evidence_level": "Code-confirmed; reused synthetic UI evidence",
+      "source": [
+        {
+          "path": "Telegram/SourceFiles/regram/filters/settings.cpp",
+          "line": 78
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/filters/scopes.cpp",
+          "line": 23
+        }
+      ],
+      "decision": "Add a conversation/topic picker while retaining compatible encoded scopes.",
+      "acceptance": "A user can choose a chat or topic by its visible identity and save an accurate scope without typing IDs."
+    },
+    {
+      "id": "PEA-05",
+      "severity": "P2",
+      "title": "Undownloaded audio requires restarting transcription manually",
+      "evidence_level": "Code-confirmed",
+      "source": [
+        {
+          "path": "Telegram/SourceFiles/regram/nagram/services/transcription.cpp",
+          "line": 605
+        },
+        {
+          "path": "Telegram/SourceFiles/regram/nagram/services/transcription_queue.cpp",
+          "line": 12
+        }
+      ],
+      "decision": "Chain download and transcription with visible stages, cancellation and service consent.",
+      "acceptance": "One start handles a synthetic uncached audio item; cancellation prevents subsequent submission and repeated clicks do not duplicate requests."
+    }
+  ],
+  "fresh_evidence": {
+    "root": ".cache/regram/product-audit-20261010.p1saor9g/evidence",
+    "model_tests": {
+      "exit_code": 0,
+      "pass_groups": 32,
+      "duration_seconds": 0.722,
+      "binary_sha256": "870bb30ae9893d92185cd3cb3654ef73198d876d38827e91cccc7028ec196288",
+      "kind": "fresh model/resource test; no UI or remote services"
+    },
+    "synthetic_startup": {
+      "network_outbound_denied": true,
+      "real_account_used": false,
+      "testagent": false,
+      "alive_after_12_seconds": true,
+      "exit_before_cleanup": null,
+      "renderer_lines": [
+        "[2026.10.10 16:38:58] RHI: Probe backend=Metal device=Apple M3 compute=yes.",
+        "[2026.10.10 16:38:58] QRhi: backing store primed for window"
+      ],
+      "owned_process_stopped": true,
+      "metal_backend_probe_confirmed": true,
+      "window_backing_store_primed_confirmed": true,
+      "visual_ui_confirmation": "Not tested in fresh startup; inspected earlier synthetic Qt screenshots separately"
+    }
+  },
+  "reused_evidence": {
+    "real_account_navigation": "docs/regram/debug-click-performance.json",
+    "original_operations": 27,
+    "optimized_operations": 54,
+    "settings_repaint_before_ms": 234.44325,
+    "settings_repaint_after_ms": 25.420584,
+    "cold_open_idle_repeat_ms": 48.9,
+    "cold_open_with_build_outlier_ms": 1370,
+    "new_real_account_tests_this_audit": 0
+  },
+  "coverage_gaps": [
+    {
+      "status": "Blocked",
+      "area": "Remote translation/transcription and provider cancellation semantics",
+      "reason": "No provider request, paid quota or private media used."
+    },
+    {
+      "status": "Blocked",
+      "area": "macOS 12, Intel, Windows and Linux execution",
+      "reason": "Corresponding environments unavailable."
+    },
+    {
+      "status": "Not tested",
+      "area": "Fresh signed-in UI actions, actual send/delete/logout/reset, notification delivery, accessibility and sustained media/scroll workloads"
+    },
+    {
+      "status": "Hypothesis",
+      "area": "Process-global translation cache can mix account identities",
+      "reason": "Account identity is absent from keys; concrete cross-account collision not reproduced."
+    }
+  ],
+  "product_changes_made": false,
+  "existing_account_or_settings_changes_made": false,
+  "conventional_test_failures": [],
+  "follow_up": {
+    "date": "2026-10-10",
+    "repair_status": "All five original findings fixed; model and isolated application verification added",
+    "report": "docs/regram/feature-checks.md",
+    "full_port_acceptance": "Still pending; see per-feature matrix gaps"
+  }
+}

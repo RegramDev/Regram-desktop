@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "storage/localimageloader.h"
+#include "regram/nagram/media/options.h"
 
 #include "api/api_text_entities.h"
 #include "api/api_sending.h"
@@ -46,9 +47,13 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QBuffer>
 #include <QtGui/QImageWriter>
 
+// AyuGram includes
+#include "regram/ayu/utils/telegram_helpers.h"
+
+
 namespace {
 
-constexpr auto kThumbnailQuality = 87;
+constexpr auto kThumbnailQuality = 95;
 constexpr auto kThumbnailSize = 320;
 constexpr auto kPhotoUploadPartSize = 32 * 1024;
 constexpr auto kRecompressAfterBpp = 4;
@@ -150,9 +155,10 @@ struct PreparedFileThumbnail {
 		uint64 randomId) {
 	auto caption = item->originalText();
 	TextUtilities::Trim(caption);
+	const auto captionNormalized = reverseLocalPremiumEmoji(caption, item->history());
 	auto sentEntities = Api::EntitiesToMTP(
 		&item->history()->session(),
-		caption.entities,
+		captionNormalized.entities,
 		Api::ConvertOption::SkipLocal);
 	const auto flags = !sentEntities.v.isEmpty()
 		? MTPDinputSingleMedia::Flag::f_entities
@@ -200,7 +206,7 @@ struct PreparedFileThumbnail {
 	auto result = QByteArray();
 	QBuffer buffer(&result);
 	QImageWriter writer(&buffer, "JPEG");
-	writer.setQuality(87);
+	writer.setQuality(95);
 	writer.setProgressiveScanWrite(true);
 	writer.write(full);
 	buffer.close();
@@ -757,15 +763,17 @@ void FileLoadTask::process(ProcessArgs &&args) {
 					Qt::IgnoreAspectRatio,
 					Qt::SmoothTransformation);
 			}
+			const auto gif = _animationAsGif && still->music.empty();
 			auto information = std::make_unique<
 				Ui::PreparedFileInformation>();
 			information->filemime = "video/mp4";
 			information->media = Ui::PreparedFileInformation::Video{
-				.isGifv = _animationAsGif,
+				.isGifv = gif,
 				.supportsStreaming = true,
+				.hasAudio = !still->music.empty(),
 				.duration = still->duration,
 				.thumbnail = std::move(preview),
-				.modifications = { .gif = _animationAsGif },
+				.modifications = { .gif = gif },
 			};
 			_information = std::move(information);
 			_content = QByteArray();
@@ -785,6 +793,7 @@ void FileLoadTask::process(ProcessArgs &&args) {
 	auto isAnimation = false;
 	auto isSong = false;
 	auto isVideo = false;
+	auto fileVideoPreview = false;
 	auto isVoice = (_type == SendMediaType::Audio);
 	auto isRound = (_type == SendMediaType::Round);
 	auto isSticker = false;
@@ -1055,7 +1064,11 @@ void FileLoadTask::process(ProcessArgs &&args) {
 					crl::time(0),
 					video->duration);
 			}
-			if (!_forceFile) {
+			fileVideoPreview = _forceFile
+				&& Nagram::ForDevice().Get(Nagram::Media::kMp4FilePreview)
+				&& (filemime == u"video/mp4"_q)
+				&& coverWidth > 0 && coverHeight > 0 && realSeconds > 0;
+			if (!_forceFile || fileVideoPreview) {
 				if (gif && !_album && (filemime == u"video/mp4"_q)) {
 					attributes.push_back(MTP_documentAttributeAnimated());
 				}
@@ -1241,7 +1254,7 @@ void FileLoadTask::process(ProcessArgs &&args) {
 	_result->photo = photo;
 	_result->document = document;
 	_result->photoThumbs = photoThumbs;
-	_result->forceFile = _forceFile;
+	_result->forceFile = _forceFile && !fileVideoPreview;
 }
 
 void FileLoadTask::finish() {

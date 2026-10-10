@@ -10,6 +10,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/random.h"
 #include "base/invoke_queued.h"
 #include "base/call_delayed.h"
+#include "regram/nagram/network/model.h"
+#include "regram/nagram/network/runtime.h"
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonArray>
@@ -233,6 +235,9 @@ void DomainResolver::resolve(const AttemptKey &key) {
 
 	ranges::reverse(attempts); // We go from last to first.
 
+	if (const auto doh = Nagram::Network::CustomDoh(); !doh.isEmpty()) {
+		attempts = { { Type::Mozilla, doh } };
+	}
 	_attempts.emplace(key, Attempts{ std::move(attempts) });
 	sendNextRequest(key);
 }
@@ -279,8 +284,7 @@ void DomainResolver::performRequest(
 	auto request = QNetworkRequest();
 	switch (attempt.type) {
 	case Type::Mozilla: {
-		url.setHost(attempt.data);
-		url.setPath("/dns-query");
+		Nagram::Network::SetDohEndpoint(url, attempt.data);
 		url.setQuery(QStringLiteral("name=%1&type=%2&random_padding=%3"
 		).arg(key.domain
 		).arg(key.ipv6 ? 28 : 1
@@ -349,6 +353,7 @@ QByteArray DomainResolver::finalizeRequest(
 			).arg(reply->error()));
 	}
 	const auto result = reply->readAll();
+	Nagram::Network::CheckDohReply(reply, result);
 	const auto i = _requests.find(key);
 	if (i != end(_requests)) {
 		auto &requests = i->second;

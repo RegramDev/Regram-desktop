@@ -26,6 +26,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/compose_controls_common.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
+#include "regram/nagram/compose/buttons.h"
 #include "ui/painter.h"
 #include "ui/ui_utility.h"
 #include "ui/widgets/buttons.h"
@@ -51,6 +52,10 @@ BottomControls::BottomControls(
 	setupOpenChatButton();
 	setupAboutHiddenAuthor();
 	setupPeerUpdates();
+	Nagram::ForDevice().Value(Nagram::Compose::kHideChannelMuteButton
+	) | rpl::skip(1) | rpl::on_next([=](bool) {
+		updateControlsVisibility();
+	}, lifetime());
 }
 
 BottomControls::~BottomControls() = default;
@@ -567,10 +572,11 @@ bool BottomControls::isMuteUnmute() const {
 	if (_mode != BottomControlsMode::History) {
 		return false;
 	}
-	return (_peer->isBroadcast() && !_peer->asChannel()->canPostMessages())
+	return !Nagram::Compose::Hidden(Nagram::Compose::kHideChannelMuteButton)
+		&& ((_peer->isBroadcast() && !_peer->asChannel()->canPostMessages())
 		|| (_peer->isGigagroup() && !Data::CanSendAnything(_peer))
 		|| _peer->isRepliesChat()
-		|| _peer->isVerifyCodes();
+		|| _peer->isVerifyCodes());
 }
 
 bool BottomControls::isReportMessages() const {

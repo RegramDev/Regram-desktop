@@ -18,6 +18,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_helpers.h" // GetErrorForSending.
 #include "history/history_view_swipe_back_session.h"
 #include "menu/menu_send.h" // SendMenu::Type.
+#include "regram/nagram/compose/options.h"
 #include "ui/widgets/buttons.h"
 #include "ui/widgets/tooltip.h"
 #include "ui/widgets/elastic_scroll.h"
@@ -66,6 +67,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_boxes.h"
 
 #include <QtCore/QMimeData>
+
+// AyuGram includes
+#include "regram/ayu/features/message_shot/message_shot.h"
+
 
 namespace HistoryView {
 namespace {
@@ -212,6 +217,10 @@ ScheduledWidget::ScheduledWidget(
 	_topBar->deleteSelectionRequest(
 	) | rpl::on_next([=] {
 		confirmDeleteSelected();
+	}, _topBar->lifetime());
+	_topBar->messageShotSelectionRequest(
+	) | rpl::on_next([=] {
+		AyuFeatures::MessageShot::Wrapper(_inner, [=] { clearSelected(); });
 	}, _topBar->lifetime());
 	_topBar->clearSelectionRequest(
 	) | rpl::on_next([=] {
@@ -624,7 +633,8 @@ bool ScheduledWidget::confirmSendingFiles(
 		(CanScheduleUntilOnline(_history->peer)
 			? Api::SendType::ScheduledToUser
 			: Api::SendType::Scheduled),
-		SendMenu::Details());
+		SendMenu::Details(),
+		[=](const TextWithTags &text) { _composeControls->setText(text); });
 
 	box->setConfirmedCallback(crl::guard(this, [=](
 			std::shared_ptr<Ui::PreparedBundle> bundle,
@@ -1608,6 +1618,11 @@ Window::SectionActionResult ScheduledWidget::sendBotCommand(
 void ScheduledWidget::listSendBotCommand(
 		const QString &command,
 		const FullMsgId &context) {
+	if (Nagram::ForDevice().Get(Nagram::Compose::kBotCommandsToDraft)) {
+		_composeControls->insertTextToField(Bot::WrapCommandInChat(
+			_history->peer, command, context) + ' ');
+		return;
+	}
 	const auto callback = [=](Api::SendOptions options) {
 		const auto text = Bot::WrapCommandInChat(
 			_history->peer,

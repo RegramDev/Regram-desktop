@@ -12,6 +12,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/controls/history_view_bottom_controls.h"
 #include "history/view/controls/history_view_compose_controls.h"
 #include "history/view/controls/history_view_compose_search.h"
+#include "history/view/controls/history_view_compose_stash.h"
 #include "history/view/controls/history_view_draft_options.h"
 #include "history/view/controls/history_view_suggest_options.h"
 #include "history/view/history_view_about_view.h"
@@ -35,6 +36,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item_components.h"
 #include "history/history_item_helpers.h" // GetErrorForSending.
 #include "history/history_view_pull_to_next_channel.h"
+#include "regram/nagram/compose/confirm.h"
+#include "regram/nagram/compose/options.h"
 #include "history/history_item_reply_markup.h"
 #include "history/history_view_pull_to_next_channel.h"
 #include "iv/iv_rich_message_serializer.h"
@@ -106,6 +109,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_replies_list.h"
 #include "data/data_peer_values.h"
 #include "data/data_changes.h"
+#include "data/data_compose_stash.h"
 #include "data/data_drafts.h"
 #include "data/data_shared_media.h"
 #include "data/data_send_action.h"
@@ -132,6 +136,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include <limits>
 #include <QtCore/QMimeData>
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+#include "regram/ayu/features/message_shot/message_shot.h"
+#include "base/unixtime.h"
+
 
 namespace HistoryView {
 
@@ -514,7 +524,6 @@ ChatWidget::ChatWidget(
 	}, lifetime());
 
 	setupRoot();
-	setupShortcuts();
 
 	_peer->updateFull();
 	if (const auto channel = _peer->asMegagroup()) {
@@ -532,6 +541,10 @@ ChatWidget::ChatWidget(
 	_topBar->deleteSelectionRequest(
 	) | rpl::on_next([=] {
 		confirmDeleteSelected();
+	}, _topBar->lifetime());
+	_topBar->messageShotSelectionRequest(
+	) | rpl::on_next([=] {
+		AyuFeatures::MessageShot::Wrapper(_inner, [=] { clearSelected(); });
 	}, _topBar->lifetime());
 	_topBar->forwardSelectionRequest(
 	) | rpl::on_next([=] {
@@ -576,7 +589,6 @@ ChatWidget::ChatWidget(
 			.repliesRootId = _repliesRootId,
 			.topic = _topic,
 			.sublist = _sublist,
-			.monoforumPeerId = _monoforumPeerId,
 			.scroll = _scroll.get(),
 			.list = _inner.data(),
 			.keyboardReservedHeight = [=] {
@@ -797,12 +809,13 @@ ChatWidget::ChatWidget(
 				}
 			}
 			if (action.options.scheduled) {
-				if (_topic) {
+				const auto &ghost = AyuSettings::ghost(&session());
+				if (!ghost.isUseScheduledMessages() && _topic) {
 					crl::on_main(this, [=, t = _topic] {
 						controller->showSection(
 							std::make_shared<HistoryView::ScheduledMemento>(t));
 					});
-				} else if (mode() == Mode::History) {
+				} else if (!ghost.isUseScheduledMessages() && mode() == Mode::History) {
 					crl::on_main(this, [=, history = action.history] {
 						controller->showSection(
 							std::make_shared<HistoryView::ScheduledMemento>(
@@ -851,6 +864,8 @@ ChatWidget::ChatWidget(
 
 	setupTopicViewer();
 	setupComposeControls();
+	setupComposeStash();
+	setupShortcuts();
 	setupSwipeReplyAndBack();
 
 	if (mode() != Mode::Sublist) {
@@ -1312,7 +1327,7 @@ void ChatWidget::subscribeToTopic() {
 void ChatWidget::closeCurrent() {
 	const auto thread = controller()->windowId().chat();
 	if ((_sublist && thread == _sublist) || (_topic && thread == _topic)) {
-		controller()->window().close();
+		Core::App().closeWindow(&controller()->window());
 	} else {
 		controller()->showBackFromStack(Window::SectionShow(
 			anim::type::normal,
@@ -1801,6 +1816,9 @@ void ChatWidget::setupComposeControls() {
 	) | rpl::on_next([=] {
 		_cornerButtons.updateJumpDownVisibility();
 		_cornerButtons.updateUnreadThingsVisibility();
+		if (_stash) {
+			_stash->updateButton();
+		}
 	}, lifetime());
 
 	_composeControls->viewportEvents(
@@ -1889,7 +1907,8 @@ void ChatWidget::setupSwipeReplyAndBack() {
 				&& (!view->data()->isEphemeral()
 					|| view->data()->out()))
 			|| view->data()->showSimilarChannels()
-			|| view->data()->isService()) {
+			|| (view->data()->isService()
+				&& !ServiceAllowsSwipeReply(view->data()))) {
 			return result;
 		}
 		const auto item = _inner->lookupItemByPoint(
@@ -2072,8 +2091,10 @@ bool ChatWidget::confirmSendingFiles(
 		_composeControls->getTextWithAppliedMarkdown(),
 		_peer,
 		Api::SendType::Normal,
-		sendMenuDetails());
+		sendMenuDetails(),
+		[=](const TextWithTags &text) { _composeControls->setText(text); });
 	box->setReplyTo(_composeControls->replyingToMessage());
+	_sendFilesBox = box.data();
 
 	box->setConfirmedCallback(crl::guard(this, [=](
 			std::shared_ptr<Ui::PreparedBundle> bundle,
@@ -2085,6 +2106,11 @@ bool ChatWidget::confirmSendingFiles(
 		}
 		sendingFilesConfirmed(std::move(bundle), options);
 	}));
+	box->setStashCallbacks(
+		crl::guard(this, [=] { return _stash->canTakeFromBox(); }),
+		crl::guard(this, [=](SendFilesStashed &&stashed) {
+			_stash->takeFromBox(std::move(stashed));
+		}));
 	box->setCancelledCallback(_composeControls->restoreTextCallback(
 		insertTextOnCancel));
 	box->takeTextWithTagsRequests() | rpl::on_next([=](TextWithTags &&text) {
@@ -2372,6 +2398,14 @@ void ChatWidget::send(Api::SendOptions options) {
 			&& showSlowmodeError()) {
 			return;
 		}
+	}
+
+	if (Nagram::Compose::TranslateBeforeSend(
+			controller()->uiShow(),
+			_peer,
+			_composeControls->fieldForMention(),
+			crl::guard(this, [=] { send(options); }))) {
+		return;
 	}
 
 	sendTextWithTags(
@@ -3082,6 +3116,9 @@ void ChatWidget::updateControlsVisibility() {
 		}
 	});
 	_bottom->updateControlsVisibility();
+	if (_stash) {
+		_stash->updateButton();
+	}
 	const auto active = _bottom->isButtonActive();
 	const auto choosingTheme = isChoosingTheme();
 	const auto hasSublistReplacement = _bottom->hasOpenChatButton()
@@ -3146,6 +3183,14 @@ bool ChatWidget::sendExistingDocument(
 		if (!checked) {
 			return false;
 		}
+	}
+	if (Nagram::Compose::ConfirmBeforeSend(
+			controller()->uiShow(),
+			document,
+			crl::guard(this, [=] {
+				sendExistingDocument(document, messageToSend, localId);
+			}))) {
+		return false;
 	}
 
 	Api::SendExistingDocument(
@@ -3246,6 +3291,14 @@ void ChatWidget::sendInlineResult(
 		action.options,
 		withPaymentApproved);
 	if (!checked) {
+		return;
+	}
+	if (Nagram::Compose::ConfirmBeforeSend(
+			controller()->uiShow(),
+			result->document(),
+			crl::guard(this, [=] {
+				sendInlineResult(result, bot, options, localMessageId);
+			}))) {
 		return;
 	}
 
@@ -5384,6 +5437,18 @@ void ChatWidget::sendBotCommand(
 	if (_peer != request.peer.get()) {
 		return;
 	}
+	if (!request.replyTo
+		&& Nagram::ForDevice().Get(Nagram::Compose::kBotCommandsToDraft)) {
+		const auto canSendTexts = (mode() == Mode::History)
+			? Data::CanSend(_peer, ChatRestriction::SendOther)
+			: _bottom->canSendTexts();
+		if (canSendTexts) {
+			_composeControls->insertTextToField(Bot::WrapCommandInChat(
+				_peer, request.command, request.context) + ' ');
+			setInnerFocus();
+			return;
+		}
+	}
 	const auto action = prepareSendAction(options);
 	const auto keyboardId = keyboardSourceIdForHiddenState();
 	const auto lastKeyboardUsed = keyboardId
@@ -5782,7 +5847,7 @@ void ChatWidget::listOpenPhoto(
 		photo,
 		{
 			context,
-			(item && !_monoforumPeerId)
+			(item && _peer->isForum())
 				? item->topicRootId()
 				: _repliesRootId,
 			_monoforumPeerId,
@@ -5804,7 +5869,7 @@ void ChatWidget::listOpenDocument(
 		showInMediaView,
 		{
 			context,
-			(item && !_monoforumPeerId)
+			(item && _peer->isForum())
 				? item->topicRootId()
 				: _repliesRootId,
 			_monoforumPeerId,
@@ -6084,6 +6149,13 @@ void ChatWidget::setupShortcuts() {
 				return true;
 			});
 		}
+		_stash
+			&& _stash->canExchange()
+			&& request->check(Command::StashMessage, 1)
+			&& request->handle([=] {
+				_stash->exchange();
+				return true;
+			});
 		if ((mode() == Mode::History) && session().supportMode()) {
 			request->check(Command::SupportToggleMuted)
 				&& request->handle([=] {
@@ -6091,6 +6163,57 @@ void ChatWidget::setupShortcuts() {
 					return true;
 				});
 		}
+	}, lifetime());
+}
+
+void ChatWidget::setupComposeStash() {
+	using namespace HistoryView::Controls;
+	_stash = std::make_unique<StashManager>(StashManagerDescriptor{
+		.session = &session(),
+		.buttons = &_cornerButtons,
+		.show = controller()->uiShow(),
+		.history = [=] { return _history.get(); },
+		.key = [=] { return _composeControls->composeStashKey(); },
+		.allowed = [=] { return _composeControls->canUseComposeStash(); },
+		.hasContent = [=] {
+			return _composeControls->hasStashableContent();
+		},
+		.canSendTexts = [=] { return _composeControls->canSendTexts(); },
+		.take = [=] {
+			auto result = _composeControls->takeComposeStash();
+			if (result) {
+				cancelSuggestPost();
+			}
+			return result;
+		},
+		.apply = [=](Data::ComposeStash &&stash) {
+			_composeControls->applyComposeStash(std::move(stash));
+			refreshSuggestFromDraft();
+		},
+		.suggest = [=] { return suggestOptions(); },
+		.clearComposer = [=] {
+			_composeControls->cancelReplyMessage();
+			cancelSuggestPost();
+			_composeControls->updateForwarding();
+		},
+		.openFiles = [=](Ui::PreparedList &list) -> SendFilesBox* {
+			if (showSendingFilesError(list)) {
+				return nullptr;
+			}
+			return confirmSendingFiles(std::move(list), QString())
+				? _sendFilesBox.data()
+				: nullptr;
+		},
+		.filesError = [=](const Ui::PreparedList &list) {
+			return showSendingFilesError(list);
+		},
+		.menuDetails = [=] { return sendMenuDetails(); },
+		.send = [=](Api::SendOptions options) { send(options); },
+	});
+
+	_composeControls->recordingActiveValue(
+	) | rpl::skip(1) | rpl::on_next([=] {
+		_stash->updateButton();
 	}, lifetime());
 }
 

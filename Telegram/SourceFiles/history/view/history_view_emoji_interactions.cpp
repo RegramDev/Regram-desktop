@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_emoji_interactions.h"
+#include "regram/nagram/messages/effects.h"
 
 #include "history/view/history_view_element.h"
 #include "history/view/media/history_view_sticker.h"
@@ -29,8 +30,8 @@ namespace HistoryView {
 namespace {
 
 constexpr auto kPremiumShift = 21. / 240;
-constexpr auto kMaxPlays = 5;
-constexpr auto kMaxPlaysWithSmallDelay = 3;
+constexpr auto kMaxPlays = 8;
+constexpr auto kMaxPlaysWithSmallDelay = 5;
 constexpr auto kSmallDelay = crl::time(200);
 constexpr auto kDropDelayedAfterDelay = crl::time(2000);
 
@@ -46,7 +47,8 @@ constexpr auto kDropDelayedAfterDelay = crl::time(2000);
 } // namespace
 
 bool CanPlayEmojiInteraction(not_null<const Element*> view) {
-	if (!view->media()) {
+	if (!view->media() || Nagram::Messages::EffectDisabled(
+			Stickers::EffectType::EmojiInteraction)) {
 		// Large emoji may be disabled.
 		return false;
 	} else if (!view->isIsolatedEmoji() && !view->isOnlyCustomEmoji()) {
@@ -65,6 +67,7 @@ EmojiInteractions::EmojiInteractions(
 , _layerParent(layerParent)
 , _session(session)
 , _itemTop(std::move(itemTop)) {
+	Nagram::Messages::Effects::Attach(this);
 	_session->data().viewRemoved(
 	) | rpl::filter([=] {
 		return !_plays.empty() || !_delayed.empty();
@@ -110,6 +113,10 @@ void EmojiInteractions::play(
 bool EmojiInteractions::playPremiumEffect(
 		not_null<const Element*> view,
 		Element *replacing) {
+	if (Nagram::Messages::EffectDisabled(
+			Stickers::EffectType::PremiumSticker)) {
+		return false;
+	}
 	const auto already = ranges::contains(_plays, view, &Play::view);
 	if (replacing) {
 		const auto i = ranges::find(_plays, replacing, &Play::view);
@@ -173,6 +180,10 @@ void EmojiInteractions::playEffectOnRead(not_null<const Element*> view) {
 }
 
 void EmojiInteractions::playEffect(not_null<const Element*> view) {
+	if (Nagram::Messages::EffectDisabled(
+			Stickers::EffectType::MessageEffect)) {
+		return;
+	}
 	if (const auto resolved = resolveEffect(view)) {
 		playEffect(view, resolved);
 	} else if (view->data()->effectId()) {
@@ -251,6 +262,9 @@ void EmojiInteractions::addPendingEffect(not_null<const Element*> view) {
 }
 
 void EmojiInteractions::checkPendingEffects() {
+	if (!Nagram::Messages::Effects::ShouldProcessPending(this)) {
+		return;
+	}
 	auto waitingDownload = false;
 	const auto predicate = [&](base::weak_ptr<const Element> weak) {
 		const auto strong = weak.get();

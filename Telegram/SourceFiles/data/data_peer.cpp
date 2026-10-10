@@ -6,6 +6,9 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_peer.h"
+#include "regram/nagram/interface/roundness.h"
+#include "regram/nagram/privacy/alias.h"
+#include "regram/nagram/privacy/protection.h"
 
 #include "api/api_sensitive_content.h"
 #include "data/data_user.h"
@@ -54,6 +57,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_account.h"
 #include "storage/storage_facade.h"
 #include "storage/storage_shared_media.h"
+
+// AyuGram includes
+#include "regram/ayu/ui/ayu_userpic.h"
+
 
 namespace {
 
@@ -116,6 +123,7 @@ UnavailableReason UnavailableReason::Sensitive() {
 QString UnavailableReason::Compute(
 		not_null<Main::Session*> session,
 		const std::vector<UnavailableReason> &list) {
+	if (Nagram::Privacy::IgnoreRestrictions()) return QString();
 	const auto &skip = IgnoredReasons(session);
 	auto &&filtered = ranges::views::all(
 		list
@@ -129,7 +137,7 @@ QString UnavailableReason::Compute(
 
 bool UnavailableReason::IgnoreSensitiveMark(
 		not_null<Main::Session*> session) {
-	return ranges::contains(
+	return Nagram::Privacy::SkipSensitiveWarning(session) || ranges::contains(
 			IgnoredReasons(session),
 			UnavailableReason::Sensitive().reason);
 }
@@ -138,27 +146,7 @@ bool UnavailableReason::IgnoreSensitiveMark(
 // need to find an "-all" tag in {full}, otherwise ignore this restriction.
 std::vector<UnavailableReason> UnavailableReason::Extract(
 		const MTPvector<MTPRestrictionReason> *list) {
-	if (!list) {
-		return {};
-	}
-	return ranges::views::all(
-		list->v
-	) | ranges::views::filter([](const MTPRestrictionReason &restriction) {
-		return restriction.match([&](const MTPDrestrictionReason &data) {
-			const auto platform = data.vplatform().v;
-			return false
-#ifdef OS_MAC_STORE
-				|| (platform == "ios"_q)
-#elif defined OS_WIN_STORE // OS_MAC_STORE
-				|| (platform == "ms"_q)
-#endif // OS_MAC_STORE || OS_WIN_STORE
-				|| (platform == "all"_q);
-		});
-	}) | ranges::views::transform([](const MTPRestrictionReason &restriction) {
-		return restriction.match([&](const MTPDrestrictionReason &data) {
-			return UnavailableReason{ qs(data.vreason()), qs(data.vtext()) };
-		});
-	}) | ranges::to_vector;
+	return {};
 }
 
 bool ApplyBotMenuButton(
@@ -441,9 +429,9 @@ QImage *PeerData::userpicCloudImage(Ui::PeerUserpicView &view) const {
 		_userpicEmpty = nullptr;
 		return image;
 	} else if (isNotificationsUser()) {
-		static auto result = Window::LogoNoMargin().scaledToWidth(
+		static auto result = Window::LogoTelegramDefault().scaledToWidth(
 			kUserpicSize,
-			Qt::SmoothTransformation);
+			Qt::SmoothTransformation).convertToFormat(QImage::Format_RGB32);
 		return &result;
 	}
 	return nullptr;
@@ -514,6 +502,14 @@ QImage PeerData::GenerateUserpicImage(
 		Ui::PeerUserpicView &view,
 		int size,
 		std::optional<int> radius) {
+	if (!radius) {
+		const auto shape = peer->isForum()
+			? Ui::PeerUserpicShape::Forum
+			: Ui::PeerUserpicShape::Circle;
+		if (AyuUserpic::ShouldOverrideShape(shape)) {
+			radius = AyuUserpic::ComputeRadius(size);
+		}
+	}
 	if (const auto userpic = peer->userpicCloudImage(view)) {
 		auto image = userpic->scaled(
 			{ size, size },
@@ -528,6 +524,9 @@ QImage PeerData::GenerateUserpicImage(
 			return image;
 		} else if (radius) {
 			return round(*radius);
+		} else if (const auto custom = Nagram::Interface::AvatarRadius(
+				size, peer->userpicShape())) {
+			return round(*custom);
 		} else if (peer->isForum()) {
 			return round(size * Ui::ForumUserpicRadiusMultiplier());
 		} else {
@@ -545,6 +544,10 @@ QImage PeerData::GenerateUserpicImage(
 	} else if (radius) {
 		const auto r = *radius;
 		peer->ensureEmptyUserpic()->paintRounded(p, 0, 0, size, size, r);
+	} else if (const auto custom = Nagram::Interface::AvatarRadius(
+			size, peer->userpicShape())) {
+		peer->ensureEmptyUserpic()->paintRounded(
+			p, 0, 0, size, size, *custom);
 	} else if (peer->isForum()) {
 		peer->ensureEmptyUserpic()->paintRounded(
 			p,
@@ -1089,6 +1092,7 @@ void PeerData::fillNames() {
 	};
 
 	appendToIndex(name());
+	appendToIndex(Nagram::Privacy::Alias(this));
 	const auto appendTranslit = !toIndexList.isEmpty()
 		&& cRussianLetters().match(toIndexList.front()).hasMatch();
 	if (appendTranslit) {
@@ -1318,12 +1322,24 @@ ChannelData *PeerData::broadcastMonoforum() const {
 const QString &PeerData::topBarNameText() const {
 	if (const auto to = migrateTo()) {
 		return to->topBarNameText();
+	}
+	const auto &alias = Nagram::Privacy::Alias(this);
+	if (!alias.isEmpty()) {
+		return alias;
 	} else if (const auto user = asUser()) {
 		if (!user->nameOrPhone.isEmpty()) {
 			return user->nameOrPhone;
 		}
 	}
 	return _name;
+}
+
+void PeerData::localNameChanged() {
+	auto previous = nameFirstLetters();
+	++_nameVersion;
+	fillNames();
+	session().changes().nameUpdated(this, std::move(previous));
+	session().changes().peerUpdated(this, UpdateFlag::Name);
 }
 
 int PeerData::nameVersion() const {
@@ -1688,6 +1704,9 @@ Data::SavedSublist *PeerData::monoforumSublistFor(
 		PeerId sublistPeerId) const {
 	if (!sublistPeerId) {
 		return nullptr;
+	} else if (isSelf()) {
+		return owner().savedMessages().sublistLoaded(
+			owner().peer(sublistPeerId));
 	} else if (const auto monoforum = this->monoforum()) {
 		return monoforum->sublistLoaded(owner().peer(sublistPeerId));
 	}
@@ -1731,6 +1750,17 @@ void PeerData::processTopics(const MTPVector<MTPForumTopic> &topics) {
 	if (const auto forum = this->forum()) {
 		forum->applyReceivedTopics(topics);
 	}
+}
+
+bool PeerData::isAyuNoForwards() const {
+	if (const auto user = asUser()) {
+		return user->isAyuNoForwards();
+	} else if (const auto channel = asChannel()) {
+		return channel->isAyuNoForwards();
+	} else if (const auto chat = asChat()) {
+		return chat->isAyuNoForwards();
+	}
+	return true;
 }
 
 bool PeerData::allowsForwarding() const {
@@ -2165,14 +2195,35 @@ void SetTopPinnedMessageId(
 			0);
 		session.saveSettingsDelayed();
 	}
-	session.storage().add(Storage::SharedMediaAddExisting(
-		peer->id,
-		MsgId(0), // topicRootId
-		PeerId(0), // monoforumPeerId
-		Storage::SharedMediaType::Pinned,
+	ApplyPinnedMessageId(
+		peer,
 		messageId,
-		{ messageId, ServerMaxMsgId }));
-	peer->owner().history(peer)->setHasPinnedMessages(true);
+		MsgId(0), // topicRootId
+		PeerId(0)); // monoforumPeerId
+}
+
+void ApplyPinnedMessageId(
+		not_null<PeerData*> peer,
+		MsgId messageId,
+		MsgId topicRootId,
+		PeerId monoforumPeerId) {
+	auto &session = peer->session();
+	if (const auto item = peer->owner().message(peer->id, messageId)) {
+		item->setIsPinned(true);
+		session.storage().add(Storage::SharedMediaAddSlice(
+			peer->id,
+			MsgId(0), // topicRootId
+			PeerId(0), // monoforumPeerId
+			Storage::SharedMediaType::Pinned,
+			{},
+			{ messageId, ServerMaxMsgId }));
+	} else {
+		session.api().requestPinnedMessagesIfNeeded(
+			peer,
+			messageId,
+			topicRootId,
+			monoforumPeerId);
+	}
 }
 
 FullMsgId ResolveTopPinnedId(

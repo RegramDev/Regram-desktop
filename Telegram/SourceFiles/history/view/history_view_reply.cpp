@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_reply.h"
+#include "regram/nagram/interface/options.h"
+#include "regram/nagram/messages/content.h"
 
 #include "core/click_handler_types.h"
 #include "core/ui_integration.h"
@@ -38,6 +40,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat.h"
 #include "styles/style_dialogs.h"
 #include "styles/style_polls.h"
+
+// AyuGram includes
+#include "regram/ayu/ayu_settings.h"
+
 
 namespace HistoryView {
 namespace {
@@ -292,6 +298,7 @@ void FillBackgroundEmoji(
 		bool quote,
 		const Ui::BackgroundEmojiCache &cache,
 		const QImage &firstGiftFrame) {
+	const auto was = p.opacity(); // for semi-transparent deleted messages
 	p.setClipRect(rect);
 
 	const auto &frames = cache.frames;
@@ -305,7 +312,7 @@ void FillBackgroundEmoji(
 		if (y >= rect.height()) {
 			return;
 		}
-		p.setOpacity(opacity);
+		p.setOpacity(was * opacity);
 		p.drawImage(
 			right - style::ConvertScale(x + (quote ? 12 : 0)),
 			rect.y() + y,
@@ -337,7 +344,7 @@ void FillBackgroundEmoji(
 	}
 
 	p.setClipping(false);
-	p.setOpacity(1.);
+	p.setOpacity(was);
 }
 
 Reply::Reply()
@@ -409,7 +416,8 @@ void Reply::update(
 		|| (externalMedia && externalMedia->hasReplyPreview())
 		|| (pollMediaPtr
 			&& (pollMediaPtr->photo || pollMediaPtr->document));
-	_hasPreview = hasPreview ? 1 : 0;
+	_hasPreview = (hasPreview && !Nagram::ForDevice().Get(
+		Nagram::Interface::kHideReplyThumbnail)) ? 1 : 0;
 	_displaying = data->displaying() ? 1 : 0;
 	_multiline = data->multiline() ? 1 : 0;
 	const auto hasQuoteIcon = _displaying
@@ -466,6 +474,9 @@ void Reply::update(
 		text,
 		_multiline ? Ui::ItemTextDefaultOptions() : Ui::DialogTextOptions(),
 		helper.context());
+	if (view->context() == Context::MediaEditor) {
+		_text.setSpoilerRevealed(true, anim::type::instant);
+	}
 
 	updateName(view, data);
 
@@ -817,18 +828,25 @@ void Reply::paint(
 	y += st::historyReplyTop;
 	const auto rect = QRect(x, y, w, _height);
 	const auto selected = context.selected();
-	const auto backgroundEmojiId = _colorPeer
+	const auto themeColors = Nagram::ForDevice().Get(
+		Nagram::Interface::kThemeReplyColors);
+	const auto backgroundEmojiId = (!themeColors && _colorPeer)
 		? _colorPeer->backgroundEmojiId()
 		: DocumentId();
-	const auto colorIndexPlusOne = _colorPeer
+	const auto colorIndexPlusOne = themeColors
+		? 0
+		: _colorPeer
 		? (_colorPeer->colorIndex() + 1)
 		: _hiddenSenderColorIndexPlusOne;
-	const auto &colorCollectible = _colorPeer
+	const auto &colorCollectible = (!themeColors && _colorPeer)
 		? _colorPeer->colorCollectible()
 		: nullptr;
-	const auto useColorCollectible = colorCollectible && !context.outbg;
+	const auto useColorCollectible = !themeColors
+		&& colorCollectible && !context.outbg;
 	const auto useColorIndex = colorIndexPlusOne && !context.outbg;
-	const auto colorPattern = colorCollectible
+	const auto colorPattern = themeColors
+		? 0
+		: colorCollectible
 		? st->collectiblePatternIndex(colorCollectible)
 		: colorIndexPlusOne
 		? st->colorPatternIndex(colorIndexPlusOne - 1)
@@ -864,12 +882,14 @@ void Reply::paint(
 			inBubble,
 			useColorIndex ? colorIndexPlusOne : 0)];
 	const auto rippleColor = cache->bg;
-	if (!inBubble) {
+	const auto simplified = Nagram::Messages::SimplifiedReplies();
+	if (!inBubble || simplified) {
 		cache->bg = QColor(0, 0, 0, 0);
 	}
 	Ui::Text::ValidateQuotePaintCache(*cache, quoteSt);
 	Ui::Text::FillQuotePaint(p, rect, *cache, quoteSt);
-	if (backgroundEmojiData) {
+	if (backgroundEmojiData && !simplified
+		&& !AyuSettings::getInstance().simpleQuotesAndReplies()) {
 		ValidateBackgroundEmoji(
 			backgroundEmojiId,
 			colorCollectible,
@@ -886,13 +906,13 @@ void Reply::paint(
 				backgroundEmojiData->firstGiftFrame);
 		}
 	}
-	if (!inBubble) {
+	if (!inBubble || simplified) {
 		cache->bg = rippleColor;
 	}
 
 	if (_ripple.animation) {
 		_ripple.lastPaintedPoint = inBubble ? QPoint(x, y) : QPoint();
-		_ripple.animation->paint(p, x, y, w, &rippleColor);
+		_ripple.animation->paint(p, x, y, w, &cache->bg2);
 		if (_ripple.animation->empty()) {
 			_ripple.animation.reset();
 			_ripple.lastPaintedPoint = {};
@@ -979,7 +999,9 @@ void Reply::paint(
 							.outer = to.size(),
 						});
 					p.drawPixmap(to.x(), to.y(), preview);
-					if (_spoiler) {
+					const auto mediaEditor = (view->context()
+						== Context::MediaEditor);
+					if (_spoiler && !mediaEditor) {
 						view->clearCustomEmojiRepaint();
 						FillPreviewSpoiler(
 							p,
