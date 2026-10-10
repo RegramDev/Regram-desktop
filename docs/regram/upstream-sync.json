@@ -37,6 +37,12 @@
     "source": "https://github.com/telegramdesktop/tdesktop/commit/28ac576967a1026ecc89a927360fa0e138d7c88c",
     "product_paths_updated": 52,
     "preserved_local_workflow_documents": true,
-    "runtime_validation": "Release builds pending; earlier Debug results describe the v7.3.0 baseline"
+    "runtime_validation": "Release builds pending; earlier Debug results describe the v7.3.0 baseline",
+    "history_integration": {
+      "method": "merge upstream/dev into regram",
+      "upstream_parent": "28ac576967a1026ecc89a927360fa0e138d7c88c",
+      "product_source": "Previously integrated v7.3.0 and dev fixes retained; overlapping snapshot merges resolved without duplicate code",
+      "local_workflow_documents": "preserved"
+    }
   }
 }

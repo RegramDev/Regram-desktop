@@ -15,3 +15,7 @@ macOS arm64 Debug 整应用构建通过；隔离写入／重启读取两个进�
 证据 `.cache/regram/restored-qt.mq307j2s/evidence/`，测试构建日志 `.cache/regram/upstream-730-test-build06.log`。测试入口已恢复 no-op，正常产物构建日志 `.cache/regram/qt-730-normal-build.log`。201 个功能选项仍保留；默认关闭 Material 风格开关并恢复 Qt 的弹层圆角／动画，已有非玻璃外观选项仍可选择。
 
 测试使用虚构账户及不可用本机代理，未修改真实账户。Windows／Linux、macOS 12 实机和 M0～M8 全量功能仍需各自验收。
+
+## 上游提交历史
+
+发布分支 `regram` 通过正式合并接入 `telegramdesktop/tdesktop:dev` 的提交历史，合并父提交为 `28ac576967a1026ecc89a927360fa0e138d7c88c`。此前源码快照已整合 v7.3.0 和这些开发分支修复，但缺少上游祖先关系，GitHub 因此显示落后。合并保留已验证的 Regram 产品源码，避免再次应用相同变更产生重复函数，并保留本地工作流文档。Regram 自身的提交会正常显示为 ahead；上游落后数应为零。
