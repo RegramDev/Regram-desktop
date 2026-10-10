@@ -136,6 +136,11 @@ void Filters() {
 	rule.scopes[0].thread = 0;
 	Check(engine.setRules({ rule }), "conversation scope accepted");
 	Check(engine.evaluate(u"广告", peer).hidden, "conversation includes topics");
+	rule.enabled = false;
+	Check(engine.setRules({ rule }), "disabled rule retained after switch migration");
+	Check(!engine.evaluate(u"广告", peer).hidden,
+		"migrated disabled rules do not unexpectedly hide messages");
+	rule.enabled = true;
 	rule.unresolvedScopes = { "ios:unknown:42" };
 	Check(engine.setRules({ rule }), "unresolved rule retained for diagnosis");
 	Check(!engine.problems().empty(), "unresolved scope reported");

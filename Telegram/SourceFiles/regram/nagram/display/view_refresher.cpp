@@ -1,5 +1,6 @@
 #include "regram/nagram/display/view_refresher.h"
 
+#include "regram/filters/runtime.h"
 #include "regram/nagram/core/options.h"
 #include "base/weak_ptr.h"
 #include "crl/crl_on_main.h"
@@ -12,6 +13,7 @@
 namespace Nagram {
 
 void ViewRefresher::Attach(not_null<Main::Session*> session) {
+	Regram::Filters::Migrate(session);
 	const auto pending = session->lifetime().make_state<bool>(false);
 	const auto weak = base::make_weak(session);
 	rpl::merge(

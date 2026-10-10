@@ -117,6 +117,23 @@ StoredRules Read(not_null<Main::Session*> session) {
 	return StateFor(session).stored;
 }
 
+void Migrate(not_null<Main::Session*> session) {
+	const auto legacy = "nagram.regramFiltersEnabled";
+	if (session->local().readPref<QByteArray>(legacy) != "0") {
+		return;
+	}
+	const auto current = Read(session);
+	auto rules = current.rules;
+	for (auto &rule : rules) {
+		rule.enabled = false;
+	}
+	const auto error = current.error.isEmpty()
+		? Write(session, current.raw, rules) : QString();
+	if (error.isEmpty()) {
+		session->local().clearPref(legacy);
+	}
+}
+
 QString Write(
 		not_null<Main::Session*> session,
 		const QByteArray &expected,

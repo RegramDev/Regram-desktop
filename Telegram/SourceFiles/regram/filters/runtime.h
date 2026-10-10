@@ -17,6 +17,7 @@ struct StoredRules {
 
 [[nodiscard]] bool ValidateStored(const QByteArray &raw);
 [[nodiscard]] StoredRules Read(not_null<Main::Session*> session);
+void Migrate(not_null<Main::Session*> session);
 [[nodiscard]] QString Write(
 	not_null<Main::Session*> session,
 	const QByteArray &expected,
