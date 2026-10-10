@@ -34,7 +34,9 @@ CloseApplications=force
 DisableDirPage=no
 DisableProgramGroupPage=no
 WizardStyle=modern
+#ifndef DisableSigning
 SignTool=sha256
+#endif
 
 #ifndef MyOutputBaseFilename
   #if MyBuildTarget == "winarm"
@@ -79,6 +81,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#ReleasePath}\Regram.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourcePath}..\..\LEGAL"; DestDir: "{app}"; Flags: ignoreversion
 #if MyBuildTarget != "winarm"
 Source: "{#ReleasePath}\{#ModulesFolder}\d3d\d3dcompiler_47.dll"; DestDir: "{app}\{#ModulesFolder}\d3d"; Flags: ignoreversion
 #endif

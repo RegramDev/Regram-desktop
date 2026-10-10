@@ -131,6 +131,7 @@ def main():
         "-DOPENSSL_FOUND=1", f"-DOPENSSL_INCLUDE_DIR={libraries / 'openssl3/include'}",
         f"-DOPENSSL_CRYPTO_LIBRARY={libraries / 'openssl3/libcrypto.a'}",
         f"-DOPENSSL_SSL_LIBRARY={libraries / 'openssl3/libssl.a'}",
+        "-DTD_E2E_ONLY=ON",
     ])
     run(["cmake", "--build", work / "tde2e-build", "--parallel", args.jobs])
     run([
