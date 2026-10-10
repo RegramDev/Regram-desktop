@@ -148,6 +148,7 @@ def main():
     os.environ.pop("QT", None)
     run([
         "cmake", "-S", root, "-B", work / "app-build", "-G", "Xcode", "-C", api,
+        "-UQt*_DIR", "-UQT*_DIR",
         f"-Dqt_requested={qt}", f"-DREGRAM_DEPENDENCIES_DIR={dependencies}",
         "-DREGRAM_DEBUG_QT_GUI_LIBRARY=", "-DDESKTOP_APP_RELEASE_QT=ON",
         "-DDESKTOP_APP_TEST_APPS=OFF", "-DDESKTOP_APP_MAC_ARCH=arm64",
