@@ -6,6 +6,7 @@
 #include "base/debug_log.h"
 
 #include "lang_auto_counts.h"
+#include "lang_auto.h"
 
 #include <QtCore/QFile>
 #include <QtCore/QLocale>
@@ -154,8 +155,13 @@ QString LocalizedValue(const Lang::Instance &instance, ushort key) {
 	}
 	const auto &translations = Selected(instance);
 	const auto found = translations.find(key);
-	if (found == translations.end()
-		|| !instance.getNonDefaultValue(found->second.name).isEmpty()) {
+	if (found == translations.end()) {
+		return current;
+	}
+	const auto custom = instance.getNonDefaultValue(found->second.name);
+	if (!custom.isEmpty()
+		&& (instance.id() == Lang::CustomLanguageId()
+			|| custom != Lang::GetOriginalValue(key))) {
 		return current;
 	}
 	return found->second.value;
