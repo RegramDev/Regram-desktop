@@ -2,7 +2,7 @@
 
 参考 Regram iOS `a5c80b6d5ff8b995cd6e4d5737a058dd894e3293` 的 `MessageFilter.swift` 和 `RGContentFilter.swift`。桌面端保留 Qt 界面，规则和文件格式一致。
 
-进入 **设置 → Regram 设置 → 消息过滤**，添加关键词或正则表达式。匹配不区分大小写，作用于收到的消息原文；发送的消息保持显示。搜索和共享媒体保留原文。每条规则可停用、编辑、删除，范围可选全部聊天或指定聊天。**保留规则优先于隐藏规则**，无效正则或无法识别的范围不会隐藏消息。
+进入 **设置 → Regram 设置 → 规则 → 消息过滤**，添加关键词或正则表达式。匹配不区分大小写，作用于收到的消息原文；发送的消息保持显示。搜索和共享媒体保留原文。每条规则可停用、编辑、删除，范围可选全部聊天或指定聊天。**保留规则优先于隐藏规则**，无效正则或无法识别的范围不会隐藏消息。
 
 消息或选中文字的右键菜单可“添加到消息过滤”，打开编辑器确认后保存。从用户资料或消息右键菜单可隐藏用户或机器人；“隐藏的用户”列表可解除隐藏。只匹配实际发送者，不匹配转发来源、机器人署名、表情回应或正在输入状态。聊天内停用关键词过滤不会解除隐藏用户。
 
@@ -31,7 +31,7 @@
 
 ## English
 
-Open **Settings → Regram Settings → Message filters**. Add a case-insensitive keyword or regex, choose all chats or specific chats, and optionally mark it as a keep rule. Keep rules win regardless of order. Rules match incoming original message text. Invalid patterns and unsupported scopes stay inactive.
+Open **Settings → Regram Settings → Rules → Message filters**. Add a case-insensitive keyword or regex, choose all chats or specific chats, and optionally mark it as a keep rule. Keep rules win regardless of order. Rules match incoming original message text. Invalid patterns and unsupported scopes stay inactive.
 
 Import and export use the same JSON array as Regram iOS and the filename `regram-message-filter.json`. Imports merge and deduplicate without replacing existing rules, preserving each rule's enabled state. Right-click an exported JSON attachment to add its rules after downloading, validation and confirmation. Selected message text can also open a new rule editor.
 
