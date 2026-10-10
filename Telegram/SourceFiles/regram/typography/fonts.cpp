@@ -82,6 +82,14 @@ QString Root() {
 	return cWorkingDir() + u"tdata/regram/fonts/"_q;
 }
 
+QString CjkFamily() {
+	return QString::fromUtf8(Core::App().settings().readPref<QByteArray>(kCjkFamilyKey));
+}
+
+void SetCjkFamily(const QString &family) {
+	Core::App().settings().writePref<QByteArray>(kCjkFamilyKey, family.toUtf8());
+}
+
 bool Save(const QString &path, const QByteArray &bytes) {
 	QDir().mkpath(QFileInfo(path).absolutePath());
 	auto file = QSaveFile(path);
@@ -191,7 +199,7 @@ void ApplyFamily(
 	auto &settings = Core::App().settings();
 	switch (target) {
 	case Target::Interface: settings.setCustomFontFamily(family); break;
-	case Target::Chinese: settings.writePref<QString>(kCjkFamilyKey, family); break;
+	case Target::Chinese: SetCjkFamily(family); break;
 	case Target::Code: AyuSettings::getInstance().setMonoFont(family); break;
 	}
 	Local::writeSettings();
@@ -379,8 +387,8 @@ bool RemoveFont(not_null<Ui::GenericBox*> box, Installed entry) {
 	if (unavailable(settings.customFontFamily())) {
 		settings.setCustomFontFamily({});
 	}
-	if (unavailable(settings.readPref<QString>(kCjkFamilyKey))) {
-		settings.writePref<QString>(kCjkFamilyKey, QString());
+	if (unavailable(CjkFamily())) {
+		SetCjkFamily(QString());
 	}
 	if (unavailable(AyuSettings::getInstance().monoFont())) {
 		AyuSettings::getInstance().setMonoFont({});
@@ -488,7 +496,7 @@ void Start() {
 	auto &settings = Core::App().settings();
 	const auto active = QStringList{
 		settings.customFontFamily(),
-		settings.readPref<QString>(kCjkFamilyKey),
+		CjkFamily(),
 		AyuSettings::getInstance().monoFont(),
 	};
 	for (const auto &entry : InstalledFonts()) {
@@ -504,7 +512,7 @@ void Start() {
 			}
 		}
 	}
-	const auto family = Core::App().settings().readPref<QString>(kCjkFamilyKey);
+	const auto family = CjkFamily();
 	if (!family.isEmpty()) {
 		for (const auto script : { QChar::Script_Han, QChar::Script_Hiragana, QChar::Script_Katakana }) {
 			QFontDatabase::setApplicationFallbackFontFamilies(script, { family });

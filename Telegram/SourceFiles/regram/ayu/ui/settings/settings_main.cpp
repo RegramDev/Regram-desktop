@@ -141,7 +141,7 @@ void BuildLinks(SectionBuilder &builder) {
 const auto kMeta = BuildHelper({
 	.id = AyuMain::Id(),
 	.parentId = MainId(),
-	.title = &tr::ayu_AyuPreferences,
+	.title = &tr::lng_regram_settings,
 	.icon = &st::menuIconPremium,
 }, [](SectionBuilder &builder) {
 	BuildLogo(builder);
@@ -154,7 +154,7 @@ const auto kMeta = BuildHelper({
 } // namespace
 
 rpl::producer<QString> AyuMain::title() {
-	return tr::ayu_AyuPreferences();
+	return tr::lng_regram_settings();
 }
 
 AyuMain::AyuMain(

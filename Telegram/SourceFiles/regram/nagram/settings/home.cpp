@@ -25,7 +25,7 @@ Settings::Type HomeId() {
 
 void AddSettingsEntry(::Settings::Builder::SectionBuilder &builder) {
 	builder.addSectionButton({
-		.title = tr::lng_nagram_settings(),
+		.title = tr::lng_regram_settings(),
 		.targetSection = HomeId(),
 		.icon = { &st::menuIconNagram },
 		.keywords = { u"Regram"_q, u"desktop"_q },
