@@ -38,7 +38,7 @@ Liquid Glass 和独立 AppKit 界面已移除，使用 Telegram Desktop 原版 Q
 
 [Regram Release 工作流](.github/workflows/regram-release.yml) 在对应系统上构建 Windows x64、Linux x64 和 macOS Intel。Apple Silicon 使用独立 macOS Release 脚本。安装包提供校验值及构建清单，不携带账号数据、构建日志或本地凭据文件。
 
-发布前检查上游最新稳定版及开发分支更新，保留 Regram 功能并整合适用的源码变更后，再推送同步后的源码并构建。当前稳定基线为 v7.3.0，额外的开发分支修复以 [上游同步记录](docs/regram/upstream-sync.json) 中的提交为准。
+发布前检查上游最新稳定版及开发分支更新，保留 Regram 功能并整合适用的源码变更后，再推送同步后的源码并构建。当前稳定基线为 v7.3.1，额外的开发分支修复以 [上游同步记录](docs/regram/upstream-sync.json) 中的提交为准。
 
 ## 文档
 

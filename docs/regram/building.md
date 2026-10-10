@@ -1,6 +1,6 @@
 # Regram Desktop 构建与验证
 
-当前源码基线为 Telegram Desktop v7.3.0，分支 `regram`。保留上游 CMake 目标 `Telegram`，Regram 可执行文件输出名为 `Regram`。开发及回归使用 Debug；制作用户明确请求的安装包时使用独立的 Release 构建。
+当前源码基线为 Telegram Desktop v7.3.1，分支 `regram`。保留上游 CMake 目标 `Telegram`，Regram 可执行文件输出名为 `Regram`。开发及回归使用 Debug；制作用户明确请求的安装包时使用独立的 Release 构建。
 
 本地凭据在 Git 忽略的 `.local/regram/api.cmake` 中。新机器复制 `Telegram/build/regram/api.cmake.example` 到该位置后自行填写；CI 使用私有变量传入 `TDESKTOP_API_ID`、`TDESKTOP_API_HASH`。不要把实际 hash 写入公共配置或命令示例。
 

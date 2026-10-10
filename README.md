@@ -38,7 +38,7 @@ Start with the [Regram build and packaging guide](docs/regram/building.md). Deve
 
 The [Regram Release workflow](.github/workflows/regram-release.yml) builds Windows x64, Linux x64, and macOS Intel on native runners. Apple Silicon uses the isolated macOS release script. Installers include checksums and build manifests; account data, build logs, and local credential files are excluded.
 
-Before a release, check the latest upstream stable release and development commits, integrate applicable source updates while retaining Regram features, then push the synchronized source and build the packages. The stable baseline is v7.3.0; the [upstream sync record](docs/regram/upstream-sync.json) identifies the additional development fixes used by the release.
+Before a release, check the latest upstream stable release and development commits, integrate applicable source updates while retaining Regram features, then push the synchronized source and build the packages. The stable baseline is v7.3.1; the [upstream sync record](docs/regram/upstream-sync.json) identifies the additional development fixes used by the release.
 
 ## Documentation
 

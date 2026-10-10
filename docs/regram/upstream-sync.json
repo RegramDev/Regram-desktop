@@ -44,5 +44,23 @@
       "product_source": "Previously integrated v7.3.0 and dev fixes retained; overlapping snapshot merges resolved without duplicate code",
       "local_workflow_documents": "preserved"
     }
+  },
+  "latest_stable": "v7.3.1",
+  "latest_upstream_commit": "6fed91ffab9861771a75f29df65031b3c80b6941",
+  "latest_sync": {
+    "from": "v7.3.0",
+    "to": "v7.3.1",
+    "method": "merge upstream/dev",
+    "commit": "6fed91ffab9861771a75f29df65031b3c80b6941",
+    "conflicts_resolved": [
+      "Regram version constants and Windows version resource branding"
+    ],
+    "changes": [
+      "web-page photo enlarge button grouping and ripple animation",
+      "media-viewer Ctrl+S shortcut arbitration",
+      "7.3.1 version metadata"
+    ],
+    "features_preserved": true,
+    "release_validation": "pending all platform optimized builds"
   }
 }
