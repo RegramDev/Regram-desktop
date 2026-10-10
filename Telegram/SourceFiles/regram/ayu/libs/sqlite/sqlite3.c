@@ -107372,6 +107372,8 @@ SQLITE_PRIVATE int sqlite3JournalSize(sqlite3_vfs *pVfs){
 /* BEGIN SQLCIPHER */
 #ifdef SQLITE_HAS_CODEC
 
+#include <stdint.h>
+
 /* #include "sqliteInt.h" */
 /* #include "btreeInt.h" */
 /* #include "pager.h" */
