@@ -1,15 +1,62 @@
 # Regram Desktop
 
-Regram Desktop is an independent Telegram client based on [Telegram Desktop][telegram_desktop]. Development follows the [iOS porting plan](docs/regram/regram-desktop-plan.md) and [feature matrix](docs/regram/regram-desktop-feature-matrix.md). See the [implementation and platform verification record](docs/regram/progress.md), [build notes](docs/regram/building.md) and [pinned Nagram/AyuGram references](docs/regram/references.md).
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-The initial upstream baseline was v7.2.9; the current source baseline is v7.3.0. Regram keeps the upstream Qt interface. Regram uses independent application and data identifiers, and upstream automatic updates are disabled. Porting and platform verification are in progress; the upstream download links below refer to Telegram's own releases.
+<p><img src="Telegram/Resources/art/icon256.png" width="96" alt="Regram icon"></p>
 
-The source code retains the upstream GPLv3 license with OpenSSL exception and third-party notices. Target platforms are Windows x64, macOS arm64/x64 and Linux x64; support and release packages are declared only after their own verification.
+Regram is an independent, cross-platform Telegram client built on Telegram Desktop. It combines features inspired by [Nagram-Qt](https://github.com/NextAlone/Nagram-Qt) and [AyuGram Desktop](https://github.com/AyuGram/AyuGramDesktop) under the Regram name, while keeping the original Qt interface.
+
+## Downloads
+
+Get available installers and checksums from [GitHub Releases](https://github.com/RegramDev/Regram-desktop/releases). Read the notes for each release before installing. Platform support is represented by the assets actually published for that release.
+
+| Platform | Release package | Architecture |
+| --- | --- | --- |
+| macOS 12 or newer | Drag-to-Applications DMG | Apple Silicon arm64 / Intel x86_64 |
+| Windows | Setup installer / portable ZIP | x64 |
+| Linux | Compressed bundle with a user-level installer | x64 |
+
+Builds currently use ad-hoc signing on macOS and are unsigned on Windows. They are not Apple-notarized or Authenticode-signed releases. The declared macOS 12 minimum still needs testing on a macOS 12 machine. Linux bundles follow the upstream Rocky Linux 8 build environment and require a desktop runtime.
+
+## Features
+
+- Keyword and regular-expression message filtering, chat-specific rules, and rule import/export.
+- Local message history and anti-recall controls for messages received by the client.
+- Ghost-mode controls, privacy preferences, and additional account and chat options.
+- Message and draft translation, formatting protection, and configurable providers.
+- Audio transcription, download-and-transcribe handling, and batch controls.
+- Additional appearance, media, notification, screenshot, and context-menu settings.
+- Regram settings, settings search, and portable preference backups.
+
+Liquid Glass and the separate AppKit interface have been removed. Regram retains Telegram Desktop's Qt layout and uses independent application and data identifiers. Upstream automatic updates and crash uploads are disabled; update through Regram Releases.
+
+Porting is ongoing. This list does **not** mean every Nagram/AyuGram feature or every M0–M8 item has passed acceptance testing. See the [feature checks](docs/regram/feature-checks.md), [feature matrix](docs/regram/regram-desktop-feature-matrix.md), and [development record](docs/regram/progress.md) for implemented paths, known differences, and test coverage.
+
+## Building
+
+Start with the [Regram build and packaging guide](docs/regram/building.md). Development and regression tests use Debug; distribution packages use Release. Private Telegram API credentials belong in the ignored `.local/regram/api.cmake` file or GitHub Actions secrets, never in source control.
+
+The [Regram Release workflow](.github/workflows/regram-release.yml) builds Windows x64, Linux x64, and macOS Intel on native runners. Apple Silicon uses the isolated macOS release script. Installers include checksums and build manifests; account data, build logs, and local credential files are excluded.
+
+Before a release, check the latest upstream stable release and development commits, integrate applicable source updates while retaining Regram features, then push the synchronized source and build the packages. The stable baseline is v7.3.0; the [upstream sync record](docs/regram/upstream-sync.json) identifies the additional development fixes used by the release.
+
+## Documentation
+
+- [Build and packaging instructions](docs/regram/building.md)
+- [Feature coverage and remaining differences](docs/regram/feature-checks.md)
+- [Nagram integration and performance work](docs/regram/nagram-latest.md)
+- [Measured Debug UI performance](docs/regram/debug-click-performance.md)
+- [Reference projects and pinned imports](docs/regram/references.md)
+- [Porting plan](docs/regram/regram-desktop-plan.md)
+
+## License and credits
+
+Regram preserves the upstream [GPLv3 license with OpenSSL exception](LICENSE) and [third-party legal notices](LEGAL). Telegram Desktop, Nagram-Qt, AyuGram Desktop, and their contributors retain credit for their code. Regram is an independent client and is not an official Telegram product.
 
 ## Third-party
 
-* Qt 6 ([LGPL](http://doc.qt.io/qt-6/lgpl.html)) and Qt 5.15 ([LGPL](http://doc.qt.io/qt-5/lgpl.html)) slightly patched
-* OpenSSL 3.2.1 ([Apache License 2.0](https://openssl-library.org/source/license/apache-license-2.0.txt))
+* Qt 6.11.2 ([LGPL](http://doc.qt.io/qt-6/lgpl.html)) and Qt 5.15 ([LGPL](http://doc.qt.io/qt-5/lgpl.html)) slightly patched
+* OpenSSL 3 ([Apache License 2.0](https://openssl-library.org/source/license/apache-license-2.0.txt))
 * WebRTC ([New BSD License](https://github.com/desktop-app/tg_owt/blob/master/LICENSE))
 * zlib ([zlib License](http://www.zlib.net/zlib_license.html))
 * LZMA SDK 9.20 ([public domain](http://www.7-zip.org/sdk.html))
@@ -33,35 +80,3 @@ The source code retains the upstream GPLv3 license with OpenSSL exception and th
 * Ada ([Apache License 2.0](https://github.com/ada-url/ada/blob/main/LICENSE-APACHE))
 * zxcvbn-c ([MIT License](https://github.com/tsyrogit/zxcvbn-c/blob/master/LICENSE.txt))
 * FrequencyWords by Hermit Dave ([Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/))
-
-## Build instructions
-
-* [Windows (32-bit and 64-bit)][win]
-* [macOS][mac]
-* [GNU/Linux using Docker][linux]
-
-[//]: # (LINKS)
-[telegram]: https://telegram.org
-[telegram_desktop]: https://desktop.telegram.org
-[telegram_api]: https://core.telegram.org
-[telegram_proto]: https://core.telegram.org/mtproto
-[license]: LICENSE
-[win]: docs/building-win.md
-[mac]: docs/building-mac.md
-[linux]: docs/building-linux.md
-[preview_image]: https://github.com/telegramdesktop/tdesktop/blob/dev/docs/assets/preview.png "Preview of Telegram Desktop"
-[preview_image_url]: https://raw.githubusercontent.com/telegramdesktop/tdesktop/dev/docs/assets/preview.png
-
-## Thanks to
-
-<a href="https://depot.dev">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-light.svg">
-    <img alt="Depot" src="https://depot.dev/assets/brand/1693758816/depot-logo-horizontal-on-light.svg" width="150">
-  </picture>
-</a>
-
-CI infrastructure sponsored by [Depot](https://depot.dev) — fast GitHub Actions runners.
-
-当前 Nagram 功能接入与性能验证：[记录](docs/regram/nagram-latest.md)。

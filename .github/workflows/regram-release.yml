@@ -1,0 +1,190 @@
+name: Regram Release builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        default: all
+        options: [all, windows, linux, macos-intel]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
+    runs-on: windows-2025
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          path: source
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          toolset: '14.44'
+          sdk: '10.0.26100.0'
+      - uses: actions/cache@v6
+        with:
+          path: |
+            Libraries
+            ThirdParty
+          key: regram-release-windows-${{ hashFiles('source/Telegram/build/prepare/**', 'source/Telegram/build/qt_version.py') }}
+      - name: Prepare Release dependencies
+        shell: cmd
+        run: source\Telegram\build\prepare\win.bat qt6 silent
+      - name: Configure private API
+        env:
+          TDESKTOP_API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          TDESKTOP_API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: python source/Telegram/build/regram/write_api_config.py
+      - name: Build Windows x64 Release
+        working-directory: source
+        env:
+          QT: '6.11.2'
+        run: |
+          python Telegram/build/regram/apply_patches.py --apply
+          cmake -S . -B out -G "Ninja Multi-Config" -C .local/regram/api.cmake -DDESKTOP_APP_SPECIAL_TARGET=win64 -DDESKTOP_APP_TEST_APPS=OFF
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cmake --build out --config Release --target Telegram --parallel 4
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Package and test Windows installer
+        working-directory: source
+        run: |
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $iscc)) { choco install innosetup --yes --no-progress }
+          python Telegram/build/regram/package_desktop.py --platform windows --iscc $iscc
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $setup = Get-ChildItem .local/regram/installers/*-setup.exe | Select-Object -First 1
+          $destination = Join-Path $env:RUNNER_TEMP 'regram-install-check'
+          $installed = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS',"/DIR=$destination" -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw 'Installer failed' }
+          if ((Get-FileHash "$destination/Regram.exe").Hash -ne (Get-FileHash out/Release/Regram.exe).Hash) { throw 'Installed executable differs' }
+          $profile = Join-Path $env:RUNNER_TEMP 'regram-launch-check'
+          New-Item -ItemType Directory -Force $profile | Out-Null
+          $app = Start-Process "$destination/Regram.exe" -ArgumentList '-many','-noupdate','-workdir',$profile -PassThru
+          Start-Sleep -Seconds 12
+          if ($app.HasExited) { throw "Release exited early: $($app.ExitCode)" }
+          $app.CloseMainWindow() | Out-Null
+          if (!$app.WaitForExit(5000)) { $app.Kill() }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Regram-Windows-x64-Release
+          path: source/.local/regram/installers/*
+          if-no-files-found: error
+          retention-days: 14
+
+  macos-intel:
+    if: inputs.platform == 'all' || inputs.platform == 'macos-intel'
+    runs-on: macos-26-intel
+    timeout-minutes: 360
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '12.0'
+      TDESKTOP_MAC_TOOLCHAIN: system
+      CMAKE_BUILD_TYPE: Release
+      CMAKE_BUILD_PARALLEL_LEVEL: '4'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          path: source
+      - name: Install tools
+        run: brew install autoconf automake boost cmake libtool meson nasm ninja pkg-config
+      - uses: actions/cache@v6
+        with:
+          path: |
+            Libraries
+            ThirdParty
+          key: regram-release-macos-intel-${{ hashFiles('source/Telegram/build/prepare/**', 'source/Telegram/build/qt_version.py') }}
+      - name: Prepare Release dependencies
+        run: source/Telegram/build/prepare/mac.sh silent
+      - name: Configure private API
+        env:
+          TDESKTOP_API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          TDESKTOP_API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: python3 source/Telegram/build/regram/write_api_config.py
+      - name: Build macOS Intel Release
+        working-directory: source
+        env:
+          QT: '6.11.2'
+        run: |
+          python3 Telegram/build/regram/apply_patches.py --apply
+          cmake -S . -B out -G Xcode -C .local/regram/api.cmake \
+            -DDESKTOP_APP_MAC_ARCH=x86_64 -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DDESKTOP_APP_TEST_APPS=OFF \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+          cmake --build out --config Release --target Telegram --parallel 4 -- -arch x86_64
+      - name: Package macOS Intel
+        working-directory: source
+        run: |
+          python3 Telegram/build/regram/package_macos.py --build-dir out --output-dir .local/regram/installers
+          python3 Telegram/build/regram/smoke_launch.py --executable out/Release/Regram.app/Contents/MacOS/Regram
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Regram-macOS-x86_64-Release
+          path: source/.local/regram/installers/*
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    if: inputs.platform == 'all' || inputs.platform == 'linux'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          tool-cache: true
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: docker/setup-buildx-action@v4
+      - name: Render optimized Linux dependency environment
+        working-directory: Telegram/build/docker/centos_env
+        run: |
+          python3 -m pip install Jinja2
+          DEBUG= LTO= JOBS=4 python3 gen_dockerfile.py > Dockerfile.release
+      - uses: docker/build-push-action@v7
+        with:
+          context: Telegram/build/docker/centos_env
+          file: Telegram/build/docker/centos_env/Dockerfile.release
+          load: true
+          tags: regram-build:linux
+          cache-from: type=gha,scope=regram-release-linux
+          cache-to: type=gha,scope=regram-release-linux,mode=max
+      - name: Configure private API
+        env:
+          TDESKTOP_API_ID: ${{ secrets.TDESKTOP_API_ID }}
+          TDESKTOP_API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
+        run: python3 Telegram/build/regram/write_api_config.py
+      - name: Build and package Linux x64 Release
+        run: |
+          python3 Telegram/build/regram/apply_patches.py --apply
+          docker run --rm -u "$(id -u)" -v "$PWD:/usr/src/tdesktop" \
+            -e CMAKE_BUILD_PARALLEL_LEVEL=4 regram-build:linux bash -lc '
+              set -euo pipefail
+              cmake -S . -B out -G "Ninja Multi-Config" -C .local/regram/api.cmake -DDESKTOP_APP_TEST_APPS=OFF
+              cmake --build out --config Release --target Telegram --parallel 4
+              ldd out/Release/Regram > .local/regram/linux-runtime-libraries.txt
+              if grep -q "not found" .local/regram/linux-runtime-libraries.txt; then exit 1; fi
+              python3 Telegram/build/regram/package_desktop.py --platform linux
+            '
+      - name: Launch Linux Release in a clean profile
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 libegl1 libopengl0 libgtk-3-0 libpulse0
+          xvfb-run -a python3 Telegram/build/regram/smoke_launch.py --executable out/Release/Regram
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Regram-Linux-x64-Release
+          path: .local/regram/installers/*
+          if-no-files-found: error
+          retention-days: 14

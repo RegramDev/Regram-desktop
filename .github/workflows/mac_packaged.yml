@@ -43,6 +43,7 @@ on:
 jobs:
 
   macos:
+    if: github.repository == 'telegramdesktop/tdesktop'
     name: MacOS
     runs-on: ${{ (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/nightly') && 'depot-macos-latest' || 'macos-latest' }}
 

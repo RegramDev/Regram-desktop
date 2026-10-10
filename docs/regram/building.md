@@ -1,6 +1,6 @@
 # Regram Desktop 构建与验证
 
-当前源码基线为 Telegram Desktop v7.3.0，分支 `regram/port`。保留上游 CMake 目标 `Telegram`，Regram 可执行文件输出名为 `Regram`。开发及回归使用 Debug；制作用户明确请求的安装包时使用独立的 Release 构建。
+当前源码基线为 Telegram Desktop v7.3.0，分支 `regram`。保留上游 CMake 目标 `Telegram`，Regram 可执行文件输出名为 `Regram`。开发及回归使用 Debug；制作用户明确请求的安装包时使用独立的 Release 构建。
 
 本地凭据在 Git 忽略的 `.local/regram/api.cmake` 中。新机器复制 `Telegram/build/regram/api.cmake.example` 到该位置后自行填写；CI 使用私有变量传入 `TDESKTOP_API_ID`、`TDESKTOP_API_HASH`。不要把实际 hash 写入公共配置或命令示例。
 
@@ -66,3 +66,9 @@ ctest --test-dir .cache/regram/policy-tests --output-on-failure
 ```
 
 ICU 策略与导入导出已经接入整应用过滤入口，复用 Ayu 的静态 ICU 子模块。独立测试可选 `REGRAM_TEST_JSON=ON` 和 `REGRAM_TEST_SQLCIPHER=ON`；后者需 OpenSSL。应用实际过滤与存储行为仍需运行验证。Foundation 对照仅验证样本在本机框架上的结果，不能代替 iOS 实机或完整规则兼容验收。
+
+## 全平台 Release 构建
+
+GitHub Actions 的 `Regram Release builds` 支持 Windows x64、Linux x64 和 macOS Intel，`workflow_dispatch` 可选择全量或单个平台。API 配置从私有 Secrets 读取。Windows 生成未签名的 Inno Setup 安装程序及便携 ZIP，并在独立目录验证安装及启动；Linux 使用上游 Rocky Linux 8 的优化依赖环境，生成带当前用户安装脚本的 tar.xz，检查动态库及独立启动。macOS Intel 生成 ad-hoc 签名 DMG。Apple Silicon 包由本机独立 Release 构建生成。
+
+工作流只上传安装包、校验值和发布清单，不自动发布到其他渠道。每个平台编译或启动检查失败时，需修复并重跑该平台；不能用工作流配置完成代替实际构建成功。

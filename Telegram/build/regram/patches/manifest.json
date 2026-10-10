@@ -8,7 +8,7 @@
     },
     {
       "module": "Telegram/lib_ui",
-      "base": "24310a3196c6632f58101a3ec1c553c4565bc9be",
+      "base": "91ff4463899f23f4227bc4cbbdbe7696d479b9bd",
       "patch": "Telegram/build/regram/patches/lib_ui.patch"
     },
     {

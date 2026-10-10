@@ -47,6 +47,7 @@ on:
 jobs:
 
   linux:
+    if: github.repository == 'telegramdesktop/tdesktop'
     name: Rocky Linux 8
     runs-on: ${{ (github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/nightly') && 'depot-ubuntu-latest-16' || 'ubuntu-latest' }}
 
