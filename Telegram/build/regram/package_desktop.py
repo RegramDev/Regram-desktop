@@ -88,8 +88,11 @@ def main():
                 'install -m 755 "$source_dir/Regram" "$target_dir/Regram"\n'
                 'install -m 644 "$source_dir/LICENSE" "$source_dir/LEGAL" "$target_dir/"\n'
                 'ln -sfn "$target_dir/Regram" "$HOME/.local/bin/Regram"\n'
-                'sed "s|^Exec=.*|Exec=\\\"$target_dir/Regram\\\" -- %u|; '
-                's|^TryExec=.*|TryExec=$target_dir/Regram|" '
+                "escaped_dir=$(printf '%s' \"$target_dir\" | sed 's/[\\\\&|]/\\\\&/g')\n"
+                'sed "s|^Exec=Regram -- %U$|Exec=\\\"$escaped_dir/Regram\\\" -- %U|; '
+                's|^Exec=Regram -quit$|Exec=\\\"$escaped_dir/Regram\\\" -quit|; '
+                's|^TryExec=.*|TryExec=$escaped_dir/Regram|; '
+                's|^DBusActivatable=.*|DBusActivatable=false|" '
                 '"$source_dir/dev.regram.desktop.desktop" > "$data_dir/applications/dev.regram.desktop.desktop"\n'
                 'install -m 644 "$source_dir/dev.regram.desktop.png" '
                 '"$data_dir/icons/hicolor/256x256/apps/dev.regram.desktop.png"\n'
