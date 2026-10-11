@@ -61,7 +61,7 @@
       "7.3.1 version metadata"
     ],
     "features_preserved": true,
-    "release_validation": "macOS arm64 and x86_64 Release packaging/startup passed; Windows/Linux final-source builds pending"
+    "release_validation": "macOS arm64/x86_64 and Linux x64 Release packaging/startup passed; Windows final-source build pending"
   },
   "latest_publication_check": {
     "checked_at": "2026-10-11T22:00:15.300183+00:00",

@@ -229,7 +229,7 @@
   ],
   "validation": {
     "scope": "Source 898623d0ec; full macOS Release builds and limited packaged GUI acceptance. Complete runtime parity remains pending.",
-    "application_compilation": "Full arm64 and x86_64 Release application compilation/linking passed. Windows and Linux final-source CI builds are in progress.",
+    "application_compilation": "Full arm64, x86_64 macOS and Linux x64 Release builds and packages passed. Windows final-source CI is preparing dependencies without a cache hit.",
     "cpp_tests": "33 Nagram extension regression groups and five standalone Release suites passed.",
     "installed_gui_validation": "Private account copy of the packaged arm64 application passed Regram Settings navigation/title, removed description, provider list without Yandex, filter/input/menu settings, whole-chat bar below pinned messages, menu dragging and cancel recovery. Channel/group scroll input exercised without an FPS measurement.",
     "cross_platform_runtime_validation": false,
@@ -247,7 +247,10 @@
     "macos_12_runtime_verified": false,
     "message_context_actions_verified": false,
     "format_panel_gui_verified": false,
-    "long_history_frame_timing_verified": false
+    "long_history_frame_timing_verified": false,
+    "linux_release_install_and_startup": true,
+    "native_linux_font_files_verified": 92,
+    "animation_hitches_probe": "Output did not complete within the bounded wait; no frame timing accepted."
   },
   "settings_shared_enums": [
     "profile ID format"
