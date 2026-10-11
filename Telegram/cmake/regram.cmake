@@ -66,6 +66,7 @@ endif()
 include(${CMAKE_CURRENT_LIST_DIR}/regram_debug_qt.cmake)
 
 if (WIN32)
+    target_link_libraries(external_qt INTERFACE dnsapi)
     target_link_libraries(Telegram PRIVATE dwrite)
 endif()
 
