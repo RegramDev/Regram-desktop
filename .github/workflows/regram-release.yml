@@ -40,11 +40,20 @@ jobs:
           path: |
             Libraries
             ThirdParty
-          key: regram-release-windows-${{ hashFiles('source/Telegram/build/prepare/**', 'source/Telegram/build/qt_version.py') }}
-          restore-keys: regram-release-windows-
+          key: regram-release-windows-ready-v2-msvc1444-sdk26100-${{ hashFiles('source/Telegram/build/prepare/**', 'source/Telegram/build/qt_version.py') }}
+          restore-keys: |
+            regram-release-windows-ready-v2-msvc1444-sdk26100-
+            regram-release-windows-
       - name: Prepare Release dependencies
         shell: cmd
         run: source\Telegram\build\prepare\win.bat qt6 silent
+      - uses: actions/cache/save@v6
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        with:
+          path: |
+            Libraries
+            ThirdParty
+          key: ${{ steps.dependencies.outputs.cache-primary-key }}
       - name: Configure private API
         env:
           TDESKTOP_API_ID: ${{ secrets.TDESKTOP_API_ID }}
@@ -92,13 +101,6 @@ jobs:
           path: source/.local/regram/installers/*
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/cache/save@v6
-        if: always() && steps.dependencies.outputs.cache-hit != 'true'
-        with:
-          path: |
-            Libraries
-            ThirdParty
-          key: ${{ steps.dependencies.outputs.cache-primary-key }}
 
   macos-intel:
     if: inputs.platform == 'all' || inputs.platform == 'macos-intel'
