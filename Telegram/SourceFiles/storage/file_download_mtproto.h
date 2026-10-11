@@ -62,6 +62,7 @@ private:
 	void startLoadingWithPartial(const QByteArray &data) override;
 	void cancelHook() override;
 
+	bool automaticDownload() const override { return FileLoader::autoLoading(); }
 	bool readyToRequest() const override;
 	int64 takeNextRequestOffset() override;
 	bool feedPart(int64 offset, const QByteArray &bytes) override;

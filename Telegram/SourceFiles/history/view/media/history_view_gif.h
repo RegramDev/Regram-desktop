@@ -265,6 +265,9 @@ private:
 	const not_null<DocumentData*> _data;
 	PhotoData *_videoCover = nullptr;
 	const FullStoryId _storyId;
+	mutable crl::time _regramSuspendedAt = 0;
+	bool _regramManualPlayback = false;
+
 	std::unique_ptr<Streamed> _streamed;
 	const std::unique_ptr<MediaSpoiler> _spoiler;
 	mutable std::unique_ptr<MediaSpoilerTag> _spoilerTag;

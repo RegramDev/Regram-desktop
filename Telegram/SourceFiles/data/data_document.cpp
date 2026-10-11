@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_document.h"
 
+#include "regram/nagram/media/options.h"
 #include "regram/nagram/media/cover.h"
 #include "data/data_document_resolver.h"
 #include "data/data_session.h"
@@ -670,6 +671,13 @@ int DocumentData::resolveOriginalVideoQuality() const {
 
 Media::VideoQuality DocumentData::initialPlaybackVideoQuality(
 		Media::VideoQuality request) const {
+	if (!request.manual) {
+		const auto preference = Nagram::ForDevice().Get(Nagram::Media::kDefaultVideoQuality);
+		if (preference) {
+			request = { .manual = 1u, .height = preference == 1 ? 0x3FFFFFFFu : 1u };
+		}
+	}
+
 	return (isVideoFile() && !filepath(true).isEmpty())
 		? Media::VideoQuality{
 			.manual = 1u,

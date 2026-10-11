@@ -41,7 +41,6 @@ enum class ContextMenuVisibility {
 enum class TranslationProvider {
 	Telegram = 0,
 	Google = 1,
-	Yandex = 2,
 	Native = 3,
 };
 
@@ -72,8 +71,8 @@ NLOHMANN_JSON_SERIALIZE_ENUM(ContextMenuVisibility, {
 NLOHMANN_JSON_SERIALIZE_ENUM(TranslationProvider, {
 	{TranslationProvider::Telegram, "telegram"},
 	{TranslationProvider::Google, "google"},
-	{TranslationProvider::Yandex, "yandex"},
 	{TranslationProvider::Native, "native"},
+	{TranslationProvider::Google, "yandex"},
 })
 
 NLOHMANN_JSON_SERIALIZE_ENUM(SendWithoutSoundOption, {
@@ -353,7 +352,9 @@ public:
 	[[nodiscard]] bool gifConfirmation() const { return _gifConfirmation.current(); }
 	[[nodiscard]] bool voiceConfirmation() const { return _voiceConfirmation.current(); }
 	[[nodiscard]] bool roundConfirmation() const { return _roundConfirmation.current(); }
-	[[nodiscard]] TranslationProvider translationProvider() const { return _translationProvider.current(); }
+	[[nodiscard]] TranslationProvider translationProvider() const {
+		return _translationProvider.current();
+	}
 	[[nodiscard]] bool adaptiveCoverColor() const { return _adaptiveCoverColor.current(); }
 	[[nodiscard]] bool improveLinkPreviews() const { return _improveLinkPreviews.current(); }
 	[[nodiscard]] bool crashReporting() const { return _crashReporting.current(); }

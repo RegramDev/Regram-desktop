@@ -17,6 +17,19 @@ void TestNotifications() {
 	using namespace Nagram;
 	using namespace Nagram::Notifications;
 
+	Require(ValidPolicy(u"default"_q) && ValidPolicy(u"silenced"_q)
+		&& ValidPolicy(u"disabled"_q) && !ValidPolicy(u"silent"_q),
+		"notification policy accepted an unknown action");
+	Require(ValidPolicyExceptions(R"({"42":"default","43":"disabled"})")
+		&& !ValidPolicyExceptions(R"({"042":"disabled"})")
+		&& !ValidPolicyExceptions(R"({"42":true})")
+		&& !ValidPolicyExceptions(R"({"42":"unknown"})"),
+		"invalid notification exception accepted");
+	Require(PolicyForPeer(u"silenced"_q, R"({"42":"default","43":"disabled"})", u"42"_q) == u"default"_q
+		&& PolicyForPeer(u"silenced"_q, R"({"43":"disabled"})", u"43"_q) == u"disabled"_q
+		&& PolicyForPeer(u"silenced"_q, QByteArray(), u"44"_q) == u"silenced"_q,
+		"per-chat policies did not override the global choice");
+
 	auto night = QuietHours{ .enabled = true };
 	Require(Active(night, 1, 23 * 60)
 		&& Active(night, 2, 0)

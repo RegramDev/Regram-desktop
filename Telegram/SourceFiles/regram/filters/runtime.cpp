@@ -289,8 +289,10 @@ bool SetSenderHidden(not_null<PeerData*> peer, bool hidden) {
 }
 
 bool SuppressNotification(not_null<HistoryItem*> item) {
-	return Nagram::ForAccount(&item->history()->session()).Get(kSuppressNotifications)
-		&& Hidden(item, false);
+	return item->isRegular() && !item->out()
+		&& (SenderHidden(item->from())
+			|| (Nagram::ForAccount(&item->history()->session()).Get(kSuppressNotifications)
+				&& Hidden(item, false)));
 }
 
 } // namespace Regram::Filters

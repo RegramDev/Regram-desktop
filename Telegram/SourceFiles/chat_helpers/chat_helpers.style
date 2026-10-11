@@ -1276,6 +1276,7 @@ historyQuoteStyle: QuoteStyle(defaultQuoteStyle) {
 	radius: 5px;
 }
 historyTextStyle: TextStyle(defaultTextStyle) {
+	font: font(fsize "Regram Chat Font");
 	blockquote: QuoteStyle(historyQuoteStyle) {
 		padding: margins(10px, 2px, 20px, 2px);
 		icon: icon{{ "chat/mini_quote", windowFg }};

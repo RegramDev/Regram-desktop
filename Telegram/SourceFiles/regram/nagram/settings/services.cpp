@@ -7,7 +7,6 @@
 #include "core/core_settings.h"
 #include "boxes/translate_box.h"
 #include "lang/lang_keys.h"
-#include "regram/nagram/services/auto_translate.h"
 #include "regram/nagram/services/send_translation.h"
 #include "regram/nagram/services/send_translation_model.h"
 #include "main/main_session.h"
@@ -79,7 +78,6 @@ QString DefaultTranslationId() {
 	switch (AyuSettings::getInstance().translationProvider()) {
 	case TranslationProvider::Telegram: return u":telegram"_q;
 	case TranslationProvider::Google: return u":google"_q;
-	case TranslationProvider::Yandex: return u":yandex"_q;
 	case TranslationProvider::Native: return u":system"_q;
 	}
 	Unexpected("Translation provider");
@@ -88,7 +86,6 @@ QString DefaultTranslationId() {
 QString DefaultTranslationName() {
 	const auto id = DefaultTranslationId();
 	return (id == u":google"_q) ? u"Google"_q
-		: (id == u":yandex"_q) ? u"Yandex"_q
 		: (id == u":system"_q) ? tr::lng_nagram_service_system(tr::now)
 		: u"Telegram"_q;
 }
@@ -119,11 +116,10 @@ void TranslationSourceBox(not_null<Ui::GenericBox*> box) {
 			box, tr::lng_nagram_service_invalid(), st::boxLabel));
 		return;
 	}
-	auto ids = QStringList{ u":telegram"_q, u":google"_q, u":yandex"_q, u":system"_q };
+	auto ids = QStringList{ u":telegram"_q, u":google"_q, u":system"_q };
 	auto titles = QStringList{
 		u"Telegram"_q,
 		u"Google"_q,
-		u"Yandex"_q,
 		tr::lng_nagram_service_system(tr::now),
 	};
 	for (const auto &value : current->value(u"instances"_q).toArray()) {
@@ -142,7 +138,7 @@ void TranslationSourceBox(not_null<Ui::GenericBox*> box) {
 		const auto row = box->addRow(object_ptr<Ui::Radiobutton>(
 			box, group, index, titles[index], st::settingsSendType),
 			st::settingsSendTypePadding);
-		if (index == 3 && !Platform::IsTranslateProviderAvailable()) {
+		if (index == 2 && !Platform::IsTranslateProviderAvailable()) {
 			row->setDisabled(true);
 		}
 	}
@@ -155,7 +151,7 @@ void TranslationSourceBox(not_null<Ui::GenericBox*> box) {
 			return;
 		}
 		auto updated = *current;
-		const auto builtin = (value < 4);
+		const auto builtin = (value < 3);
 		updated.insert(u"translation"_q, builtin ? QString() : ids[value]);
 		if (!SetServices(updated)) {
 			box->showToast(tr::lng_nagram_service_invalid(tr::now));
@@ -165,7 +161,6 @@ void TranslationSourceBox(not_null<Ui::GenericBox*> box) {
 			const auto providers = std::array{
 				TranslationProvider::Telegram,
 				TranslationProvider::Google,
-				TranslationProvider::Yandex,
 				TranslationProvider::Native,
 			};
 			AyuSettings::getInstance().setTranslationProvider(providers[value]);
@@ -220,58 +215,6 @@ void SummarySourceBox(not_null<Ui::GenericBox*> box) {
 		}
 		auto updated = *current;
 		updated.insert(u"summary"_q, ids[value]);
-		if (!SetServices(updated)) {
-			box->showToast(tr::lng_nagram_service_invalid(tr::now));
-			return;
-		}
-		Core::App().saveSettingsDelayed();
-		box->closeBox();
-	});
-}
-
-QString TranscriptionSelectionName(const std::optional<QJsonObject> &config) {
-	if (!config) {
-		return tr::lng_nagram_service_invalid(tr::now);
-	}
-	const auto id = config->value(u"transcription"_q).toString();
-	if (id.isEmpty() || id == u"telegram"_q) {
-		return u"Telegram"_q;
-	}
-	const auto service = FindService(*config, id);
-	return service ? service->name : tr::lng_nagram_service_invalid(tr::now);
-}
-
-void TranscriptionSourceBox(not_null<Ui::GenericBox*> box) {
-	box->setTitle(tr::lng_nagram_service_transcription());
-	const auto current = Services();
-	if (!current) {
-		box->addRow(object_ptr<Ui::FlatLabel>(
-			box, tr::lng_nagram_service_invalid(), st::boxLabel));
-		return;
-	}
-	auto ids = QStringList{ QString() };
-	auto titles = QStringList{ u"Telegram"_q };
-	for (const auto &value : current->value(u"instances"_q).toArray()) {
-		const auto service = ParseService(value.toObject());
-		if (service && service->kind == ServiceKind::Transcription) {
-			ids.push_back(service->id);
-			titles.push_back(service->name);
-		}
-	}
-	const auto selectedId = current->value(u"transcription"_q).toString();
-	const auto selected = std::max<qsizetype>(0, ids.indexOf(selectedId));
-	const auto group = std::make_shared<Ui::RadiobuttonGroup>(selected);
-	for (auto index = 0; index != ids.size(); ++index) {
-		box->addRow(object_ptr<Ui::Radiobutton>(
-			box, group, index, titles[index], st::settingsSendType),
-			st::settingsSendTypePadding);
-	}
-	group->setChangedCallback([=](int value) {
-		if (!Current(box, *current)) {
-			return;
-		}
-		auto updated = *current;
-		updated.insert(u"transcription"_q, ids[value]);
 		if (!SetServices(updated)) {
 			box->showToast(tr::lng_nagram_service_invalid(tr::now));
 			return;
@@ -470,8 +413,6 @@ void ServiceBox(
 		? add(tr::lng_nagram_service_formality(), original.model)
 		: (original.protocol == u"microsoft"_q)
 		? add(tr::lng_nagram_service_region(), original.model)
-		: (original.protocol == u"yandex"_q)
-		? add(tr::lng_nagram_service_folder(), original.model)
 		: nullptr;
 	const auto system = openai && translation
 		? add(tr::lng_nagram_service_system_prompt(), original.systemPrompt, true) : nullptr;
@@ -642,6 +583,9 @@ void PresetsBox(
 	box->addRow(object_ptr<Ui::FlatLabel>(
 		box, tr::lng_nagram_service_presets_about(), st::boxLabel));
 	for (const auto &preset : ServicePresets()) {
+		if (preset.kind != ServiceKind::Translation) {
+			continue;
+		}
 		const auto name = QString::fromUtf16(preset.name);
 		const auto row = box->addRow(object_ptr<Ui::SettingsButton>(
 			box,
@@ -678,7 +622,7 @@ void ServicesBox(not_null<Ui::GenericBox*> box, QJsonObject initial) {
 		};
 		for (const auto &value : current.value(u"instances"_q).toArray()) {
 			const auto service = ParseService(value.toObject());
-			if (service) {
+			if (service && service->kind == ServiceKind::Translation) {
 				add(service->name, [=] {
 					box->uiShow()->showBox(Box(ServiceBox, current, *service, changed));
 				});
@@ -742,17 +686,6 @@ const auto kMeta = BuildHelper({
 		}),
 		.onClick = [=] { controller->show(Box(TranslationSourceBox)); },
 		.keywords = { u"translation"_q, u"system"_q },
-	});
-	builder.addButton({
-		.id = u"regram/nagram/services/transcription"_q,
-		.title = tr::lng_nagram_service_transcription(),
-		.st = &st::settingsButtonNoIcon,
-		.label = ForDevice().Value(kServicesConfig)
-			| rpl::map([](const QByteArray &) {
-				return TranscriptionSelectionName(Services());
-			}),
-		.onClick = [=] { controller->show(Box(TranscriptionSourceBox)); },
-		.keywords = { u"transcription"_q, u"voice"_q },
 	});
 	const auto contextButton = builder.addButton({
 		.id = u"regram/nagram/services/translation-context"_q,
@@ -827,82 +760,7 @@ const auto kMeta = BuildHelper({
 		rpl::single(QString::number(kSummaryMessages)),
 		lt_total,
 		rpl::single(QString::number(kSummaryLength))));
-	builder.addSubsectionTitle({
-		.id = u"regram/nagram/services/chat-translation"_q,
-		.title = tr::lng_nagram_chat_translation(),
-		.keywords = { u"auto translate"_q, u"translation"_q },
-	});
 	const auto session = builder.session();
-	builder.addButton({
-		.id = u"regram/nagram/services/auto-translate"_q,
-		.title = tr::lng_nagram_auto_translate(),
-		.st = &st::settingsButtonNoIcon,
-		.label = ForDevice().Value(AutoTranslate::kDeviceMode)
-			| rpl::map([](int value) {
-				return AutoTranslate::ModeLabel(
-					AutoTranslate::ValidMode(value)
-						? AutoTranslate::Mode(value)
-						: AutoTranslate::Mode::Inherit,
-					tr::lng_nagram_auto_translate_inherit(tr::now));
-			}),
-		.onClick = [=] {
-			controller->show(Box(AutoTranslate::DeviceModeBox));
-		},
-		.keywords = { u"auto translate"_q, u"translation"_q },
-	});
-	builder.addDividerText(AutoTranslate::AboutValue(session));
-	builder.addButton({
-		.id = u"regram/nagram/services/auto-translate-account"_q,
-		.title = tr::lng_nagram_auto_translate_account(),
-		.st = &st::settingsButtonNoIcon,
-		.label = ForAccount(session).Value(AutoTranslate::kAccountMode)
-			| rpl::map([](int value) {
-				return AutoTranslate::ModeLabel(
-					AutoTranslate::ValidMode(value)
-						? AutoTranslate::Mode(value)
-						: AutoTranslate::Mode::Inherit,
-					tr::lng_nagram_auto_translate_account_inherit(tr::now));
-			}),
-		.onClick = [=] {
-			controller->show(Box(AutoTranslate::AccountModeBox, session));
-		},
-		.keywords = { u"auto translate"_q, u"account"_q },
-	});
-	builder.addButton({
-		.id = u"regram/nagram/services/auto-translate-chats"_q,
-		.title = tr::lng_nagram_auto_translate_chats(),
-		.st = &st::settingsButtonNoIcon,
-		.label = ForAccount(session).Value(AutoTranslate::kChats)
-			| rpl::map([](const QByteArray &raw) {
-				return QString::number(AutoTranslate::ParseChats(
-					raw).value_or(AutoTranslate::ChatModes()).size());
-			}),
-		.onClick = [=] {
-			controller->show(Box(AutoTranslate::ChatsBox, session));
-		},
-		.keywords = { u"auto translate"_q, u"chat"_q },
-	});
-	builder.addDividerText(tr::lng_nagram_auto_translate_chats_about());
-	const auto chatButton = builder.addButton({
-		.id = u"regram/nagram/services/chat-translation-service"_q,
-		.title = tr::lng_nagram_chat_translation_service(),
-		.st = &st::settingsButtonNoIcon,
-		.toggled = ForDevice().Value(kChatTranslationUseService),
-		.keywords = { u"auto translate"_q, u"translate bar"_q, u"LLM"_q },
-	});
-	if (chatButton) {
-		chatButton->toggledChanges(
-		) | rpl::on_next([](bool value) {
-			Expects(ForDevice().Set(kChatTranslationUseService, value));
-		}, chatButton->lifetime());
-	}
-	builder.addDividerText(ForDevice().Value(kServicesConfig)
-		| rpl::map([](const QByteArray &) {
-			return tr::lng_nagram_chat_translation_service_about(
-				tr::now,
-				lt_name,
-				TranslationSelectionName(Services()));
-		}));
 	const auto sendButton = builder.addButton({
 		.id = u"regram/nagram/services/send-translation"_q,
 		.title = tr::lng_nagram_send_translation(),

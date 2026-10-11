@@ -29,7 +29,8 @@
       "local_files": [
         "window/window_peer_menu.cpp"
       ],
-      "status": "integrated"
+      "status": "removed-per-user",
+      "reason": "Duplicate chat-translation modes removed; unified chat translation uses the shared provider and chat bar."
     },
     {
       "hook": "AutoTranslate::Enabled",
@@ -49,7 +50,8 @@
       "local_files": [
         "history/view/history_view_translate_tracker.cpp"
       ],
-      "status": "integrated"
+      "status": "removed-per-user",
+      "reason": "Duplicate chat-translation modes removed; unified chat translation uses the shared provider and chat bar."
     },
     {
       "hook": "AutoTranslate::Tracking",
@@ -59,7 +61,8 @@
       "local_files": [
         "history/view/history_view_translate_tracker.cpp"
       ],
-      "status": "integrated"
+      "status": "removed-per-user",
+      "reason": "Duplicate chat-translation modes removed; unified chat translation uses the shared provider and chat bar."
     },
     {
       "hook": "CancelChatTranslation",
@@ -1183,7 +1186,8 @@
         "history/history_widget.cpp",
         "history/view/controls/history_view_compose_controls.cpp"
       ],
-      "status": "integrated"
+      "status": "removed-per-user",
+      "reason": "Link rewriting and automatic inline rules removed by the user; legacy stored settings cannot enable the runtime."
     },
     {
       "hook": "Links::AutoLoginDisabled",
@@ -1205,7 +1209,8 @@
         "history/history_widget.cpp",
         "history/view/controls/history_view_compose_controls.cpp"
       ],
-      "status": "integrated"
+      "status": "removed-per-user",
+      "reason": "Link rewriting and automatic inline rules removed by the user; legacy stored settings cannot enable the runtime."
     },
     {
       "hook": "Links::FillAutomaticInlineQuery",
@@ -1215,7 +1220,8 @@
       "local_files": [
         "chat_helpers/message_field.cpp"
       ],
-      "status": "integrated"
+      "status": "removed-per-user",
+      "reason": "Link rewriting and automatic inline rules removed by the user; legacy stored settings cannot enable the runtime."
     },
     {
       "hook": "Links::HandleExternalLink",
@@ -1225,7 +1231,8 @@
       "local_files": [
         "core/ui_integration.cpp"
       ],
-      "status": "integrated"
+      "status": "removed-per-user",
+      "reason": "Link rewriting and automatic inline rules removed by the user; legacy stored settings cannot enable the runtime."
     },
     {
       "hook": "Links::HashtagClickScope",

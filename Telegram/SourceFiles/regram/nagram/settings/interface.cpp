@@ -2,6 +2,7 @@
 #include "regram/typography/fonts.h"
 #include "regram/ayu/ui/settings/settings_appearance.h"
 #include "regram/nagram/notifications/settings.h"
+#include "regram/nagram/notifications/model.h"
 
 #include "regram/nagram/interface/app_icon.h"
 #include "regram/ayu/ayu_settings.h"
@@ -425,6 +426,19 @@ const auto kMeta = BuildHelper({
 		},
 		.keywords = { u"notification"_q, u"quiet"_q, u"mute"_q, u"night"_q },
 	});
+	for (const auto pinned : { true, false }) {
+		builder.addButton({
+			.id = pinned ? u"regram/notifications/pinned"_q : u"regram/notifications/mentions"_q,
+			.title = pinned ? tr::lng_regram_pinned_notifications() : tr::lng_regram_mention_notifications(),
+			.st = &st::settingsButtonNoIcon,
+			.label = ForAccount(&controller->session()).Value(
+				pinned ? Notifications::kPinnedPolicy : Notifications::kMentionPolicy)
+				| rpl::map(Notifications::PolicyLabel),
+			.onClick = [=] { controller->show(Box(
+				Notifications::PolicyBox, &controller->session(), pinned, uint64(0))); },
+			.keywords = { u"notification"_q, u"mention"_q, u"pin"_q },
+		});
+	}
 	builder.addSubsectionTitle({
 		.id = u"regram/nagram/interface/text"_q,
 		.title = tr::lng_nagram_ui_text(),

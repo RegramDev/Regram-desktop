@@ -43,7 +43,7 @@ struct State {
 } // namespace
 
 bool AutoInlineBotEnabled() {
-	return ForDevice().Get(kAutoInlineBot);
+	return false;
 }
 
 bool AutomaticInlineQuery(not_null<const Ui::InputField*> field) {

@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "mtproto/sender.h"
+#include "base/weak_ptr.h"
 #include "spellcheck/spellcheck_types.h"
 
 class History;
@@ -15,12 +16,15 @@ class HistoryItem;
 namespace Ui {
 class TranslateProvider;
 } // namespace Ui
+namespace Nagram {
+class RichPageTranslation;
+} // namespace Nagram
 
 namespace HistoryView {
 
 class Element;
 
-class TranslateTracker final {
+class TranslateTracker final : public base::has_weak_ptr {
 public:
 	explicit TranslateTracker(not_null<History*> history);
 	~TranslateTracker();
@@ -40,6 +44,7 @@ private:
 	using MaybeLanguageId = std::variant<QString, LanguageId>;
 	struct ItemForRecognize {
 		uint64 generation = 0;
+		QString source;
 		MaybeLanguageId id;
 	};
 	struct ItemToRequest {
@@ -57,6 +62,7 @@ private:
 	void applyLimit();
 	void requestSome();
 	void requestSomeRich(LanguageId to, PeerId peerId);
+	void requestRichPage(LanguageId to);
 	void cancelToRequest();
 	void cancelSentRequest();
 	void stopAndRevert();
@@ -66,6 +72,7 @@ private:
 
 	const not_null<History*> _history;
 	std::unique_ptr<Ui::TranslateProvider> _provider;
+	std::unique_ptr<Nagram::RichPageTranslation> _richTranslation;
 	MTP::Sender _api;
 	rpl::variable<bool> _trackingLanguage = false;
 	base::flat_map<FullMsgId, ItemForRecognize> _itemsForRecognize;
@@ -79,6 +86,7 @@ private:
 	base::flat_map<FullMsgId, ItemToRequest> _itemsToRequest;
 	std::vector<FullMsgId> _requested;
 	uint64 _requestToken = 0;
+	mtpRequestId _richRequestId = 0;
 	bool _requestInProcess = false;
 
 	rpl::lifetime _trackingLifetime;

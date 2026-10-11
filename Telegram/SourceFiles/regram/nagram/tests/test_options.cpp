@@ -121,8 +121,19 @@ void TestOptions() {
 		"unknown menu action accepted");
 	Require(!Menu::ValidateConfig(R"({"version":1,"states":{"E01":"unknown"}})"),
 		"invalid menu state accepted");
-	Require(Menu::ReadVisibility({}, ActionId::Repeat) == Visibility::Hide,
+	Require(Menu::ReadVisibility({}, ActionId::Repeat) == Visibility::Show,
 		"new menu action default");
+	Require(!Menu::ValidActionList("[15,15]")
+		&& !Menu::ValidActionList("[999]")
+		&& !Menu::ValidActionList("[1.5]"),
+		"menu ordering rejects duplicate and unknown actions");
+	const auto ordered = Menu::ReadActionOrder("[16,15]");
+	Require(ordered.size() == Menu::kEntries.size()
+		&& ordered[0] == ActionId::RepeatAsCopy && ordered[1] == ActionId::Repeat,
+		"partial menu order retains every remaining action");
+	Require(Menu::ReadVisibility(Menu::WriteVisibility({}, ActionId::Repeat,
+		Visibility::Hide), ActionId::Repeat) == Visibility::Hide,
+		"explicit user hiding overrides the new menu defaults");
 	Require(Menu::ReadVisibility({}, ActionId::Reading) == Visibility::Hide,
 		"reading menu action default");
 	Require(Menu::ReadVisibility({}, ActionId::DeleteDownload)
@@ -149,11 +160,11 @@ void TestOptions() {
 		&& Menu::ValidateConfig(Menu::WriteVisibility(
 			{}, ActionId::Summarize, Visibility::Show)),
 		"summarize is hidden by default");
-	Require(Menu::ReadVisibility({}, ActionId::CopyMarkdown) == Visibility::Hide
+	Require(Menu::ReadVisibility({}, ActionId::CopyMarkdown) == Visibility::Show
 		&& !Menu::IsUpstream(ActionId::CopyMarkdown)
 		&& Menu::ValidateConfig(R"({"version":2,"states":{"E39":"show"}})"),
-		"copy as Markdown is hidden by default");
-	Require(Menu::ReadVisibility({}, ActionId::MessageDetails) == Visibility::Hide
+		"copy as Markdown is available by default");
+	Require(Menu::ReadVisibility({}, ActionId::MessageDetails) == Visibility::Show
 		&& Menu::ReadVisibility({}, ActionId::SelectAll) == Visibility::Hide,
 		"message tool actions default");
 	const auto bar = Menu::Slot{ .separator = true };
@@ -262,7 +273,7 @@ void TestOptions() {
 		Flag::RefreshDialogList), "stories use widget refresh");
 	auto interface = Registry();
 	Interface::RegisterOptions(interface);
-	Require(interface.All().size() == 19, "interface option count");
+	Require(interface.All().size() == 20, "interface option count");
 	Require(interface.HasFlag(Interface::kHalfwidthUiPunctuation.key,
 		Flag::RequiresRestart), "interface text restart flag");
 	Require(interface.HasFlag(Interface::kBubbleRoundness.key,
@@ -296,7 +307,7 @@ void TestOptions() {
 		"notification delay bounds");
 	auto compose = Registry();
 	Compose::RegisterOptions(compose);
-	Require(compose.All().size() == 34, "compose option count");
+	Require(compose.All().size() == 35, "compose option count");
 	Require(Compose::kDefaultCodeLanguage.validate(QString::fromLatin1("cpp"))
 		&& !Compose::kDefaultCodeLanguage.validate(QString::fromLatin1("c++!")),
 		"code language validation");
@@ -314,6 +325,7 @@ void TestOptions() {
 			&& entry.key != Compose::kBotCommandsToDraft.key
 			&& entry.key != Compose::kInputPlaceholderMode.key
 			&& entry.key != Compose::kDisableAutoMarkdown.key
+			&& entry.key != Compose::kNicknameMentions.key
 			&& entry.key != Compose::kFormatToolbar.key
 			&& entry.key != Compose::kHiddenFormatItems.key
 			&& entry.key != Compose::kInputChinese.key
@@ -334,7 +346,7 @@ void TestOptions() {
 	}
 	auto media = Registry();
 	Media::RegisterOptions(media);
-	Require(media.All().size() == 16, "media option count");
+	Require(media.All().size() == 18, "media option count");
 	Require(media.HasFlag(Media::kStickerScale.key,
 		Flag::RefreshMessageView), "sticker scale refresh flag");
 	Require(!media.HasFlag(Media::kRecentStickerLimit.key,
@@ -343,7 +355,7 @@ void TestOptions() {
 		Flag::RefreshMessageView), "video autoplay refresh flag");
 	auto privacy = Registry();
 	Privacy::RegisterOptions(privacy);
-	Require(privacy.All().size() == 16, "privacy option count");
+	Require(privacy.All().size() == 20, "privacy option count");
 	Require(Privacy::kProfileIdFormat.validate(0)
 		&& Privacy::kProfileIdFormat.validate(1)
 		&& Privacy::kProfileIdFormat.validate(2)

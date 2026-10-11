@@ -32,6 +32,13 @@ inline constexpr auto kAppIconIds = std::array{
 }
 
 inline constexpr auto kRestart = static_cast<unsigned>(Flag::RequiresRestart);
+inline const auto kChatFontFamily = Option<QString>{
+	"nagram.regramChatFontFamily", Scope::Device, QString(),
+	Category::Interface, "lng_regram_font_use_chat", kRestart,
+	[](const QString &value) {
+		return value.size() <= 256 && !value.contains(QChar(0))
+			&& !value.contains(u'\n') && !value.contains(u'\r');
+	} };
 inline constexpr auto kBubbleRoundness = Option<int>{
 	"nagram.bubbleRoundness", Scope::Device, 0,
 	Category::Interface, "lng_nagram_bubble_roundness", kRestart,
@@ -105,6 +112,7 @@ inline constexpr auto kHalfwidthUiPunctuation = Option<bool>{
 	Category::Interface, "lng_nagram_halfwidth_ui_punctuation", kRestart };
 
 inline void RegisterOptions(Registry &registry) {
+	Expects(registry.Add(kChatFontFamily));
 	Expects(registry.Add(kBubbleRoundness));
 	Expects(registry.Add(kAvatarRoundness));
 	Expects(registry.Add(kUniformAvatarShapes));

@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_session.h"
 
+#include "regram/media/loading.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
 #include "main/main_app_config.h"
@@ -1955,12 +1956,14 @@ void Session::enumerateItemViews(
 }
 
 void Session::photoLoadSettingsChanged() {
+	Regram::Media::ResetPrefetch(_session);
 	for (const auto &[id, photo] : _photos) {
 		photo->automaticLoadSettingsChanged();
 	}
 }
 
 void Session::documentLoadSettingsChanged() {
+	Regram::Media::ResetPrefetch(_session);
 	for (const auto &[id, document] : _documents) {
 		document->automaticLoadSettingsChanged();
 	}

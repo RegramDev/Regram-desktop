@@ -92,6 +92,10 @@ QString getPeerDC(not_null<PeerData*> peer);
 
 int getScheduleTime(int64 sumSize);
 
+bool isHistoryProtected(not_null<PeerData*> peer);
+bool setHistoryProtected(not_null<PeerData*> peer, bool enabled);
+bool isSelfDestructMediaSavable();
+
 bool isMessageSavable(not_null<HistoryItem *> item);
 void processMessageDelete(not_null<HistoryItem *> item);
 

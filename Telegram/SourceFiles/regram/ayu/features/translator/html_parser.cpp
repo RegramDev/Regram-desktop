@@ -8,8 +8,6 @@
 
 namespace Ayu::Translator::Html {
 
-// yandex messes up HTML badly, so formatting removed for now
-
 QString entitiesToHtml(const TextWithEntities &text) {
 	return text.text;
 }

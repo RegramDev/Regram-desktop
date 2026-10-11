@@ -583,7 +583,7 @@ HistoryItem::HistoryItem(
 	} else if ((checked == MediaCheckResult::HasExpiredMediaTimeToLive)
 			|| (checked == MediaCheckResult::Good
 				&& media
-				&& !AyuSettings::getInstance().saveDeletedMessages()
+				&& !isSelfDestructMediaSavable()
 				&& ShowTtlMediaAsExpired(this, *media))) {
 		createServiceFromMtp(data);
 		setReactions(data.vreactions());
@@ -3081,8 +3081,8 @@ void HistoryItem::clearMediaAsExpired() {
 		return;
 	}
 
-	const auto &settings = AyuSettings::getInstance();
-	if (settings.saveDeletedMessages()) {
+	if (isSelfDestructMediaSavable()) {
+		unarmMediaDestroy();
 		return;
 	}
 
@@ -4610,7 +4610,7 @@ void HistoryItem::applyTTL(TimeId destroyAt) {
 		const auto session = &_history->session();
 		crl::on_main(session, [session, id = fullId()]{
 			if (const auto item = session->data().message(id)) {
-				if (AyuSettings::getInstance().saveDeletedMessages()) {
+				if (isMessageSavable(item)) {
 					processMessageDelete(item);
 				} else {
 					session->data().destroyMessageWithCacheCleanup(item);

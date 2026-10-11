@@ -50,6 +50,7 @@ private:
 		int64 offset = 0;
 	};
 
+	bool streamingDownload() const override { return true; }
 	bool readyToRequest() const override;
 	int64 takeNextRequestOffset() override;
 	bool feedPart(int64 offset, const QByteArray &bytes) override;

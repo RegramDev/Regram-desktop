@@ -12,14 +12,16 @@ using "ui/menu_icons.style";
 using "chat_helpers/chat_helpers.style"; // GroupCallUserpics
 
 msgMaxWidth: 430px;
-msgFont: font(fsize);
-msgNameFont: semiboldFont;
-msgNameStyle: semiboldTextStyle;
-msgServiceFont: semiboldFont;
-msgServiceNameFont: semiboldFont;
+msgFont: font(fsize "Regram Chat Font");
+msgNameFont: font(fsize semibold "Regram Chat Font");
+msgNameStyle: TextStyle(semiboldTextStyle) {
+	font: msgNameFont;
+}
+msgServiceFont: font(fsize semibold "Regram Chat Font");
+msgServiceNameFont: msgServiceFont;
 msgServicePhotoWidth: 100px;
 msgServiceUserpicSuggestionPhotoWidth: 100px;
-msgDateFont: font(13px);
+msgDateFont: font(13px "Regram Chat Font");
 msgMinWidth: 160px;
 msgPhotoSize: 33px;
 msgPhotoSkip: 40px;

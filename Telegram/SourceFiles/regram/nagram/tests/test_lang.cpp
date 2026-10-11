@@ -24,6 +24,7 @@ void TestSpacing();
 void TestServices();
 void TestTranslation();
 void TestAdvancedSettings();
+void TestIosBackup();
 void TestChatTranslation();
 void TestAutoTranslate();
 void TestLinks();
@@ -235,6 +236,7 @@ int main() {
 		TestServices();
 		TestTranslation();
 		TestAdvancedSettings();
+		TestIosBackup();
 		TestChatTranslation();
 		TestAutoTranslate();
 		TestLinks();
@@ -258,7 +260,7 @@ int main() {
 		}
 		for (const auto &entry : english) {
 			const auto &key = entry.first;
-			if (!key.starts_with("lng_nagram_")) {
+			if (!key.starts_with("lng_nagram_") && !key.starts_with("lng_regram_")) {
 				throw std::runtime_error("Invalid Nagram key prefix: " + key);
 			}
 			if (key.ends_with("#one") || key.ends_with("#other")) {

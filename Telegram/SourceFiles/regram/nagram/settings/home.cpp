@@ -1,6 +1,7 @@
 #include "regram/nagram/settings/home.h"
 
 #include "regram/ayu/ui/settings/settings_main.h"
+#include "regram/filters/settings.h"
 #include "regram/nagram/settings/chats.h"
 #include "regram/nagram/settings/compose.h"
 #include "regram/nagram/settings/config.h"
@@ -14,6 +15,8 @@
 #include "regram/nagram/settings/services.h"
 #include "lang/lang_keys.h"
 #include "settings/settings_builder.h"
+#include "ui/layers/generic_box.h"
+#include "window/window_session_controller.h"
 
 #include "styles/style_menu_icons.h"
 
@@ -81,11 +84,15 @@ void AddCategoryEntries(::Settings::Builder::SectionBuilder &builder) {
 		.icon = { &st::menuIconTranslate },
 		.keywords = { u"translation"_q, u"AI"_q, u"service"_q },
 	});
-	builder.addSectionButton({
-		.title = tr::lng_nagram_rules(),
-		.targetSection = RulesId(),
+	const auto controller = builder.controller();
+	builder.addButton({
+		.id = u"regram/message-filters"_q,
+		.title = tr::lng_regram_ios_filters(),
 		.icon = { &st::menuIconTagFilter },
-		.keywords = { u"filter"_q, u"link"_q },
+		.onClick = crl::guard(controller, [=] {
+			controller->show(Box(Regram::Filters::SettingsBox, &controller->session()));
+		}),
+		.keywords = { u"filter"_q, u"regex"_q, u"block"_q },
 	});
 	builder.addSectionButton({
 		.title = tr::lng_nagram_network(),

@@ -157,7 +157,7 @@ void SendRepeat(
 		|| (id == ActionId::Repeat && ForDevice().Get(kRepeatWithoutQuote))) {
 		id = ActionId::RepeatAsCopy;
 	}
-	if (id == ActionId::RepeatAsCopy) {
+	if (id == ActionId::RepeatAsCopy && (CopyOnly(item) || rootId)) {
 		if (SendCopies(item, RepeatAction(target, rootId))) {
 			ShowLatest(controller, target, rootId);
 		}
@@ -270,6 +270,13 @@ void Insert(
 		FullMsgId itemId,
 		ActionId id,
 		const QString &text) {
+	const auto target = Destination(menu, id);
+	if (target != menu) {
+		menu = target;
+		position = EndPosition(menu);
+	} else {
+		position = std::min(position, EndPosition(menu));
+	}
 	const auto forward = (id == ActionId::Forward)
 		|| (id == ActionId::ForwardWithoutQuote);
 	const auto callback = crl::guard(controller, [=] {

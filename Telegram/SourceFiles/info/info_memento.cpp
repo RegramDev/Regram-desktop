@@ -34,7 +34,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_saved_messages.h"
 #include "data/data_saved_sublist.h"
 #include "data/data_session.h"
+#include "data/data_user.h"
 #include "main/main_session.h"
+#include "regram/nagram/privacy/options.h"
 
 namespace Info {
 
@@ -42,9 +44,11 @@ Memento::Memento(not_null<PeerData*> peer)
 : Memento(peer, [&] {
 	const auto channel = peer->asChannel();
 	return (channel && channel->isCommunity())
-		? Section::Type::Community
-		: Section::Type::Profile;
+		? Section::Type::Community : Section::Type::Profile;
 }()) {
+	if (const auto profile = dynamic_cast<Profile::Memento*>(_stack.back().get())) {
+		profile->setPreferCommonGroups(Nagram::ForDevice().Get(Nagram::Privacy::kProfileCommonGroupsFirst));
+	}
 }
 
 Memento::Memento(not_null<PeerData*> peer, Section section)
@@ -203,7 +207,11 @@ std::shared_ptr<Memento> Memento::Default(not_null<PeerData*> peer) {
 	if (peer->savedSublistsInfo() && Profile::UseProfileMediaTabs()) {
 		return std::make_shared<Memento>(&peer->owner().savedMessages());
 	}
-	return std::make_shared<Memento>(peer, DefaultSection(peer));
+	auto result = std::make_shared<Memento>(peer, DefaultSection(peer));
+	if (const auto profile = dynamic_cast<Profile::Memento*>(result->_stack.back().get())) {
+		profile->setPreferCommonGroups(Nagram::ForDevice().Get(Nagram::Privacy::kProfileCommonGroupsFirst));
+	}
+	return result;
 }
 
 std::shared_ptr<ContentMemento> Memento::DefaultContent(

@@ -21,6 +21,7 @@
 #include "platform/platform_translate_provider.h"
 #include "regram/nagram/services/context.h"
 #include "regram/nagram/services/request.h"
+#include "regram/ayu/ayu_settings.h"
 #include "ui/layers/generic_box.h"
 #include "window/window_session_controller.h"
 
@@ -36,9 +37,8 @@ struct QuickTranslation {
 	std::unique_ptr<Ui::TranslateProvider> provider;
 	std::unique_ptr<MTP::Sender> api;
 	std::shared_ptr<const Iv::RichPage> originalPage;
-	std::shared_ptr<Iv::RichPage> translatedPage;
-	std::vector<TextWithEntities*> fields;
-	size_t nextField = 0;
+	std::unique_ptr<RichPageTranslation> rich;
+	base::weak_ptr<Window::SessionController> controller;
 	bool pending = false;
 };
 
@@ -51,6 +51,7 @@ struct TranslationEligibility {
 struct EligibilityCache {
 	base::weak_ptr<Main::Session> session;
 	QCache<quintptr, TranslationEligibility> entries;
+	std::map<FullMsgId, std::shared_ptr<QuickTranslation>> requests;
 	rpl::lifetime lifetime;
 	uint64 generation = 0;
 };
@@ -66,6 +67,11 @@ EligibilityCache &EligibilityFor(not_null<Main::Session*> session) {
 		cache->session = base::make_weak(session);
 		cache->entries.setMaxCost(4 * 1024 * 1024);
 		const auto raw = cache.get();
+		session->lifetime().add([raw] {
+			raw->requests.clear();
+			raw->entries.clear();
+			raw->lifetime.destroy();
+		});
 		Core::App().settings().skipTranslationLanguagesValue()
 		| rpl::skip(1) | rpl::on_next([raw] {
 			++raw->generation;
@@ -82,9 +88,22 @@ EligibilityCache &EligibilityFor(not_null<Main::Session*> session) {
 				}
 			}
 		}, cache->lifetime);
+		rpl::merge(
+			AyuSettings::getInstance().translationProviderChanges() | rpl::to_empty,
+			ForDevice().Value(kServicesConfig) | rpl::skip(1) | rpl::to_empty
+		) | rpl::on_next([raw] {
+			raw->requests.clear();
+		}, cache->lifetime);
 		found = caches.emplace(session, std::move(cache)).first;
 	}
 	return *found->second;
+}
+
+bool PrepareManualTranslation(not_null<HistoryItem*> item, LanguageId to) {
+	item->translationSetManual(true);
+	const auto requested = item->translationShowRequiresRequest(to);
+	item->translationSetManual(true);
+	return requested;
 }
 
 void ApplyQuickTranslation(
@@ -106,13 +125,12 @@ void ApplyQuickTranslation(
 			: tr::lng_translate_box_error(tr::now));
 		return;
 	}
-	const auto requested = item->translationShowRequiresRequest(to);
+	const auto requested = PrepareManualTranslation(item, to);
 	if (requested || item->translation()->text.empty()) {
 		item->translationDone(to, std::move(*result.text));
 	}
 	const auto retry = item->translationShowRequiresRequest(to);
 	Assert(!retry);
-	item->translationSetManual(true);
 }
 
 void FinishRichTranslation(
@@ -139,13 +157,12 @@ void FinishRichTranslation(
 		controller->showToast(tr::lng_translate_box_error(tr::now));
 		return;
 	}
-	const auto requested = item->translationShowRequiresRequest(to);
+	const auto requested = PrepareManualTranslation(item, to);
 	if (requested || item->translation()->text.empty()) {
 		item->translationDone(to, page);
 	}
 	const auto retry = item->translationShowRequiresRequest(to);
 	Assert(!retry);
-	item->translationSetManual(true);
 }
 
 void SendRichTranslation(
@@ -219,60 +236,14 @@ bool CollectRichTranslationFields(
 	return fields.size() <= 2000;
 }
 
-void TranslateRichField(
-		const std::shared_ptr<QuickTranslation> &state,
-		base::weak_ptr<Main::Session> session,
-		FullMsgId id,
-		LanguageId to,
-		not_null<Window::SessionController*> controller) {
-	const auto owner = session.get();
-	const auto item = owner ? owner->data().message(id) : nullptr;
-	if (!item || item->richPage() != state->originalPage) {
-		state->pending = false;
-		return;
-	}
-	if (state->nextField == state->fields.size()) {
-		const auto requested = item->translationShowRequiresRequest(to);
-		if (requested || item->translation()->text.empty()) {
-			item->translationDone(to, state->translatedPage);
-		}
-		const auto retry = item->translationShowRequiresRequest(to);
-		Assert(!retry);
-		item->translationSetManual(true);
-		state->pending = false;
-		state->fields.clear();
-		state->originalPage.reset();
-		state->translatedPage.reset();
-		return;
-	}
-	const auto weak = std::weak_ptr<QuickTranslation>(state);
-	state->provider->request({ .text = *state->fields[state->nextField] }, to,
-		crl::guard(controller, [=](Ui::TranslateProviderResult result) {
-			const auto state = weak.lock();
-			if (!state) {
-				return;
-			}
-			if (result.error != Ui::TranslateProviderError::None || !result.text) {
-				state->pending = false;
-				controller->showToast(tr::lng_translate_box_error(tr::now));
-				return;
-			}
-			*state->fields[state->nextField++] = std::move(*result.text);
-			crl::on_main(controller, [=] {
-				TranslateRichField(state, session, id, to, controller);
-			});
-		}));
-}
-
 void ToggleQuickTranslation(
 		const std::shared_ptr<QuickTranslation> &state,
 		base::weak_ptr<Main::Session> session,
 		FullMsgId id,
-		const ClickContext &context) {
+		not_null<Window::SessionController*> controller) {
 	const auto weakState = std::weak_ptr<QuickTranslation>(state);
 	const auto owner = session.get();
-	const auto controller = context.other.value<ClickHandlerContext>().sessionWindow.get();
-	if (!owner || !controller || &controller->session() != owner) {
+	if (!owner || &controller->session() != owner) {
 		return;
 	}
 	const auto item = owner->data().message(id);
@@ -285,13 +256,13 @@ void ToggleQuickTranslation(
 		&& (translation->manual || translation->to == item->history()->translatedTo())) {
 		const auto requested = item->translationShowRequiresRequest({});
 		Assert(!requested);
-		item->translationSetManual(false);
+		item->translationSetManual(true);
 		return;
 	} else if (translation && translation->to == to
 		&& !translation->text.empty()) {
+		item->translationSetManual(true);
 		const auto requested = item->translationShowRequiresRequest(to);
 		Assert(!requested);
-		item->translationSetManual(true);
 		return;
 	}
 	const auto original = item->originalText();
@@ -302,23 +273,40 @@ void ToggleQuickTranslation(
 		crl::guard(controller, [=](QString error) {
 			controller->showToast(error);
 		}));
+	state->controller = base::make_weak(controller);
 	state->pending = true;
-	if (item->richPage() && state->provider->supportsMessageId()
+	if (item->richPage() && UsesTelegramTranslation()
+		&& state->provider->supportsMessageId()
 		&& IsServerMsgId(item->id)) {
 		state->originalPage = item->richPage();
 		SendRichTranslation(state, session, id, original, to, controller);
 		return;
 	} else if (item->richPage()) {
 		state->originalPage = item->richPage();
-		state->translatedPage = std::make_shared<Iv::RichPage>(*state->originalPage);
-		state->fields.clear();
-		state->nextField = 0;
-		if (!CollectRichTranslationFields(state->translatedPage->blocks, state->fields)) {
-			state->pending = false;
-			controller->showToast(tr::lng_translate_box_error(tr::now));
-			return;
-		}
-		TranslateRichField(state, session, id, to, controller);
+		state->provider = nullptr;
+		state->rich = std::make_unique<RichPageTranslation>(owner, state->originalPage, to,
+			crl::guard(controller, [=](std::shared_ptr<const Iv::RichPage> page) {
+				const auto state = weakState.lock();
+				const auto owner = session.get();
+				if (!state || !owner) {
+					return;
+				}
+				state->pending = false;
+				const auto item = owner->data().message(id);
+				if (!item || item->originalText() != original
+					|| item->richPage() != state->originalPage) {
+					return;
+				} else if (!page) {
+					controller->showToast(tr::lng_translate_box_error(tr::now));
+					return;
+				}
+				const auto requested = PrepareManualTranslation(item, to);
+				if (requested || item->translation()->text.empty()) {
+					item->translationDone(to, std::move(page));
+				}
+				const auto retry = item->translationShowRequiresRequest(to);
+				Assert(!retry);
+			}));
 		return;
 	}
 	state->provider->request(
@@ -335,6 +323,28 @@ void ToggleQuickTranslation(
 			}
 		}));
 }
+
+class StructuredTranslateProvider final
+	: public Ui::TranslateProvider
+	, public base::has_weak_ptr {
+public:
+	explicit StructuredTranslateProvider(std::unique_ptr<Ui::TranslateProvider> backend);
+	bool supportsMessageId() const override;
+	void request(
+		Ui::TranslateProviderRequest request,
+		LanguageId to,
+		Fn<void(Ui::TranslateProviderResult)> done) override;
+
+private:
+	struct State {
+		TranslationPlan plan;
+		QStringList translated;
+		Fn<void(Ui::TranslateProviderResult)> done;
+	};
+	void translateNext(std::shared_ptr<State> state, LanguageId to);
+	std::unique_ptr<Ui::TranslateProvider> _backend;
+
+};
 
 class ExternalTranslateProvider final : public Ui::TranslateProvider {
 public:
@@ -430,7 +440,117 @@ private:
 
 };
 
+StructuredTranslateProvider::StructuredTranslateProvider(
+		std::unique_ptr<Ui::TranslateProvider> backend)
+: _backend(std::move(backend)) {
+}
+
+bool StructuredTranslateProvider::supportsMessageId() const {
+	return false;
+}
+
+void StructuredTranslateProvider::request(
+		Ui::TranslateProviderRequest request,
+		LanguageId to,
+		Fn<void(Ui::TranslateProviderResult)> done) {
+	auto plan = PlanTranslation(std::move(request.text));
+	if (!_backend || !plan || !to.known()) {
+		done({ .error = Ui::TranslateProviderError::Unknown });
+		return;
+	}
+	translateNext(std::make_shared<State>(State{
+		.plan = std::move(*plan),
+		.done = std::move(done),
+	}), to);
+}
+
+void StructuredTranslateProvider::translateNext(
+		std::shared_ptr<State> state,
+		LanguageId to) {
+	const auto index = int(state->translated.size());
+	if (index == state->plan.texts.size()) {
+		auto result = ApplyTranslation(state->plan, state->translated);
+		state->done(result
+			? Ui::TranslateProviderResult{ .text = std::move(*result) }
+			: Ui::TranslateProviderResult{ .error = Ui::TranslateProviderError::Unknown });
+		return;
+	}
+	const auto weak = base::make_weak(this);
+	_backend->request({ .text = tr::marked(state->plan.texts[index]) }, to,
+		crl::guard(weak, [=](Ui::TranslateProviderResult result) {
+			if (result.error != Ui::TranslateProviderError::None || !result.text) {
+				state->done({ .error = result.error == Ui::TranslateProviderError::None
+					? Ui::TranslateProviderError::Unknown : result.error });
+				return;
+			}
+			state->translated.push_back(std::move(result.text->text));
+			crl::on_main(weak, [=] { translateNext(state, to); });
+		}));
+}
+
 } // namespace
+
+bool UsesTelegramTranslation() {
+	const auto config = Services();
+	if (!config) {
+		return false;
+	}
+	const auto selected = config->value(u"translation"_q).toString();
+	return selected == u"telegram"_q
+		|| (selected.isEmpty()
+			&& AyuSettings::getInstance().translationProvider()
+				== TranslationProvider::Telegram);
+}
+
+std::unique_ptr<Ui::TranslateProvider> PreserveTranslationEntities(
+		std::unique_ptr<Ui::TranslateProvider> provider) {
+	return std::make_unique<StructuredTranslateProvider>(std::move(provider));
+}
+
+RichPageTranslation::RichPageTranslation(
+		not_null<Main::Session*> session,
+		std::shared_ptr<const Iv::RichPage> original,
+		LanguageId to,
+		Done done)
+: _session(base::make_weak(session))
+, _page(original ? std::make_shared<Iv::RichPage>(*original) : nullptr)
+, _provider(CreateInteractiveTranslateProvider(session, [](QString) {}))
+, _to(to)
+, _done(std::move(done)) {
+	if (_page && !CollectRichTranslationFields(_page->blocks, _fields)) {
+		_page = nullptr;
+	}
+	crl::on_main(base::make_weak(this), [=] { translateNext(); });
+}
+
+void RichPageTranslation::translateNext() {
+	if (!_session || !_page) {
+		finish(nullptr);
+		return;
+	} else if (_next == _fields.size()) {
+		finish(_page);
+		return;
+	}
+	const auto weak = base::make_weak(this);
+	_provider->request({ .text = *_fields[_next] }, _to,
+		crl::guard(weak, [=](Ui::TranslateProviderResult result) {
+			if (result.error != Ui::TranslateProviderError::None || !result.text) {
+				_page = nullptr;
+			} else {
+				*_fields[_next++] = std::move(*result.text);
+			}
+			crl::on_main(weak, [=] { translateNext(); });
+		}));
+}
+
+void RichPageTranslation::finish(std::shared_ptr<const Iv::RichPage> result) {
+	auto done = base::take(_done);
+	_fields.clear();
+	_provider = nullptr;
+	if (done) {
+		done(std::move(result));
+	}
+}
 
 bool CanQuickTranslate(not_null<HistoryItem*> item) {
 	const auto &text = item->originalText();
@@ -475,10 +595,43 @@ bool CanQuickTranslate(not_null<HistoryItem*> item) {
 ClickHandlerPtr QuickTranslateClickHandler(not_null<HistoryItem*> item) {
 	const auto session = base::make_weak(&item->history()->session());
 	const auto id = item->fullId();
-	const auto state = std::make_shared<QuickTranslation>();
 	return std::make_shared<LambdaClickHandler>([=](ClickContext context) {
-		ToggleQuickTranslation(state, session, id, context);
+		const auto owner = session.get();
+		const auto controller = context.other.value<ClickHandlerContext>().sessionWindow.get();
+		if (owner && controller && &controller->session() == owner) {
+			if (const auto current = owner->data().message(id)) {
+				ToggleMessageTranslation(current, controller);
+			}
+		}
 	});
+}
+
+void ToggleMessageTranslation(
+		not_null<HistoryItem*> item,
+		not_null<Window::SessionController*> controller) {
+	const auto session = &item->history()->session();
+	if (&controller->session() != session) {
+		return;
+	}
+	auto &cache = EligibilityFor(session);
+	const auto id = item->fullId();
+	std::erase_if(cache.requests, [](const auto &entry) {
+		return entry.second->pending && !entry.second->controller;
+	});
+	auto found = cache.requests.find(id);
+	if (found == cache.requests.end()) {
+		if (cache.requests.size() >= 16) {
+			std::erase_if(cache.requests, [](const auto &entry) {
+				return !entry.second->pending;
+			});
+		}
+		if (cache.requests.size() >= 16) {
+			controller->showToast(tr::lng_translate_box_error(tr::now));
+			return;
+		}
+		found = cache.requests.emplace(id, std::make_shared<QuickTranslation>()).first;
+	}
+	ToggleQuickTranslation(found->second, base::make_weak(session), id, controller);
 }
 
 std::unique_ptr<Ui::TranslateProvider> CreateServiceTranslateProvider(
@@ -503,7 +656,7 @@ std::unique_ptr<Ui::TranslateProvider> CreateInteractiveTranslateProvider(
 			return Ui::CreateMTProtoTranslateProvider(session);
 		} else if (id == u"system"_q) {
 			if (Platform::IsTranslateProviderAvailable()) {
-				return Platform::CreateTranslateProvider();
+				return PreserveTranslationEntities(Platform::CreateTranslateProvider());
 			}
 			return std::make_unique<ExternalTranslateProvider>(
 					std::nullopt, std::move(error),

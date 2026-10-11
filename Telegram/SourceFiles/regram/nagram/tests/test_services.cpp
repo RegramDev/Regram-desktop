@@ -221,7 +221,9 @@ void TestPresets() {
 			"preset does not make a valid service");
 		anthropic += (service.protocol == u"anthropic"_q) ? 1 : 0;
 	}
-	Require(ids.size() == 17 && anthropic == 1, "preset list");
+	Require(ids.size() == 15 && anthropic == 1
+		&& !ids.contains("yandex") && !ids.contains("openai-transcription"),
+		"preset list includes removed services");
 	std::cout << "PASS: Nagram service presets" << std::endl;
 }
 
@@ -588,20 +590,25 @@ void TestServices() {
 		"Google header");
 
 	auto yandex = service;
+	yandex.id = u"d0a9a4bf-dc8e-4c65-9a9a-f73d21f887ce"_q;
 	yandex.protocol = u"yandex"_q;
 	yandex.model = u"b1gabc"_q;
-	const auto yandexCall = BuildTranslationCall(yandex, { u"Hi"_q }, u"ru"_q);
-	Require(yandexCall.body.object().value(u"folderId"_q) == u"b1gabc"_q
-		&& yandexCall.body.object().value(u"targetLanguageCode"_q) == u"ru"_q,
-		"Yandex request");
-	Require(!ParseTranslationResult(
-			yandex,
-			R"({"translations":[{"text":""}]})",
-			1),
-		"empty translation accepted");
-	auto yandexTranscription = yandex;
-	yandexTranscription.kind = ServiceKind::Transcription;
-	Require(!ParseService(SerializeService(yandexTranscription)),
+	Require(!ParseService(SerializeService(yandex)), "retired service accepted");
+	auto legacy = ServicesDefaults();
+	legacy.insert(u"instances"_q, QJsonArray{
+		SerializeService(google),
+		SerializeService(yandex),
+	});
+	legacy.insert(u"translation"_q, yandex.id);
+	const auto upgraded = UpgradeServices(legacy);
+	Require(ValidServices(legacy)
+		&& upgraded.value(u"translation"_q).toString().isEmpty()
+		&& upgraded.value(u"instances"_q).toArray().size() == 1
+		&& FindService(upgraded, google.id).has_value(),
+		"retirement damaged retained services");
+	auto googleTranscription = google;
+	googleTranscription.kind = ServiceKind::Transcription;
+	Require(!ParseService(SerializeService(googleTranscription)),
 		"non-OpenAI transcription accepted");
 	std::cout << "PASS: Nagram service config and credential binding" << std::endl;
 	TestServicesV2(service);

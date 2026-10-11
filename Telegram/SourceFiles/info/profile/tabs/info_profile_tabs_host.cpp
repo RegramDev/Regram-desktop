@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "info/media/info_media_buttons.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
+#include "regram/nagram/privacy/options.h"
 #include "ui/widgets/menu/menu_add_action_callback.h"
 #include "ui/widgets/menu/menu_add_action_callback_factory.h"
 #include "ui/widgets/popup_menu.h"
@@ -230,11 +231,26 @@ void TabsHost::wireMainTab() {
 			ensureActiveVisible();
 		}
 	}, lifetime());
+	Nagram::ForDevice().Value(Nagram::Privacy::kProfileCommonGroupsFirst)
+	| rpl::skip(1) | rpl::on_next([this] {
+		if (refreshOrder()) {
+			syncStripTitles();
+			ensureActiveVisible();
+		}
+	}, lifetime());
 }
 
 bool TabsHost::refreshOrder() {
 	const auto main = _context.peer->mainProfileTab();
 	const auto mainTabIndex = [&] {
+		if (!_context.topic && !_context.sublist && _context.peer->asUser()
+			&& Nagram::ForDevice().Get(Nagram::Privacy::kProfileCommonGroupsFirst)) {
+			for (auto i = 0; i != int(_tabs.size()); ++i) {
+				if (_tabs[i].id == u"common-groups"_q && _tabsShown[i]) {
+					return i;
+				}
+			}
+		}
 		if (main == Data::ProfileTab::None) {
 			return -1;
 		}

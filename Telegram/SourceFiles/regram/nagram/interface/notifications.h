@@ -19,4 +19,8 @@ namespace Nagram::Interface {
 	gsl::not_null<HistoryItem*> item,
 	bool message);
 
+[[nodiscard]] bool SilentNotification(
+	gsl::not_null<HistoryItem*> item,
+	bool message);
+
 } // namespace Nagram::Interface

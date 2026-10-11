@@ -1,6 +1,8 @@
 #pragma once
 
 #include "regram/nagram/core/options.h"
+#include <QtCore/QJsonArray>
+#include <algorithm>
 
 namespace Nagram::Privacy {
 
@@ -44,6 +46,9 @@ inline constexpr auto kShowProfileDc = Option<bool>{
 inline constexpr auto kShowRegistrationDate = Option<bool>{
 	"nagram.showRegistrationDate", Scope::Device, false,
 	Category::Privacy, "lng_nagram_show_registration_date" };
+inline constexpr auto kProfileCommonGroupsFirst = Option<bool>{
+	"nagram.regramProfileCommonGroupsFirst", Scope::Device, false,
+	Category::Privacy, "lng_regram_profile_common_groups_first" };
 
 [[nodiscard]] constexpr bool ShowsRegistration(
 		bool enabled,
@@ -78,8 +83,36 @@ inline constexpr auto kAdminShortcuts = Option<bool>{
 	"nagram.adminShortcuts", Scope::Device, false,
 	Category::Privacy, "lng_nagram_admin_shortcuts_option" };
 
+inline constexpr auto kAntiAutoDelete = Option<bool>{
+	"nagram.regramAntiAutoDelete", Scope::Device, false,
+	Category::Privacy, "lng_regram_anti_auto_delete" };
+inline constexpr auto kAntiSelfDestruct = Option<bool>{
+	"nagram.regramAntiSelfDestruct", Scope::Device, false,
+	Category::Privacy, "lng_regram_anti_self_destruct" };
+inline const auto kAntiRevokePeers = Option<QByteArray>{
+	"nagram.regramAntiRevokePeers", Scope::Account, QByteArray(),
+	Category::Privacy, "lng_regram_anti_revoke_chat",
+	static_cast<unsigned>(Flag::Hidden),
+	[](const QByteArray &raw) {
+		if (raw.isEmpty()) {
+			return true;
+		}
+		const auto document = QJsonDocument::fromJson(raw);
+		if (!document.isArray() || document.array().size() > 10000 || raw.size() > 1024 * 1024) {
+			return false;
+		}
+		return std::ranges::all_of(document.array(), [](const QJsonValue &entry) {
+			auto valid = false;
+			const auto id = entry.toString().toULongLong(&valid);
+			return entry.isString() && valid && id && QString::number(id) == entry.toString();
+		});
+	} };
+
 inline void RegisterOptions(Registry &registry) {
 	Expects(registry.Add(kDemoMode));
+	Expects(registry.Add(kAntiAutoDelete));
+	Expects(registry.Add(kAntiSelfDestruct));
+	Expects(registry.Add(kAntiRevokePeers));
 	Expects(registry.Add(kHideReadTime));
 	Expects(registry.Add(kHideSharePhonePrompt));
 	Expects(registry.Add(kProfileIdFormat));
@@ -95,6 +128,7 @@ inline void RegisterOptions(Registry &registry) {
 	Expects(registry.Add(kIgnoreContentRestrictions));
 	Expects(registry.Add(kSkipSensitiveWarning));
 	Expects(registry.Add(kShowRegistrationDate));
+	Expects(registry.Add(kProfileCommonGroupsFirst));
 }
 
 } // namespace Nagram::Privacy

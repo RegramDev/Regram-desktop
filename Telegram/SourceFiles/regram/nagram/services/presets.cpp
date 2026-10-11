@@ -39,10 +39,6 @@ constexpr ServicePreset kPresets[] = {
 		u"https://translation.googleapis.com/", u"language/translate/v2" },
 	{ "microsoft", u"Microsoft Translator", Kind::Translation, u"microsoft",
 		u"https://api.cognitive.microsofttranslator.com/", u"translate" },
-	{ "yandex", u"Yandex Translate", Kind::Translation, u"yandex",
-		u"https://translate.api.cloud.yandex.net/", u"translate/v2/translate" },
-	{ "openai-transcription", u"OpenAI", Kind::Transcription, u"openai",
-		u"https://api.openai.com/v1/", u"audio/transcriptions" },
 };
 
 } // namespace

@@ -29,6 +29,7 @@
 #include "regram/nagram/snapshot/snapshot.h"
 #include "regram/nagram/sync/model.h"
 #include "regram/settings/advanced_model.h"
+#include "regram/settings/ios_backup.h"
 #include "storage/storage_account.h"
 
 #include <map>
@@ -129,6 +130,7 @@ const Registry &RegisteredOptions() {
 		Expects(result.Add(Regram::Filters::kSuppressNotifications));
 		Expects(result.Add(Regram::Filters::kDisabledChats));
 		Expects(result.Add(Regram::Filters::kHiddenSenders));
+		Expects(result.Add(Regram::Settings::IosBackup::kSource));
 		Links::RegisterOptions(result);
 		Links::RegisterBehaviorOptions(result);
 		Links::RegisterInlineOptions(result);

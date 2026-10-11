@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-12",
+  "scope": "Explicit user removals; remaining feature coverage is still checked",
+  "options": {
+    "nagram.autoInlineBotEnabled": "User removed automatic inline-bot queries on 2026-10-11; legacy preference stays registered but runtime returns false.",
+    "nagram.chatTranslationUseService": "User removed duplicate chat-translation controls; provider selection is now shared with message translation.",
+    "nagram.inlineBotRules": "Removed with automatic inline-bot rules; kept only for legacy preference compatibility.",
+    "nagram.linkRules": "URL rewriting removed by the user; external links follow native handling.",
+    "nagram.keywordAlerts": "Custom keyword alerts removed; normal notifications and message-filter rules remain separate."
+  },
+  "translation_providers": {
+    "yandex": "Removed builtin backend, cloud preset and request/response/auth protocol. Legacy builtin selection maps to Google; legacy external instances are retired without disabling other services."
+  },
+  "menu_items": {
+    "TranscribeSelected": "Custom batch transcription removed from registration; legacy visibility ID 37 remains readable."
+  },
+  "merged_controls": [
+    "Chat translation shares the message translation provider.",
+    "Repeat and message details use the unified Regram menu in both main history and reply lists.",
+    "Read/seen-by visibility is configured only in the unified Regram menu."
+  ]
+}

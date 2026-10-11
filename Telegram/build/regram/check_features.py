@@ -96,9 +96,14 @@ def collect(root):
             continue
         fields = [part.strip() for part in line.split("|")][1:-1]
         matrix.append({"id": fields[0], "feature": fields[1], "criterion": fields[3]})
+    retired_path = root / "docs/regram/feature-retirements.json"
+    retired = json.loads(retired_path.read_text()).get("options", {}) if retired_path.exists() else {}
+    for item in options:
+        if item["key"] in retired:
+            item["retired_per_user"] = retired[item["key"]]
     missing = [
         item["key"] for item in options
-        if not item["consumers"] or not item["localized_title_present"]
+        if (not item["consumers"] or not item["localized_title_present"]) and item["key"] not in retired
     ]
     duplicate = [key for key, count in Counter(item["key"] for item in options).items() if count != 1]
     hook_gaps = [
@@ -109,7 +114,8 @@ def collect(root):
     current = {item["key"] for item in options}
     return {
         "schema_version": 1,
-        "scope": "Complete declared extension inventory; static checks do not imply runtime acceptance",
+        "scope": "Declared extension inventory with explicit user retirements; static checks do not imply runtime acceptance",
+        "user_retirements": retired,
         "reference_nagram": pinned["reference_nagram"],
         "counts": {"options": len(options), "advanced_fields": len(advanced),
                    "hooks": len(checked_hooks), "matrix_rows": len(matrix)},

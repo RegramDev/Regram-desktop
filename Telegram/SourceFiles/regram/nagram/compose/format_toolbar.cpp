@@ -15,7 +15,7 @@
 namespace Nagram::Compose {
 namespace {
 
-enum class Action { Tag, Link, Clear };
+enum class Action { Tag, Link, Clear, Newline };
 
 struct Entry {
 	Action action = Action::Tag;
@@ -40,6 +40,8 @@ std::vector<Entry> Entries() {
 			&tr::lng_menu_formatting_strike_out },
 		{ Action::Tag, &Field::kTagCode, &st::nagramFormatCode,
 			&st::nagramFormatCodeActive, &tr::lng_menu_formatting_monospace },
+		{ Action::Tag, &Field::kTagPre, &st::nagramFormatCode,
+			&st::nagramFormatCodeActive, &tr::lng_regram_format_code_block },
 		{ Action::Tag, &Field::kTagSpoiler, &st::nagramFormatSpoiler,
 			&st::nagramFormatSpoilerActive,
 			&tr::lng_menu_formatting_spoiler },
@@ -50,6 +52,8 @@ std::vector<Entry> Entries() {
 			&tr::lng_menu_formatting_link_create },
 		{ Action::Clear, nullptr, &st::nagramFormatClear, nullptr,
 			&tr::lng_menu_formatting_clear },
+		{ Action::Newline, nullptr, &st::nagramMenuOrderDown, nullptr,
+			&tr::lng_regram_format_newline },
 	};
 }
 
@@ -83,7 +87,11 @@ FormatToolbar::FormatToolbar(
 			this,
 			st::nagramFormatButton);
 		button->setIconOverride(entry.icon, entry.icon);
-		button->setAccessibleName((*entry.name)(tr::now));
+		button->setFocusPolicy(Qt::NoFocus);
+		(*entry.name)() | rpl::on_next([=](const QString &name) {
+			button->setAccessibleName(name);
+			button->setToolTip(name);
+		}, button->lifetime());
 		button->moveToLeft(left, padding.top());
 		button->setClickedCallback([=] { apply(entry); });
 		left += button->width();
@@ -117,10 +125,13 @@ FormatToolbar::FormatToolbar(
 void FormatToolbar::paintEvent(QPaintEvent *e) {
 	auto p = QPainter(this);
 	auto hq = PainterHighQualityEnabler(p);
-	p.setPen(st::menuSeparatorFg);
+	auto pen = QPen(st::menuSeparatorFg->c);
+	pen.setWidth(st::lineWidth);
+	p.setPen(pen);
 	p.setBrush(st::menuBg);
 	const auto radius = st::nagramFormatRadius;
-	p.drawRoundedRect(QRectF(rect()).marginsRemoved({ 0.5, 0.5, 0.5, 0.5 }),
+	const auto inset = st::lineWidth / 2.;
+	p.drawRoundedRect(QRectF(rect()).marginsRemoved({ inset, inset, inset, inset }),
 		radius,
 		radius);
 }
@@ -136,6 +147,12 @@ void FormatToolbar::apply(const Entry &entry) {
 	case Action::Clear:
 		_field->clearCurrentMarkdown();
 		break;
+	case Action::Newline: {
+		auto cursor = _field->textCursor();
+		cursor.setPosition(cursor.selectionEnd());
+		cursor.insertBlock();
+		_field->setTextCursor(cursor);
+	} break;
 	}
 	refresh();
 }
@@ -155,11 +172,26 @@ void FormatToolbar::refresh() {
 	const auto parent = parentWidget();
 	if (!_enabled
 		|| !parent
-		|| !_field->isVisible()
+		|| _field->isHidden()
 		|| !_field->hasFocus()
 		|| !cursor.hasSelection()) {
 		hide();
 		return;
+	}
+	const auto &padding = st::nagramFormatPadding;
+	const auto size = st::nagramFormatButtonSize;
+	const auto columns = std::clamp(
+		(parent->width() - padding.left() - padding.right()) / size,
+		1,
+		int(_buttons.size()));
+	resize(
+		padding.left() + columns * size + padding.right(),
+		padding.top() + ((int(_buttons.size()) + columns - 1) / columns) * size
+			+ padding.bottom());
+	for (auto index = 0; index != int(_buttons.size()); ++index) {
+		_buttons[index].first->moveToLeft(
+			padding.left() + (index % columns) * size,
+			padding.top() + (index / columns) * size);
 	}
 	refreshActive();
 	const auto edit = _field->rawTextEdit();
@@ -173,6 +205,7 @@ void FormatToolbar::refresh() {
 	if (top < 0) {
 		top = anchor.y() + caret.height() + skip;
 	}
+	top = std::clamp(top, 0, std::max(parent->height() - height(), 0));
 	const auto maxLeft = std::max(parent->width() - width(), 0);
 	const auto left = std::clamp(anchor.x() - width() / 2, 0, maxLeft);
 	move(left, top);

@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "data/data_streaming.h"
 
+#include "core/application.h"
+#include "regram/nagram/media/options.h"
 #include "data/data_photo.h"
 #include "data/data_document.h"
 #include "data/data_session.h"
@@ -83,6 +85,16 @@ bool PruneDestroyedAndSet(
 Streaming::Streaming(not_null<Session*> owner)
 : _owner(owner)
 , _keptAliveTimer([=] { clearKeptAlive(); }) {
+	Core::App().appDeactivatedValue() | rpl::on_next([=](bool deactivated) {
+		if (deactivated && Nagram::ForDevice().Get(Nagram::Media::kLoadingExperiment)) {
+			_keptAlive.clear();
+			_keptAliveTimer.cancel();
+		}
+	}, _lifetime);
+	Nagram::ForDevice().Value(Nagram::Media::kLoadingExperiment) | rpl::on_next([=] {
+		_keptAlive.clear();
+		_keptAliveTimer.cancel();
+	}, _lifetime);
 }
 
 Streaming::~Streaming() = default;
@@ -159,7 +171,14 @@ void Streaming::keepAlive(
 	if (!shared) {
 		return;
 	}
-	const auto till = crl::now() + kKeepAliveTimeout;
+	const auto experiment = Nagram::ForDevice().Get(Nagram::Media::kLoadingExperiment);
+	const auto timeout = experiment ? crl::time(1500) : kKeepAliveTimeout;
+	if (experiment) {
+		for (auto j = _keptAlive.begin(); j != _keptAlive.end();) {
+			j = j->first != shared ? _keptAlive.erase(j) : std::next(j);
+		}
+	}
+	const auto till = crl::now() + timeout;
 	const auto j = _keptAlive.find(shared);
 	if (j != end(_keptAlive)) {
 		j->second = till;
@@ -167,7 +186,7 @@ void Streaming::keepAlive(
 		_keptAlive.emplace(std::move(shared), till);
 	}
 	if (!_keptAliveTimer.isActive()) {
-		_keptAliveTimer.callOnce(kKeepAliveTimeout);
+		_keptAliveTimer.callOnce(timeout);
 	}
 }
 

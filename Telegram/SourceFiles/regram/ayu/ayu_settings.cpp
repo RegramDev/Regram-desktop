@@ -590,6 +590,10 @@ void AyuSettings::validate() {
 	validateEnum(_showAddFilterInContextMenu, defaults._showAddFilterInContextMenu);
 
 	validateEnum(_translationProvider, defaults._translationProvider, 3);
+	if (int(_translationProvider.current()) == 2) {
+		_translationProvider = TranslationProvider::Google;
+		modified = true;
+	}
 	if ((_translationProvider.current() == TranslationProvider::Native)
 		&& !Platform::IsTranslateProviderAvailable()) {
 		_translationProvider = defaults._translationProvider.current();
@@ -1100,6 +1104,9 @@ void AyuSettings::setRoundConfirmation(bool val) {
 }
 
 void AyuSettings::setTranslationProvider(TranslationProvider val) {
+	if (int(val) == 2) {
+		val = TranslationProvider::Google;
+	}
 	if ((val == TranslationProvider::Native)
 		&& !Platform::IsTranslateProviderAvailable()) {
 		val = TranslationProvider::Telegram;

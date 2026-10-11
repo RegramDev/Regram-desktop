@@ -8,6 +8,7 @@
 #include "lang_auto_counts.h"
 #include "logs.h"
 #include "regram/ayu/ui/settings/settings_main.h"
+#include "regram/diagnostics/diagnostics.h"
 #include "regram/nagram/core/diagnostics.h"
 #include "regram/nagram/core/exchange.h"
 #include "regram/nagram/core/language.h"
@@ -25,6 +26,7 @@
 #include "regram/nagram/settings/rules.h"
 #include "regram/nagram/settings/services.h"
 #include "regram/settings/advanced_model.h"
+#include "regram/settings/ios_backup.h"
 #include "settings.h"
 #include "settings/settings_builder.h"
 #include "settings/settings_common_session.h"
@@ -236,6 +238,15 @@ const auto kMeta = BuildHelper({
 	const auto controller = builder.controller();
 	builder.addDividerText(tr::lng_nagram_config_scope());
 	builder.addButton({
+		.id = u"regram/config/cross-platform-export"_q,
+		.title = tr::lng_regram_cross_platform_backup(),
+		.st = &st::settingsButtonNoIcon,
+		.onClick = [=] {
+			controller->show(Box(Regram::Settings::IosBackup::ExportBox, controller));
+		},
+		.keywords = { u"iOS"_q, u"backup"_q, u"JSON"_q },
+	});
+	builder.addButton({
 		.id = u"regram/nagram/config/modified"_q,
 		.title = tr::lng_nagram_config_modified(),
 		.st = &st::settingsButtonNoIcon,
@@ -255,6 +266,14 @@ const auto kMeta = BuildHelper({
 	});
 	builder.addButton({
 		.id = u"regram/nagram/config/diagnostics"_q,
+		.title = tr::lng_regram_diagnostics(),
+		.st = &st::settingsButtonNoIcon,
+		.onClick = [=] {
+			controller->show(Box(Regram::Diagnostics::SettingsBox, &controller->session()));
+		},
+	});
+	builder.addButton({
+		.id = u"regram/nagram/config/copy-diagnostics"_q,
 		.title = tr::lng_nagram_config_diagnostics(),
 		.st = &st::settingsButtonNoIcon,
 		.onClick = [=] { CopyDiagnostics(controller); },
@@ -362,6 +381,11 @@ void ShowImport(
 		const QByteArray &bytes,
 		ExchangeTarget target,
 		Fn<void()> applied) {
+	if (target == ExchangeTarget::File
+		&& QJsonDocument::fromJson(bytes).object().contains(u"values"_q)) {
+		Regram::Settings::IosBackup::ShowImport(controller, bytes);
+		return;
+	}
 	const auto plan = Exchange::PlanImport(
 		ForDevice(), RegisteredOptions(), bytes, target);
 	if (!plan.error.isEmpty()) {

@@ -62,5 +62,13 @@
     ],
     "features_preserved": true,
     "release_validation": "pending all platform optimized builds"
+  },
+  "latest_publication_check": {
+    "checked_at": "2026-10-11T19:00:06.170637+00:00",
+    "latest_stable": "v7.3.1",
+    "stable_release": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.3.1",
+    "dev_commit": "6fed91ffab9861771a75f29df65031b3c80b6941",
+    "missing_dev_commits": 0,
+    "new_sync_required": false
   }
 }

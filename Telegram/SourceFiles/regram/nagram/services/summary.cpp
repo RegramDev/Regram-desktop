@@ -171,6 +171,7 @@ void InsertSummaryAction(
 	if (Collect(session, ids).scope.texts.isEmpty()) {
 		return;
 	}
+	menu = Menu::Destination(menu, Menu::ActionId::Summarize);
 	const auto action = Ui::Menu::CreateAction(
 		menu,
 		tr::lng_nagram_menu_summarize(tr::now),

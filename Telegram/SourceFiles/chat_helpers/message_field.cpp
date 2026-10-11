@@ -52,6 +52,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "mainwindow.h"
 #include "main/main_session.h"
+#include "regram/nagram/compose/nickname_mentions.h"
 #include "settings/settings_common.h"
 #include "settings/sections/settings_premium.h"
 #include "styles/style_layers.h"
@@ -578,6 +579,10 @@ auto InitMessageFieldHandlers(MessageFieldHandlersArgs &&args)
 		return On(PowerSaving::kChatSpoiler) || paused();
 	});
 	Nagram::Compose::InstallFieldHooks(field);
+	if (args.allowMarkdownTags.empty()
+		|| args.allowMarkdownTags.contains(Ui::InputField::kTagBold)) {
+		Nagram::Compose::SetupNicknameMentions(field, session);
+	}
 	if (args.show) {
 		Nagram::InstallDraftTranslation(field, args.show);
 	}

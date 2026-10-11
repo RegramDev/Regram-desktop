@@ -1,8 +1,31 @@
 #include "regram/nagram/services/model.h"
 
+#include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 
 namespace Nagram {
+namespace {
+
+QJsonObject ActiveServices(QJsonObject value) {
+	auto instances = QJsonArray();
+	for (const auto &entry : value.value(u"instances"_q).toArray()) {
+		const auto service = ParseService(entry.toObject());
+		if (service && service->kind == ServiceKind::Translation) {
+			instances.push_back(entry);
+		} else if (service) {
+			for (const auto &key : { u"translation"_q, u"summary"_q }) {
+				if (value.value(key).toString() == service->id) {
+					value.insert(key, QString());
+				}
+			}
+		}
+	}
+	value.insert(u"instances"_q, instances);
+	value.insert(u"transcription"_q, QString());
+	return value;
+}
+
+} // namespace
 
 std::optional<QJsonObject> Services() {
 	const auto bytes = ForDevice().Get(kServicesConfig);
@@ -18,11 +41,15 @@ std::optional<QJsonObject> Services() {
 		LOG(("Nagram Error: Invalid services configuration; external services disabled."));
 		return std::nullopt;
 	}
-	return UpgradeServices(document.object());
+	return ActiveServices(UpgradeServices(document.object()));
 }
 
 bool SetServices(const QJsonObject &stored) {
-	const auto value = UpgradeServices(stored);
+	const auto upgraded = UpgradeServices(stored);
+	if (!ValidServices(upgraded)) {
+		return false;
+	}
+	const auto value = ActiveServices(upgraded);
 	return ValidServices(value) && ForDevice().Set(kServicesConfig,
 		value == ServicesDefaults() ? QByteArray()
 			: QJsonDocument(value).toJson(QJsonDocument::Compact));

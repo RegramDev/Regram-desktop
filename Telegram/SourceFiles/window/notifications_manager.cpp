@@ -350,6 +350,7 @@ System::SkipState System::computeSkipState(
 			.value = value,
 			.silent = (forceSilent
 				|| !messageType
+				|| Nagram::Interface::SilentNotification(item, messageType)
 				|| item->isSilent()
 				|| notifySettings->sound(thread).none),
 		};

@@ -168,6 +168,13 @@ void Insert(
 		ActionId id,
 		const QString &text,
 		Fn<void()> callback) {
+	const auto target = Destination(menu, id);
+	if (target != menu) {
+		menu = target;
+		position = EndPosition(menu);
+	} else {
+		position = std::min(position, EndPosition(menu));
+	}
 	const auto action = Ui::Menu::CreateAction(menu, text, std::move(callback));
 	const auto icon = (id == ActionId::Batch)
 		? &st::menuIconCopy : &st::menuIconSelect;

@@ -70,6 +70,7 @@ void InsertQuickRatingActions(
 		return;
 	}
 	const auto itemId = item->fullId();
+	menu = Destination(menu, ActionId::QuickRating);
 	auto position = InsertPosition(menu);
 	for (const auto &option : { &kQuickRatingFirst, &kQuickRatingSecond }) {
 		const auto text = ForDevice().Get(*option).trimmed();

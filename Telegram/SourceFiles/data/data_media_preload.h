@@ -64,6 +64,7 @@ private:
 	void load();
 	void done(QByteArray result);
 
+	bool automaticDownload() const override { return true; }
 	bool readyToRequest() const override;
 	int64 takeNextRequestOffset() override;
 	bool feedPart(int64 offset, const QByteArray &bytes) override;

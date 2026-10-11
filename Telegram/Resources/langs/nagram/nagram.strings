@@ -430,12 +430,12 @@ Telegram/cmake/td_lang.cmake. Every key uses the lng_nagram_ prefix.
 "lng_nagram_service_testing" = "Waiting for service…";
 "lng_nagram_service_url" = "Base URL";
 "lng_nagram_service_use_key" = "Authenticate with an API key";
-"lng_nagram_services" = "Translation and transcription services";
-"lng_nagram_services_about" = "External services receive only the text or audio you explicitly ask them to process, unless “Use the selected service to translate whole chats” is turned on below. API keys stay in the system credential store and are excluded from configuration exports.";
+"lng_nagram_services" = "Translation services";
+"lng_nagram_services_about" = "Quick translation, chat translation and outgoing translation use the same selected provider. Turning on translation in a chat processes its messages with this provider. API keys stay in the system credential store and are excluded from configuration exports.";
 "lng_nagram_draft_changed" = "The draft changed while this preview was open. Close it and translate the current draft again.";
 "lng_nagram_inherit" = "Inherit";
 "lng_nagram_service_system" = "System translation";
-"lng_nagram_service_translation" = "Manual translation";
+"lng_nagram_service_translation" = "Translation provider";
 "lng_nagram_translate_apply" = "Use in draft";
 "lng_nagram_translate_draft" = "Translate draft…";
 "lng_nagram_system_translation_unavailable" = "System translation is unavailable on this device or OS version. Choose Telegram or a configured service.";
@@ -496,8 +496,8 @@ Telegram/cmake/td_lang.cmake. Every key uses the lng_nagram_ prefix.
 "lng_nagram_filter_exported" = "Rule template copied without account or chat identifiers. Exported rules are disabled.";
 "lng_nagram_filter_import" = "Import rule template from clipboard";
 "lng_nagram_filter_import_about" = "Add the following rules? Existing rules are retained. Imported rules stay disabled until you enable them.";
-"lng_nagram_filter_author_show" = "Stop hiding this author locally";
-"lng_nagram_filter_author_hide" = "Hide this author locally";
+"lng_nagram_filter_author_show" = "Show messages from this user";
+"lng_nagram_filter_author_hide" = "Hide messages from this user";
 "lng_nagram_filter_chat_enable" = "Apply local filters in this chat";
 "lng_nagram_filter_chat_disable" = "Exclude this chat from local filters";
 "lng_nagram_filter_menu_saved" = "Filter preference saved for this account. The master switch is in Regram → Local message filters.";
@@ -833,3 +833,68 @@ Telegram/cmake/td_lang.cmake. Every key uses the lng_nagram_ prefix.
 "lng_nagram_send_translation_limit" = "This setting could not be saved. At most {amount} chats can translate before sending.";
 
 "lng_nagram_transcribe_download_error" = "The audio download failed or timed out. Try again.";
+
+"lng_regram_nickname_mentions" = "Nickname mentions";
+"lng_regram_nickname_mentions_about" = "Convert a complete @username into the user’s full name and a native mention while typing. Formatting stays intact; code, links and unfinished input-method text are unchanged. Failed lookups keep the original username.";
+
+"lng_regram_message_json" = "Message JSON";
+
+"lng_regram_menu_order" = "Message menu order";
+"lng_regram_menu_order_about" = "Drag the handles to reorder actions, or use the up and down buttons. Your changes apply after saving.";
+"lng_regram_menu_submenu" = "In the Regram submenu";
+"lng_regram_menu_move_up" = "Move up";
+"lng_regram_menu_move_down" = "Move down";
+
+"lng_regram_message_replies" = "Message replies";
+
+"lng_regram_format_code_block" = "Code block";
+"lng_regram_format_newline" = "Insert line break";
+
+"lng_regram_restrict_sender" = "Restrict sender";
+
+"lng_regram_profile_common_groups_first" = "Open profiles on groups in common";
+"lng_regram_font_use_interface" = "Use for interface only";
+"lng_regram_font_use_chat" = "Use for messages only";
+
+"lng_regram_diagnostics" = "Diagnostics";
+"lng_regram_diagnostics_transfer" = "{name}: received {amount} MiB · recent speed {value} MiB/s";
+"lng_regram_diagnostics_testing" = "Testing 100 messages…";
+"lng_regram_diagnostics_result" = "Average: {value} ms per message\n{amount} messages reached a matcher limit";
+"lng_regram_diagnostics_boost_on" = "Download acceleration: on";
+"lng_regram_diagnostics_boost_off" = "Download acceleration: off";
+"lng_regram_diagnostics_about" = "Counts media response data for logged-in accounts during this run, including repeated downloads. Cache reads, local files and font downloads are excluded. Speed is the average over the last three seconds, not total protocol traffic.";
+"lng_regram_diagnostics_run" = "Test filters on 100 messages";
+"lng_regram_diagnostics_idle" = "Average time: —";
+"lng_regram_diagnostics_filter_about" = "Uses the same synthetic messages as Regram iOS, with conversation scopes removed for this test only. Runs in the background; clicking again cancels the previous run. This does not measure scrolling frame rate.";
+"lng_regram_cross_platform_backup" = "Backup compatible with Regram iOS";
+"lng_regram_backup_appearance" = "Appearance";
+"lng_regram_backup_messages" = "Messages";
+"lng_regram_backup_privacy" = "Privacy";
+"lng_regram_backup_translation" = "Translation";
+"lng_regram_backup_media" = "Media";
+"lng_regram_backup_notifications" = "Notifications";
+"lng_regram_backup_invalid" = "The backup is invalid, unsupported, or larger than 2 MB.";
+"lng_regram_backup_about" = "Shares the Regram iOS JSON format. Includes selected device settings and conversation preferences for this account; global privacy options follow the current client scope. Does not include login sessions, messages, API credentials, service secrets or font files. Review changes before restoring.";
+"lng_regram_backup_unsupported" = "{amount} values cannot be applied on this desktop version. They will be retained for export to iOS:";
+"lng_regram_backup_changed" = "Settings changed after the preview. Open the preview again.";
+"lng_regram_backup_anti_revoke" = "Keep deleted messages";
+
+"lng_regram_backup_reset" = "Reset selected shared settings";
+"lng_regram_backup_reset_confirm" = "Reset the selected shared settings to desktop defaults? Mobile-only values retained from earlier backups will be removed for these categories. Changes will be previewed before they are applied.";
+
+"lng_regram_backup_items" = "{amount} items";
+
+"lng_regram_pinned_notifications" = "Pinned message notifications";
+"lng_regram_mention_notifications" = "Mention and reply notifications";
+"lng_regram_notification_silenced" = "Silent notification";
+"lng_regram_notification_inherit" = "Use Regram notification settings";
+
+"lng_regram_anti_auto_delete" = "Keep automatically deleted messages";
+"lng_regram_anti_self_destruct" = "Keep self-destructing media";
+"lng_regram_anti_revoke_chat" = "Keep deleted messages in this chat";
+"lng_regram_anti_revoke_chat_disable" = "Stop keeping deleted messages in this chat";
+
+"lng_regram_media_loading_experiment" = "Media loading optimization (experimental)";
+"lng_regram_default_video_quality" = "Default video quality";
+"lng_regram_video_quality_highest" = "Highest available";
+"lng_regram_video_quality_lowest" = "Lowest available";

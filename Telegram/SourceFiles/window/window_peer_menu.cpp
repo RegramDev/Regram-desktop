@@ -75,6 +75,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_app_config.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
+#include "regram/nagram/notifications/settings.h"
 #include "menu/menu_mute.h"
 #include "menu/menu_ttl_validator.h"
 #include "apiwrap.h"
@@ -293,6 +294,24 @@ void PeerMenuAddMuteSubmenuAction(
 			},
 		});
 	}
+	const auto peer = thread->peer();
+	const auto protectedHistory = isHistoryProtected(peer);
+	addAction(protectedHistory ? tr::lng_regram_anti_revoke_chat_disable(tr::now)
+		: tr::lng_regram_anti_revoke_chat(tr::now),
+		crl::guard(controller, [=] { Expects(setHistoryProtected(peer, !protectedHistory)); }),
+		&st::menuIconInfo);
+
+	if (!peer->isUser()) {
+		for (const auto pinned : { true, false }) {
+			addAction(pinned ? tr::lng_regram_pinned_notifications(tr::now)
+				: tr::lng_regram_mention_notifications(tr::now),
+				crl::guard(controller, [=] {
+					controller->show(Box(Nagram::Notifications::PolicyBox,
+						&controller->session(), pinned, SerializePeerId(peer->id)));
+				}), &st::menuIconSilent);
+		}
+	}
+
 }
 
 class Filler {
@@ -1993,7 +2012,6 @@ void Filler::fillHistoryActions() {
 	addDirectMessages();
 	addExportChat();
 	addTranslate();
-	Nagram::AutoTranslate::AddPeerMenu(_addAction, _controller, _peer);
 	Nagram::SendTranslation::AddPeerMenu(_addAction, _controller, _peer);
 	Nagram::AddComposePeerMenu(_addAction, _controller, _peer);
 	Nagram::Filters::AddScopeAction(_addAction, _controller, _peer, nullptr);

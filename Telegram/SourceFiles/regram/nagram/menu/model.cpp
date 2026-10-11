@@ -1,7 +1,9 @@
 #include "regram/nagram/menu/model.h"
 
 #include <QtCore/QJsonDocument>
+#include <QtCore/QJsonArray>
 #include <QtCore/QJsonObject>
+#include <algorithm>
 
 namespace Nagram::Menu {
 namespace {
@@ -25,13 +27,81 @@ QJsonObject Parse(const QByteArray &raw) {
 
 } // namespace
 
+bool ValidActionList(const QByteArray &raw) {
+	if (raw.isEmpty()) {
+		return true;
+	} else if (raw.size() > 4096) {
+		return false;
+	}
+	const auto document = QJsonDocument::fromJson(raw);
+	if (!document.isArray() || document.array().size() > kEntries.size()) {
+		return false;
+	}
+	auto seen = std::vector<int>();
+	for (const auto &value : document.array()) {
+		const auto id = value.toInt();
+		if (!value.isDouble() || value.toDouble() != id
+			|| (std::ranges::find(seen, id) != seen.end())
+			|| !std::ranges::any_of(kEntries, [=](const Entry &entry) {
+				return int(entry.id) == id;
+			})) {
+			return false;
+		}
+		seen.push_back(id);
+	}
+	return true;
+}
+
+std::vector<ActionId> ReadActionList(const QByteArray &raw) {
+	auto result = std::vector<ActionId>();
+	if (ValidActionList(raw)) {
+		for (const auto &value : QJsonDocument::fromJson(raw).array()) {
+			result.push_back(ActionId(value.toInt()));
+		}
+	}
+	return result;
+}
+
+QByteArray WriteActionList(const std::vector<ActionId> &ids) {
+	auto values = QJsonArray();
+	for (const auto id : ids) {
+		values.push_back(int(id));
+	}
+	return ids.empty() ? QByteArray() : QJsonDocument(values).toJson(QJsonDocument::Compact);
+}
+
+std::vector<ActionId> ReadActionOrder(const QByteArray &raw) {
+	auto result = ReadActionList(raw);
+	for (const auto &entry : kEntries) {
+		if (std::ranges::find(result, entry.id) == result.end()) {
+			result.push_back(entry.id);
+		}
+	}
+	return result;
+}
+
 bool IsUpstream(ActionId id) {
 	return (static_cast<int>(id) < static_cast<int>(ActionId::Repeat))
 		|| (id == ActionId::SeenBy);
 }
 
 Visibility DefaultVisibility(ActionId id) {
-	return IsUpstream(id) ? Visibility::Show : Visibility::Hide;
+	switch (id) {
+	case ActionId::Repeat:
+	case ActionId::RepeatAsCopy:
+	case ActionId::ForwardWithoutQuote:
+	case ActionId::SelectSender:
+	case ActionId::FilterAuthor:
+	case ActionId::MessageDetails:
+	case ActionId::MessageJson:
+	case ActionId::Replies:
+	case ActionId::RestrictSender:
+	case ActionId::SaveToSaved:
+	case ActionId::CopyMarkdown:
+		return Visibility::Show;
+	default:
+		return IsUpstream(id) ? Visibility::Show : Visibility::Hide;
+	}
 }
 
 bool ValidateConfig(const QByteArray &raw) {
@@ -52,7 +122,7 @@ bool ValidateConfig(const QByteArray &raw) {
 	}
 	const auto states = root.value("states").toObject();
 	for (auto it = states.begin(); it != states.end(); ++it) {
-		if ((!KnownKey(it.key()) && it.key() != u"E30")
+		if ((!KnownKey(it.key()) && it.key() != u"E30" && it.key() != u"E37")
 			|| (version == 1 && it.key() == u"E22")
 			|| !it.value().isString()) {
 			return false;
@@ -105,6 +175,7 @@ QByteArray WriteVisibility(
 		}
 	}
 	states.remove(u"E30");
+	states.remove(u"E37");
 	const auto key = QString::fromLatin1(Key(id));
 	if (visibility == DefaultVisibility(id)) {
 		states.remove(key);

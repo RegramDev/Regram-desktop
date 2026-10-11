@@ -11,6 +11,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history.h"
 #include "info/profile/info_profile_inner_widget.h"
 #include "info/profile/info_profile_members.h"
+#include "info/profile/info_profile_values.h"
+#include "info/info_memento.h"
+#include "regram/nagram/privacy/options.h"
+#include "crl/crl_on_main.h"
 #include "info/profile/tabs/info_profile_tabs_host.h"
 #include "info/settings/info_settings_widget.h"
 #include "ui/widgets/scroll_area.h"
@@ -214,6 +218,31 @@ Widget::Widget(
 		scroll()->scrollTopValue(
 		) | rpl::on_next([=](int scrollTop) {
 			host->setScrolledToTop(scrollTop <= 0);
+		}, lifetime());
+	}
+
+	const auto peer = controller->peer();
+	const auto user = peer ? peer->asUser() : nullptr;
+	if (origin.preferCommonGroups && user && !user->isSelf() && !_inner->tabsHost()) {
+		const auto eligible = lifetime().make_state<bool>(true);
+		base::install_event_filter(this, [=](not_null<QEvent*> event) {
+			if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::Wheel
+				|| event->type() == QEvent::KeyPress) {
+				*eligible = false;
+			}
+			return base::EventFilterResult::Continue;
+		});
+		scroll()->scrollTopChanges() | rpl::on_next([=] { *eligible = false; }, lifetime());
+		const auto started = crl::now();
+		CommonGroupsCountValue(user) | rpl::filter([](int count) { return count > 0; })
+		| rpl::take(1) | rpl::on_next([=] {
+			crl::on_main(this, [=] {
+				if (*eligible && crl::now() - started <= crl::time(4000)
+					&& Nagram::ForDevice().Get(Nagram::Privacy::kProfileCommonGroupsFirst)) {
+					*eligible = false;
+					controller->showSection(std::make_shared<Info::Memento>(user, Info::Section::Type::CommonGroups));
+				}
+			});
 		}, lifetime());
 	}
 

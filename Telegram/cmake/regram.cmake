@@ -1,5 +1,9 @@
 nice_target_sources(Telegram ${src_loc}
 PRIVATE
+    regram/media/loading.cpp
+    regram/media/loading.h
+    regram/diagnostics/diagnostics.cpp
+    regram/diagnostics/diagnostics.h
     regram/archive/snapshot.cpp
     regram/archive/snapshot.h
     regram/appearance/stories.cpp
@@ -38,6 +42,10 @@ PRIVATE
     regram/settings/advanced_model.h
     regram/settings/shared.cpp
     regram/settings/shared.h
+    regram/settings/ios_backup.cpp
+    regram/settings/ios_backup.h
+    regram/settings/ios_backup_model.cpp
+    regram/settings/ios_backup_model.h
     regram/typography/font_data.cpp
     regram/typography/font_data.h
     regram/typography/fonts.cpp

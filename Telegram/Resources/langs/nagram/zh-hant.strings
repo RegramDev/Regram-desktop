@@ -426,12 +426,12 @@
 "lng_nagram_service_testing" = "正在等待服務回應…";
 "lng_nagram_service_url" = "基礎 URL";
 "lng_nagram_service_use_key" = "使用 API 金鑰驗證";
-"lng_nagram_services" = "翻譯與轉寫服務";
-"lng_nagram_services_about" = "外部服務只接收你手動請求處理的文字或音訊，除非在下方開啟「翻譯整個對話時使用所選翻譯服務」。API 金鑰儲存在系統憑證庫，不隨設定匯出。";
+"lng_nagram_services" = "翻譯服務";
+"lng_nagram_services_about" = "快速翻譯、整個聊天翻譯和傳送翻譯共用所選來源。在聊天中開啟翻譯後，會透過該來源處理訊息。API 金鑰儲存在系統憑證庫，不隨設定匯出。";
 "lng_nagram_draft_changed" = "預覽期間草稿已變更。請關閉預覽並重新翻譯目前草稿。";
 "lng_nagram_inherit" = "跟隨上游";
 "lng_nagram_service_system" = "系統翻譯";
-"lng_nagram_service_translation" = "手動翻譯";
+"lng_nagram_service_translation" = "翻譯來源";
 "lng_nagram_translate_apply" = "套用到草稿";
 "lng_nagram_translate_draft" = "翻譯草稿…";
 "lng_nagram_system_translation_unavailable" = "目前裝置或系統版本不支援系統翻譯。請選擇 Telegram 或已設定的服務。";
@@ -492,8 +492,8 @@
 "lng_nagram_filter_exported" = "已複製規則範本，不含帳號或對話識別資訊，匯出的規則皆為停用狀態。";
 "lng_nagram_filter_import" = "從剪貼簿匯入規則範本";
 "lng_nagram_filter_import_about" = "新增以下規則？保留既有規則，匯入項目保持停用，需手動啟用。";
-"lng_nagram_filter_author_show" = "取消在本機隱藏此作者";
-"lng_nagram_filter_author_hide" = "在本機隱藏此作者";
+"lng_nagram_filter_author_show" = "取消封鎖此用戶的訊息";
+"lng_nagram_filter_author_hide" = "封鎖此用戶的訊息";
 "lng_nagram_filter_chat_enable" = "在此對話套用本機過濾";
 "lng_nagram_filter_chat_disable" = "此對話不套用本機過濾";
 "lng_nagram_filter_menu_saved" = "已儲存此帳號的過濾偏好，總開關位於 Regram → 本機訊息過濾。";
@@ -839,12 +839,7 @@
 "lng_regram_advanced_backup" = "進階裝置配置（重新啟動後生效）";
 
 "lng_regram_advanced_tools" = "進階工具";
-"lng_regram_legacy_filters" = "正則排除與封鎖使用者";
-"lng_regram_content_rules" = "內容替換與進階規則";
 "lng_regram_filter_keep" = "保留符合的訊息";
-"lng_regram_filter_export_ios" = "相容 Regram iOS 的備份";
-"lng_regram_filter_export_desktop" = "完整桌面端備份";
-"lng_regram_filter_export_about" = "iOS 格式保留啟用開關、保留規則及對話範圍。包含話題範圍或未識別對話時，請選擇完整桌面端備份。";
 "lng_regram_filter_ios_scope_error" = "這些規則包含 iOS 無法表示的話題範圍或對話。請選擇完整桌面端備份以保留它們。";
 "lng_regram_filter_import_document" = "加入訊息過濾器";
 "lng_regram_filter_import_download" = "下載並檢查檔案後，會顯示匯入確認。下載失敗時可以再次點擊加入。";
@@ -889,3 +884,68 @@
 "lng_regram_filter_test_problems#other" = "{count} 條無效規則未執行。";
 "lng_regram_filter_reveal" = "暫時顯示過濾訊息（5 分鐘）";
 "lng_regram_filter_reveal_end" = "重新隱藏過濾訊息";
+
+"lng_regram_nickname_mentions" = "按暱稱提及";
+"lng_regram_nickname_mentions_about" = "輸入完整 @用戶名 後，自動轉換為用戶全名和原生用戶提及，保留文字格式。程式碼、連結和輸入法尚未提交的文字保持原樣；解析失敗時保留原用戶名。";
+
+"lng_regram_message_json" = "訊息 JSON";
+
+"lng_regram_menu_order" = "訊息選單順序";
+"lng_regram_menu_order_about" = "拖動手柄調整選單順序，也可以使用上下按鈕。儲存後生效。";
+"lng_regram_menu_submenu" = "放入 Regram 子選單";
+"lng_regram_menu_move_up" = "上移";
+"lng_regram_menu_move_down" = "下移";
+
+"lng_regram_message_replies" = "訊息回覆";
+
+"lng_regram_format_code_block" = "程式碼區塊";
+"lng_regram_format_newline" = "插入換行";
+
+"lng_regram_restrict_sender" = "限制此用戶";
+
+"lng_regram_profile_common_groups_first" = "預設顯示共同群組";
+"lng_regram_font_use_interface" = "僅用於介面";
+"lng_regram_font_use_chat" = "僅用於訊息";
+
+"lng_regram_diagnostics" = "診斷";
+"lng_regram_diagnostics_transfer" = "{name}：已接收 {amount} MiB · 最近速率 {value} MiB/s";
+"lng_regram_diagnostics_testing" = "正在測試 100 則訊息…";
+"lng_regram_diagnostics_result" = "平均每則耗時：{value} ms\n觸及比對限制：{amount} 則";
+"lng_regram_diagnostics_boost_on" = "下載加速：已開啟";
+"lng_regram_diagnostics_boost_off" = "下載加速：已關閉";
+"lng_regram_diagnostics_about" = "統計本次執行已登入帳號收到的媒體資料，包括重新下載。快取、本機檔案及字型下載不計入；速率為最近三秒平均值，不代表全部協定流量。";
+"lng_regram_diagnostics_run" = "測試 100 則訊息的過濾耗時";
+"lng_regram_diagnostics_idle" = "平均耗時：—";
+"lng_regram_diagnostics_filter_about" = "使用與 Regram iOS 相同的合成訊息，僅測試時忽略對話範圍。測試在背景執行，再次點選會取消上一輪；結果不代表捲動影格率。";
+"lng_regram_cross_platform_backup" = "相容 Regram iOS 的備份";
+"lng_regram_backup_appearance" = "外觀";
+"lng_regram_backup_messages" = "訊息";
+"lng_regram_backup_privacy" = "隱私";
+"lng_regram_backup_translation" = "翻譯";
+"lng_regram_backup_media" = "媒體";
+"lng_regram_backup_notifications" = "通知";
+"lng_regram_backup_invalid" = "備份無效、版本不支援或超過 2 MB。";
+"lng_regram_backup_about" = "使用與 Regram iOS 相同的 JSON 格式。包含所選裝置設定及目前帳號的對話設定；全域隱私選項遵循客戶端目前作用域。不包含登入階段、訊息、API 憑證、服務金鑰及字型檔案。恢復前會預覽變更。";
+"lng_regram_backup_unsupported" = "有 {amount} 個值無法在此桌面版本套用，將保留用於重新匯出至 iOS：";
+"lng_regram_backup_changed" = "預覽後設定發生了變更，請重新開啟預覽。";
+"lng_regram_backup_anti_revoke" = "保留已刪除訊息";
+
+"lng_regram_backup_reset" = "重置所選跨端設定";
+"lng_regram_backup_reset_confirm" = "將所選跨端設定恢復為桌面預設值？同時移除這些類別中保留的行動端專屬備份值。套用前會再次預覽。";
+
+"lng_regram_backup_items" = "{amount} 項";
+
+"lng_regram_pinned_notifications" = "置頂訊息通知";
+"lng_regram_mention_notifications" = "提及與回覆通知";
+"lng_regram_notification_silenced" = "靜默通知";
+"lng_regram_notification_inherit" = "使用 Regram 通知設定";
+
+"lng_regram_anti_auto_delete" = "保留自動刪除的訊息";
+"lng_regram_anti_self_destruct" = "保留閱後即焚媒體";
+"lng_regram_anti_revoke_chat" = "保留此聊天已刪除的訊息";
+"lng_regram_anti_revoke_chat_disable" = "停止保留此聊天已刪除的訊息";
+
+"lng_regram_media_loading_experiment" = "媒體載入最佳化（實驗）";
+"lng_regram_default_video_quality" = "預設影片畫質";
+"lng_regram_video_quality_highest" = "最高可用";
+"lng_regram_video_quality_lowest" = "最低可用";

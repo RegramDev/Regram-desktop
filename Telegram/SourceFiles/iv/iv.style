@@ -654,13 +654,13 @@ defaultMarkdownBodyStyle: TextStyle(historyTextStyle) {
 	lineHeight: 24px;
 }
 defaultMarkdownCodeStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(14px);
+	font: font(14px "Regram Chat Font");
 	lineHeight: 22px;
 }
 defaultMarkdownDisplayMathFallbackStyle: TextStyle(defaultMarkdownCodeStyle) {
 }
 defaultMarkdownTableHeaderStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(16px semibold);
+	font: font(16px semibold "Regram Chat Font");
 	lineHeight: 24px;
 }
 defaultMarkdownQuoteAuthorStyle: TextStyle(defaultMarkdownBodyStyle) {
@@ -769,7 +769,7 @@ defaultMarkdownTable: MarkdownTable {
 	scrollbarMinThumbWidth: 24px;
 }
 defaultMarkdownDetailsSummaryStyle: TextStyle(defaultTextStyle) {
-	font: font(12px);
+	font: font(12px "Regram Chat Font");
 	linkUnderline: kLinkUnderlineNever;
 	lineHeight: 18px;
 }
@@ -788,7 +788,7 @@ defaultMarkdownDetails: MarkdownDetails {
 	stateSkip: 8px;
 }
 defaultMarkdownEmbedPostAuthorStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(16px semibold);
+	font: font(16px semibold "Regram Chat Font");
 }
 defaultMarkdownEmbedPostDateStyle: TextStyle(defaultMarkdownDetailsSummaryStyle) {
 }
@@ -822,7 +822,7 @@ defaultMarkdownPlaceholder: MarkdownPlaceholder {
 	spinnerFg: windowActiveTextFg;
 	captionSkip: 14px;
 	labelStyle: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(16px semibold);
+		font: font(16px semibold "Regram Chat Font");
 	}
 	labelFg: windowSubTextFg;
 	labelFgActive: windowActiveTextFg;
@@ -838,7 +838,7 @@ defaultMarkdownPhoto: MarkdownPhoto {
 	fallbackFg: windowSubTextFg;
 }
 defaultMarkdownAudioTitleStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(16px semibold);
+	font: font(16px semibold "Regram Chat Font");
 }
 defaultMarkdownAudioSubtitleStyle: TextStyle(defaultMarkdownDetailsSummaryStyle) {
 }
@@ -886,11 +886,11 @@ defaultMarkdownChannel: MarkdownChannel {
 	button: defaultMarkdownChannelButton;
 }
 defaultMarkdownRelatedArticleTitleStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(16px semibold);
+	font: font(16px semibold "Regram Chat Font");
 	lineHeight: 22px;
 }
 defaultMarkdownRelatedArticleSubtitleStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(15px);
+	font: font(15px "Regram Chat Font");
 	lineHeight: 21px;
 }
 defaultMarkdownRelatedArticleFooterStyle: TextStyle(defaultMarkdownDetailsSummaryStyle) {
@@ -956,7 +956,7 @@ defaultMarkdownFailure: MarkdownFailure {
 markdownButtonRowTintBgOpacity: 0.12;
 markdownButtonRowTintRippleOpacity: 0.22;
 defaultMarkdownButtonRowLabelStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(13px semibold);
+	font: font(13px semibold "Regram Chat Font");
 	lineHeight: 0px;
 }
 defaultMarkdownButtonRow: MarkdownButtonRow {
@@ -985,7 +985,7 @@ defaultMarkdownButtonRow: MarkdownButtonRow {
 markdownInlineButtonDisabledOpacity: 0.55;
 markdownInlineButtonDisabledPrimaryOpacity: 0.6;
 defaultMarkdownInlineButtonLabelStyle: TextStyle(defaultMarkdownBodyStyle) {
-	font: font(12px semibold);
+	font: font(12px semibold "Regram Chat Font");
 	lineHeight: 0px;
 }
 defaultMarkdownInlineButton: MarkdownInlineButton {
@@ -1045,31 +1045,31 @@ defaultMarkdown: Markdown {
 	supplementaryTextColor: windowSubTextFg;
 	body: defaultMarkdownBodyStyle;
 	heading1: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(30px semibold);
+		font: font(30px semibold "Regram Chat Font");
 		lineHeight: 42px;
 	}
 	heading2: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(26px semibold);
+		font: font(26px semibold "Regram Chat Font");
 		lineHeight: 36px;
 	}
 	heading3: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(22px semibold);
+		font: font(22px semibold "Regram Chat Font");
 		lineHeight: 31px;
 	}
 	heading4: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(19px semibold);
+		font: font(19px semibold "Regram Chat Font");
 		lineHeight: 27px;
 	}
 	heading5: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(17px semibold);
+		font: font(17px semibold "Regram Chat Font");
 		lineHeight: 24px;
 	}
 	heading6: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(15px semibold);
+		font: font(15px semibold "Regram Chat Font");
 		lineHeight: 22px;
 	}
 	footer: TextStyle(defaultMarkdownBodyStyle) {
-		font: font(11px);
+		font: font(11px "Regram Chat Font");
 		lineHeight: 18px;
 	}
 	code: defaultMarkdownCodeStyle;
@@ -1100,55 +1100,55 @@ defaultMarkdown: Markdown {
 	inlineButton: defaultMarkdownInlineButton;
 }
 messageMarkdownBodyStyle: TextStyle(messageTextStyle) {
-	font: font(13px);
+	font: font(13px "Regram Chat Font");
 }
 messageMarkdownCodeStyle: TextStyle(defaultMarkdownCodeStyle) {
-	font: font(13px);
+	font: font(13px "Regram Chat Font");
 	lineHeight: 20px;
 }
 messageMarkdownTableHeaderStyle: TextStyle(messageMarkdownBodyStyle) {
-	font: font(13px semibold);
+	font: font(13px semibold "Regram Chat Font");
 	lineHeight: 20px;
 }
 messageMarkdownDisplayMathFallbackStyle: TextStyle(messageMarkdownCodeStyle) {
 }
 messageMarkdownQuoteAuthorStyle: TextStyle(messageMarkdownBodyStyle) {
-	font: font(13px semibold);
+	font: font(13px semibold "Regram Chat Font");
 	lineHeight: 20px;
 }
 messageMarkdownHeading1Style: TextStyle(messageMarkdownBodyStyle) {
-	font: font(19px semibold);
+	font: font(19px semibold "Regram Chat Font");
 	lineHeight: 27px;
 }
 messageMarkdownHeading2Style: TextStyle(messageMarkdownBodyStyle) {
-	font: font(18px semibold);
+	font: font(18px semibold "Regram Chat Font");
 	lineHeight: 26px;
 }
 messageMarkdownHeading3Style: TextStyle(messageMarkdownBodyStyle) {
-	font: font(17px semibold);
+	font: font(17px semibold "Regram Chat Font");
 	lineHeight: 24px;
 }
 messageMarkdownHeading4Style: TextStyle(messageMarkdownBodyStyle) {
-	font: font(16px semibold);
+	font: font(16px semibold "Regram Chat Font");
 	lineHeight: 23px;
 }
 messageMarkdownHeading5Style: TextStyle(messageMarkdownBodyStyle) {
-	font: font(15px semibold);
+	font: font(15px semibold "Regram Chat Font");
 	lineHeight: 22px;
 }
 messageMarkdownHeading6Style: TextStyle(messageMarkdownBodyStyle) {
-	font: font(14px semibold);
+	font: font(14px semibold "Regram Chat Font");
 	lineHeight: 21px;
 }
 messageMarkdownFooterStyle: TextStyle(messageMarkdownBodyStyle) {
-	font: font(12px);
+	font: font(12px "Regram Chat Font");
 	lineHeight: 19px;
 }
 messageMarkdownDetailsSummaryStyle: TextStyle(messageMarkdownBodyStyle) {
 	linkUnderline: kLinkUnderlineNever;
 }
 messageMarkdownAudioTitleStyle: TextStyle(messageMarkdownBodyStyle) {
-	font: font(14px semibold);
+	font: font(14px semibold "Regram Chat Font");
 	lineHeight: 18px;
 }
 messageMarkdownAudioSubtitleStyle: TextStyle(messageMarkdownDetailsSummaryStyle) {

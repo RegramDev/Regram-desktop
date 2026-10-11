@@ -252,15 +252,6 @@ void BuildContextMenuElements(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 		.icon = { &st::menuIconReactions },
 	});
 	ayu.addChooseButton({
-		.id = u"regram/ayu/showViewsPanelInContextMenu"_q,
-		.title = tr::ayu_SettingsContextMenuViewsPanel(),
-		.boxTitle = tr::ayu_SettingsContextMenuTitle(),
-		.initialSelection = static_cast<int>(settings->showViewsPanelInContextMenu()),
-		.options = options,
-		.setter = [](int i) { AyuSettings::getInstance().setShowViewsPanelInContextMenu(static_cast<ContextMenuVisibility>(i)); },
-		.icon = { &st::menuIconShowInChat },
-	});
-	ayu.addChooseButton({
 		.id = u"regram/ayu/showUserMessagesInContextMenu"_q,
 		.title = tr::ayu_UserMessagesMenuText(),
 		.boxTitle = tr::ayu_SettingsContextMenuTitle(),
@@ -268,24 +259,6 @@ void BuildContextMenuElements(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 		.options = options,
 		.setter = [](int i) { AyuSettings::getInstance().setShowUserMessagesInContextMenu(static_cast<ContextMenuVisibility>(i)); },
 		.icon = { &st::menuIconTTL },
-	});
-	ayu.addChooseButton({
-		.id = u"regram/ayu/showMessageDetailsInContextMenu"_q,
-		.title = tr::ayu_MessageDetailsPC(),
-		.boxTitle = tr::ayu_SettingsContextMenuTitle(),
-		.initialSelection = static_cast<int>(settings->showMessageDetailsInContextMenu()),
-		.options = options,
-		.setter = [](int i) { AyuSettings::getInstance().setShowMessageDetailsInContextMenu(static_cast<ContextMenuVisibility>(i)); },
-		.icon = { &st::menuIconInfo },
-	});
-	ayu.addChooseButton({
-		.id = u"regram/ayu/showRepeatMessageInContextMenu"_q,
-		.title = tr::ayu_RepeatMessage(),
-		.boxTitle = tr::ayu_SettingsContextMenuTitle(),
-		.initialSelection = static_cast<int>(settings->showRepeatMessageInContextMenu()),
-		.options = options,
-		.setter = [](int i) { AyuSettings::getInstance().setShowRepeatMessageInContextMenu(static_cast<ContextMenuVisibility>(i)); },
-		.icon = { &st::ayuRepeatMenuIcon },
 	});
 
 	builder.addSkip();

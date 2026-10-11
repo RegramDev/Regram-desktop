@@ -41,6 +41,28 @@ bool ValidOption(const QString &protocol, const QString &value) {
 	return token.match(value).hasMatch();
 }
 
+QJsonObject RetireYandex(QJsonObject value) {
+	if (!value.value(u"instances"_q).isArray()) {
+		return value;
+	}
+	auto instances = QJsonArray();
+	for (const auto &entry : value.value(u"instances"_q).toArray()) {
+		const auto service = entry.toObject();
+		if (service.value(u"protocol"_q) != u"yandex"_q) {
+			instances.push_back(entry);
+			continue;
+		}
+		const auto id = service.value(u"id"_q).toString();
+		for (const auto &key : { u"translation"_q, u"transcription"_q, u"summary"_q }) {
+			if (!id.isEmpty() && value.value(key).toString() == id) {
+				value.insert(key, QString());
+			}
+		}
+	}
+	value.insert(u"instances"_q, instances);
+	return value;
+}
+
 constexpr auto kAnthropicMaxTokens = 4096;
 
 } // namespace
@@ -56,6 +78,7 @@ QJsonObject ServicesDefaults() {
 }
 
 QJsonObject UpgradeServices(QJsonObject value) {
+	value = RetireYandex(std::move(value));
 	if (value.value(u"version"_q) != QJsonValue(1)
 		|| value.contains(u"summary"_q)
 		|| !value.value(u"instances"_q).isArray()) {
@@ -273,8 +296,7 @@ bool LlmProtocol(const QString &protocol) {
 bool TranslationProtocol(const QString &protocol) {
 	return (protocol == u"deepl"_q)
 		|| (protocol == u"google"_q)
-		|| (protocol == u"microsoft"_q)
-		|| (protocol == u"yandex"_q);
+		|| (protocol == u"microsoft"_q);
 }
 
 QJsonObject BuildLlmBody(
@@ -388,15 +410,6 @@ TranslationCall BuildTranslationCall(
 			u"to"_q,
 			(to == u"zh"_q) ? u"zh-Hans"_q : to);
 		result.query.addQueryItem(u"textType"_q, u"plain"_q);
-	} else if (service.protocol == u"yandex"_q) {
-		auto body = QJsonObject{
-			{ u"targetLanguageCode"_q, to },
-			{ u"texts"_q, list },
-		};
-		if (!service.model.isEmpty()) {
-			body.insert(u"folderId"_q, service.model);
-		}
-		result.body = QJsonDocument(body);
 	} else {
 		const auto reference = context.isEmpty()
 			? QString()
@@ -428,7 +441,7 @@ std::optional<QStringList> ParseTranslationResult(
 	const auto document = QJsonDocument::fromJson(body);
 	const auto root = document.object();
 	auto values = QJsonArray();
-	if (service.protocol == u"deepl"_q || service.protocol == u"yandex"_q) {
+	if (service.protocol == u"deepl"_q) {
 		for (const auto &value : root.value(u"translations"_q).toArray()) {
 			values.push_back(value.toObject().value(u"text"_q));
 		}
@@ -478,8 +491,6 @@ std::vector<std::pair<QByteArray, QByteArray>> AuthHeaders(
 				service.model.toLatin1());
 		}
 		return result;
-	} else if (service.protocol == u"yandex"_q) {
-		return { { "Authorization", "Api-Key " + secret } };
 	} else if (service.protocol == u"anthropic"_q) {
 		return {
 			{ "x-api-key", secret },

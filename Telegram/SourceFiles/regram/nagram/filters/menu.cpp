@@ -36,6 +36,7 @@ void InsertAuthorAction(
 		return;
 	}
 	const auto author = item->from();
+	menu = Menu::Destination(menu, Menu::ActionId::FilterAuthor);
 	const auto hidden = Regram::Filters::SenderHidden(author);
 	const auto title = hidden
 		? tr::lng_nagram_filter_author_show(tr::now)

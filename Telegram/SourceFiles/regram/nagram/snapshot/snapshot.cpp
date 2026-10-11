@@ -454,6 +454,7 @@ void InsertAction(
 	if (!AllAvailable(controller, ids)) {
 		return;
 	}
+	menu = Menu::Destination(menu, Menu::ActionId::Screenshot);
 	const auto action = Ui::Menu::CreateAction(menu,
 		tr::lng_nagram_snapshot(tr::now),
 		crl::guard(controller, [=] {

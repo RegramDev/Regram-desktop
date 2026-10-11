@@ -29,6 +29,7 @@ struct GroupReactionOrigin {
 
 struct Origin {
 	std::variant<v::null_t, GroupReactionOrigin> data;
+	bool preferCommonGroups = false;
 };
 
 class Memento final : public ContentMemento {
@@ -52,6 +53,8 @@ public:
 	[[nodiscard]] Origin origin() const {
 		return _origin;
 	}
+
+	void setPreferCommonGroups(bool enabled) { _origin.preferCommonGroups = enabled; }
 
 	void setMembersState(std::unique_ptr<MembersState> state);
 	[[nodiscard]] std::unique_ptr<MembersState> membersState();

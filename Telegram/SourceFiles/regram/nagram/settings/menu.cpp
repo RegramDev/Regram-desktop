@@ -9,12 +9,17 @@
 #include "ui/vertical_list.h"
 #include "ui/layers/generic_box.h"
 #include "ui/widgets/checkbox.h"
+#include "ui/widgets/buttons.h"
+#include "ui/widgets/labels.h"
+#include "crl/crl_on_main.h"
 #include "ui/widgets/fields/input_field.h"
 #include "ui/wrap/vertical_layout.h"
+#include "ui/wrap/vertical_layout_reorder.h"
 #include "window/window_session_controller.h"
 #include "styles/style_menu_icons.h"
 #include "styles/style_settings.h"
 #include "styles/style_layers.h"
+#include "styles/style_nagram_compose.h"
 
 namespace Nagram {
 namespace {
@@ -36,11 +41,15 @@ public:
 	}
 
 	static const SectionBuildMethod kBuild;
+
 };
 
 QString Title(Menu::ActionId id) {
 	switch (id) {
 	case Menu::ActionId::Reply: return tr::lng_nagram_menu_reply(tr::now);
+	case Menu::ActionId::Replies: return tr::lng_regram_message_replies(tr::now);
+	case Menu::ActionId::RestrictSender: return tr::lng_regram_restrict_sender(tr::now);
+	case Menu::ActionId::CopyMarkdown: return tr::lng_nagram_menu_copy_markdown(tr::now);
 	case Menu::ActionId::Edit: return tr::lng_nagram_menu_edit(tr::now);
 	case Menu::ActionId::Copy: return tr::lng_nagram_menu_copy(tr::now);
 	case Menu::ActionId::CopyLink: return tr::lng_nagram_menu_copy_link(tr::now);
@@ -68,6 +77,7 @@ QString Title(Menu::ActionId id) {
 	case Menu::ActionId::SelectBetween: return tr::lng_nagram_menu_select_between(tr::now);
 	case Menu::ActionId::SeenBy: return tr::lng_nagram_menu_seen_by(tr::now);
 	case Menu::ActionId::MessageDetails: return tr::lng_nagram_menu_details(tr::now);
+	case Menu::ActionId::MessageJson: return tr::lng_regram_message_json(tr::now);
 	case Menu::ActionId::SaveToSaved: return tr::lng_nagram_menu_save_to_saved(tr::now);
 	case Menu::ActionId::SelectAll: return tr::lng_nagram_menu_select_all(tr::now);
 	case Menu::ActionId::Summarize: return tr::lng_nagram_menu_summarize(tr::now);
@@ -87,6 +97,9 @@ QString VisibilityLabel(Menu::Visibility visibility) {
 const style::icon *Icon(Menu::ActionId id) {
 	switch (id) {
 	case Menu::ActionId::Reply: return &st::menuIconReply;
+	case Menu::ActionId::Replies: return &st::menuIconViewReplies;
+	case Menu::ActionId::RestrictSender: return &st::menuIconPermissions;
+	case Menu::ActionId::CopyMarkdown: return &st::menuIconCopy;
 	case Menu::ActionId::Edit: return &st::menuIconEdit;
 	case Menu::ActionId::Copy: return &st::menuIconCopy;
 	case Menu::ActionId::CopyLink: return &st::menuIconLink;
@@ -114,6 +127,7 @@ const style::icon *Icon(Menu::ActionId id) {
 	case Menu::ActionId::SelectBetween: return &st::menuIconSelect;
 	case Menu::ActionId::SeenBy: return &st::menuIconShowInChat;
 	case Menu::ActionId::MessageDetails: return &st::menuIconInfo;
+	case Menu::ActionId::MessageJson: return &st::menuIconInfo;
 	case Menu::ActionId::SaveToSaved: return &st::menuIconSavedMessages;
 	case Menu::ActionId::SelectAll: return &st::menuIconSelect;
 	case Menu::ActionId::TranscribeSelected: return &st::menuIconSoundOn;
@@ -125,19 +139,135 @@ void VisibilityBox(not_null<Ui::GenericBox*> box, Menu::ActionId id) {
 	box->setTitle(Title(id));
 	const auto current = Menu::ReadVisibility(
 		ForDevice().Get(Menu::kMenuConfig), id);
-	const auto group = std::make_shared<Ui::RadiobuttonGroup>(int(current));
+	const auto grouped = Menu::ReadActionList(ForDevice().Get(Menu::kRegramSubmenu));
+	const auto group = std::make_shared<Ui::RadiobuttonGroup>(
+		ranges::contains(grouped, id) ? 3 : int(current));
 	for (const auto &state : { Menu::Visibility::Show,
 			Menu::Visibility::Hide, Menu::Visibility::WithOption }) {
 		box->addRow(object_ptr<Ui::Radiobutton>(
 			box, group, int(state), VisibilityLabel(state),
 			st::settingsSendType), st::settingsSendTypePadding);
 	}
+	box->addRow(object_ptr<Ui::Radiobutton>(
+		box, group, 3, tr::lng_regram_menu_submenu(tr::now),
+		st::settingsSendType), st::settingsSendTypePadding);
 	group->setChangedCallback([=](int value) {
+		auto grouped = Menu::ReadActionList(ForDevice().Get(Menu::kRegramSubmenu));
+		std::erase(grouped, id);
+		if (value == 3) {
+			grouped.push_back(id);
+		}
+		Expects(ForDevice().Set(Menu::kRegramSubmenu, Menu::WriteActionList(grouped)));
 		const auto current = ForDevice().Get(Menu::kMenuConfig);
 		Expects(ForDevice().Set(Menu::kMenuConfig, Menu::WriteVisibility(
-			current, id, Menu::Visibility(value))));
+			current, id, value == 3 ? Menu::Visibility::Show : Menu::Visibility(value))));
 		box->closeBox();
 	});
+}
+
+void MenuOrderBox(not_null<Ui::GenericBox*> box) {
+	struct Row {
+		Menu::ActionId id;
+		Ui::IconButton *handle = nullptr;
+		Ui::IconButton *up = nullptr;
+		Ui::IconButton *down = nullptr;
+	};
+	struct State {
+		std::vector<Row> entries;
+		std::unique_ptr<Ui::VerticalLayoutReorder> reorder;
+		rpl::lifetime lifetime;
+	};
+	box->setTitle(tr::lng_regram_menu_order());
+	box->addRow(object_ptr<Ui::FlatLabel>(
+		box, tr::lng_regram_menu_order_about(), st::boxLabel));
+	const auto state = box->lifetime().make_state<State>();
+	const auto rows = box->addRow(object_ptr<Ui::VerticalLayout>(box));
+	const auto refresh = [=] {
+		for (auto i = 0; i != int(state->entries.size()); ++i) {
+			state->entries[i].up->setDisabled(i == 0);
+			state->entries[i].down->setDisabled(i + 1 == int(state->entries.size()));
+		}
+	};
+	const auto move = [=](Menu::ActionId id, int delta) {
+		crl::on_main(box, [=] {
+			if (!state->reorder) {
+				return;
+			}
+			state->reorder->cancel();
+			const auto from = ranges::find(state->entries, id, &Row::id) - state->entries.begin();
+			const auto to = from + delta;
+			if (to >= 0 && to < int(state->entries.size())) {
+				rows->reorderRows(from, to);
+				base::reorder(state->entries, from, to);
+				refresh();
+			}
+			state->reorder->start();
+		});
+	};
+	for (const auto id : Menu::ReadActionOrder(ForDevice().Get(Menu::kMenuOrder))) {
+		const auto row = rows->add(object_ptr<Ui::RpWidget>(rows));
+		row->setFixedHeight(st::nagramMenuOrderRowHeight);
+		const auto label = Ui::CreateChild<Ui::FlatLabel>(
+			row, rpl::single(Title(id)), st::boxLabel);
+		const auto handle = Ui::CreateChild<Ui::IconButton>(row, st::nagramMenuOrderButton);
+		const auto up = Ui::CreateChild<Ui::IconButton>(row, st::nagramMenuOrderButton);
+		const auto down = Ui::CreateChild<Ui::IconButton>(row, st::nagramMenuOrderButton);
+		handle->setIconOverride(&st::menuIconReorder, &st::menuIconReorder);
+		handle->setCursor(Qt::OpenHandCursor);
+		handle->setAccessibleName(Title(id));
+		up->setIconOverride(&st::nagramMenuOrderUp, &st::nagramMenuOrderUp);
+		down->setIconOverride(&st::nagramMenuOrderDown, &st::nagramMenuOrderDown);
+		up->setAccessibleName(tr::lng_regram_menu_move_up(tr::now));
+		down->setAccessibleName(tr::lng_regram_menu_move_down(tr::now));
+		up->setClickedCallback([=] { move(id, -1); });
+		down->setClickedCallback([=] { move(id, 1); });
+		state->entries.push_back({ id, handle, up, down });
+		row->widthValue() | rpl::on_next([=](int width) {
+			const auto skip = st::nagramMenuOrderSkip;
+			label->resizeToWidth(std::max(width - 3 * up->width() - 5 * skip, 0));
+			handle->moveToLeft(skip, (row->height() - handle->height()) / 2);
+			label->moveToLeft(handle->width() + 2 * skip, (row->height() - label->height()) / 2);
+			up->moveToRight(down->width() + 2 * skip, (row->height() - up->height()) / 2);
+			down->moveToRight(skip, (row->height() - down->height()) / 2);
+		}, row->lifetime());
+	}
+	refresh();
+	box->setShowFinishedCallback([=] {
+		if (state->reorder) {
+			return;
+		}
+		auto parent = rows->parentWidget();
+		auto scroll = static_cast<Ui::ScrollArea*>(nullptr);
+		while (parent && !scroll) {
+			scroll = dynamic_cast<Ui::ScrollArea*>(parent);
+			parent = parent->parentWidget();
+		}
+		state->reorder = scroll
+			? std::make_unique<Ui::VerticalLayoutReorder>(rows, scroll)
+			: std::make_unique<Ui::VerticalLayoutReorder>(rows);
+		state->reorder->setMouseEventProxy([=](int index) {
+			return not_null<Ui::RpWidget*>(state->entries[index].handle);
+		});
+		state->reorder->updates() | rpl::on_next([=](Ui::VerticalLayoutReorder::Single update) {
+			if (update.state == Ui::VerticalLayoutReorder::State::Applied) {
+				base::reorder(state->entries, update.oldPosition, update.newPosition);
+				refresh();
+			}
+		}, state->lifetime);
+		state->reorder->start();
+	});
+	box->addButton(tr::lng_settings_save(), [=] {
+		if (state->reorder) {
+			state->reorder->finishReordering();
+		}
+		auto ids = std::vector<Menu::ActionId>();
+		for (const auto &entry : state->entries) {
+			ids.push_back(entry.id);
+		}
+		Expects(ForDevice().Set(Menu::kMenuOrder, Menu::WriteActionList(ids)));
+		box->closeBox();
+	});
+	box->addButton(tr::lng_cancel(), [=] { box->closeBox(); });
 }
 
 void QuickRatingBox(
@@ -171,6 +301,13 @@ const auto kMeta = BuildHelper({
 	.icon = &st::menuIconChatBubble,
 }, [](SectionBuilder &builder) {
 	const auto controller = builder.controller();
+	builder.addButton({
+		.id = u"regram/menu/order"_q,
+		.title = tr::lng_regram_menu_order(),
+		.st = &st::settingsButtonNoIcon,
+		.onClick = [=] { controller->show(Box(MenuOrderBox)); },
+		.keywords = { u"order"_q, u"menu"_q, u"iOS"_q },
+	});
 	const auto confirm = builder.addButton({
 		.id = u"regram/nagram/menu/confirm-repeat"_q,
 		.title = tr::lng_nagram_menu_confirm_repeat(),
@@ -245,8 +382,12 @@ const auto kMeta = BuildHelper({
 			.id = u"regram/nagram/menu/"_q + QString::fromLatin1(entry.titleKey),
 			.title = rpl::single(Title(id)),
 			.icon = { Icon(id) },
-			.label = ForDevice().Value(Menu::kMenuConfig)
-				| rpl::map([=](const QByteArray &config) {
+			.label = rpl::combine(ForDevice().Value(Menu::kMenuConfig),
+				ForDevice().Value(Menu::kRegramSubmenu))
+				| rpl::map([=](const QByteArray &config, const QByteArray &groups) {
+					if (ranges::contains(Menu::ReadActionList(groups), id)) {
+						return tr::lng_regram_menu_submenu(tr::now);
+					}
 					return VisibilityLabel(Menu::ReadVisibility(config, id));
 				}),
 			.onClick = [=] { controller->show(Box(VisibilityBox, id)); },

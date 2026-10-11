@@ -36,6 +36,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "lottie/lottie_single_player.h"
 #include "main/main_session.h"
+#include "regram/nagram/compose/nickname_mentions.h"
+#include "regram/nagram/compose/options.h"
 #include "media/clip/media_clip_reader.h"
 #include "menu/menu_send.h" // SendMenu::FillSendMenu
 #include "storage/storage_account.h"
@@ -2015,9 +2017,10 @@ void InitFieldAutocomplete(
 		const auto user = data.user;
 		const auto ctrlClick = base::IsCtrlPressed()
 			&& data.method == FieldAutocomplete::ChooseMethod::ByClick;
-		if (data.mention.isEmpty() || ctrlClick) {
+		if (data.mention.isEmpty() || ctrlClick
+			|| Nagram::ForDevice().Get(Nagram::Compose::kNicknameMentions)) {
 			field->insertTag(
-				user->firstName.isEmpty() ? user->name() : user->firstName,
+				Nagram::Compose::NicknameMentionTitle(user),
 				PrepareMentionTag(user));
 		} else {
 			field->insertTag('@' + data.mention);

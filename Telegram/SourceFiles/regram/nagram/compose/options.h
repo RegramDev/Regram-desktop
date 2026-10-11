@@ -10,6 +10,10 @@ namespace Nagram::Compose {
 inline constexpr auto kRefreshButtons = static_cast<unsigned>(
 	Flag::RefreshComposeButtons);
 
+inline constexpr auto kNicknameMentions = Option<bool>{
+	"nagram.regramNicknameMentions", Scope::Device, false,
+	Category::Compose, "lng_regram_nickname_mentions" };
+
 inline constexpr auto kDefaultFormatting = Option<int>{
 	"nagram.regramDefaultFormatting", Scope::Device, 0,
 	Category::Compose, "lng_regram_default_formatting", 0,
@@ -74,7 +78,7 @@ inline constexpr auto kInputPlaceholderMode = Option<int>{
 	Category::Compose, "lng_nagram_input_placeholder", 0,
 	[](const int &value) { return value >= 0 && value <= 2; } };
 inline constexpr auto kFormatToolbar = Option<bool>{
-	"nagram.formatToolbar", Scope::Device, false,
+	"nagram.formatToolbar", Scope::Device, true,
 	Category::Compose, "lng_nagram_format_toolbar" };
 inline constexpr auto kFormatMenuItemCount = 9;
 inline constexpr auto kHiddenFormatItems = Option<int>{
@@ -150,6 +154,7 @@ inline constexpr auto kForwardBeforeComment = Option<bool>{
 	Category::Compose, "lng_nagram_forward_before_comment" };
 
 inline void RegisterOptions(Registry &registry) {
+	Expects(registry.Add(kNicknameMentions));
 	Expects(registry.Add(kDefaultFormatting));
 	Expects(registry.Add(kAccountFormatting));
 	Expects(registry.Add(kChatPreferences));

@@ -11,7 +11,6 @@
 #include "regram/nagram/services/translation_model.h"
 #include "base/weak_ptr.h"
 #include "regram/ayu/features/translator/implementations/google.h"
-#include "regram/ayu/features/translator/implementations/yandex.h"
 #include "data/data_peer.h"
 #include "data/data_session.h"
 #include "history/history_item.h"
@@ -27,8 +26,6 @@ namespace {
 
 BaseTranslator *translatorForProvider(TranslationProvider provider) {
 	switch (provider) {
-	case TranslationProvider::Yandex:
-		return &YandexTranslator::instance();
 	case TranslationProvider::Google:
 		return &GoogleTranslator::instance();
 	case TranslationProvider::Telegram:

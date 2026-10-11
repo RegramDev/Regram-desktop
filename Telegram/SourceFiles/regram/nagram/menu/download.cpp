@@ -67,6 +67,7 @@ void InsertDeleteDownloadAction(
 		return;
 	}
 	const auto itemId = item->fullId();
+	menu = Destination(menu, ActionId::DeleteDownload);
 	const auto path = document->filepath(true);
 	const auto weak = base::make_weak(controller);
 	const auto action = Ui::Menu::CreateAction(menu,

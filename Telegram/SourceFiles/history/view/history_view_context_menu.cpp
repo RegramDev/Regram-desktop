@@ -114,6 +114,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
+#include "regram/nagram/services/translation.h"
 #include "main/main_session_settings.h"
 #include "media/audio/media_audio.h"
 #include "media/player/media_player_instance.h"
@@ -381,21 +382,23 @@ void AddPhotoActions(
 		not_null<ListWidget*> list) {
 	const auto contextId = item ? item->fullId() : FullMsgId();
 	if (!list->hasCopyMediaRestriction(item)) {
-		menu->addAction(
+		const auto actionMenu0 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Image);
+		actionMenu0->addAction(
 			tr::lng_context_save_image(tr::now),
 			base::fn_delayed(
 				st::defaultDropdownMenu.menu.ripple.hideDuration,
 				&photo->session(),
 				[=] { SavePhotoToFile(photo); }),
 			&st::menuIconSaveImage);
-		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Image);
-		menu->addAction(tr::lng_context_copy_image(tr::now), [=] {
+		Nagram::Menu::Tag(actionMenu0->actions().back(), Nagram::Menu::ActionId::Image);
+		const auto actionMenu1 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Image);
+		actionMenu1->addAction(tr::lng_context_copy_image(tr::now), [=] {
 			const auto item = photo->owner().message(contextId);
 			if (!list->showCopyMediaRestriction(item)) {
 				CopyImage(photo);
 			}
 		}, &st::menuIconCopy);
-		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Image);
+		Nagram::Menu::Tag(actionMenu1->actions().back(), Nagram::Menu::ActionId::Image);
 	}
 	if (photo->hasAttachedStickers()) {
 		const auto controller = list->controller();
@@ -403,11 +406,12 @@ void AddPhotoActions(
 			auto &attached = photo->session().api().attachedStickers();
 			attached.requestAttachedStickerSets(controller, photo);
 		};
-		menu->addAction(
+		const auto actionMenu2 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::StickerPack);
+		actionMenu2->addAction(
 			tr::lng_context_attached_stickers(tr::now),
 			std::move(callback),
 			&st::menuIconStickers);
-		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::StickerPack);
+		Nagram::Menu::Tag(actionMenu2->actions().back(), Nagram::Menu::ActionId::StickerPack);
 	}
 }
 
@@ -489,13 +493,14 @@ void AddDocumentActions(
 		}
 	}
 	if (document->sticker() && document->sticker()->set) {
-		menu->addAction(
+		const auto actionMenu3 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::StickerPack);
+		actionMenu3->addAction(
 			(document->isStickerSetInstalled()
 				? tr::lng_context_pack_info(tr::now)
 				: tr::lng_context_pack_add(tr::now)),
 			[=] { ShowStickerPackInfo(document, list); },
 			&st::menuIconStickers);
-		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::StickerPack);
+		Nagram::Menu::Tag(actionMenu3->actions().back(), Nagram::Menu::ActionId::StickerPack);
 	}
 	const auto sending = item && item->isSending();
 	if (!sending && document->sticker() && !document->sticker()->set) {
@@ -527,11 +532,12 @@ void AddDocumentActions(
 			auto &attached = session->api().attachedStickers();
 			attached.requestAttachedStickerSets(controller, document);
 		};
-		menu->addAction(
+		const auto actionMenu4 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::StickerPack);
+		actionMenu4->addAction(
 			tr::lng_context_attached_stickers(tr::now),
 			std::move(callback),
 			&st::menuIconStickers);
-		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::StickerPack);
+		Nagram::Menu::Tag(actionMenu4->actions().back(), Nagram::Menu::ActionId::StickerPack);
 	}
 	if (item && !list->hasCopyMediaRestriction(item)) {
 		const auto controller = list->controller();
@@ -572,13 +578,14 @@ void AddPostLinkAction(
 		? request.view->context()
 		: Context::History;
 	const auto controller = request.navigation->parentController();
-	menu->addAction(
+	const auto actionMenu5 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::CopyLink);
+	actionMenu5->addAction(
 		(item->history()->peer->isMegagroup()
 			? tr::lng_context_copy_message_link
 			: tr::lng_context_copy_post_link)(tr::now),
 		[=] { CopyPostLink(controller, itemId, context); },
 		&st::menuIconLink);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::CopyLink);
+	Nagram::Menu::Tag(actionMenu5->actions().back(), Nagram::Menu::ActionId::CopyLink);
 }
 
 MessageIdsList ExtractIdsList(const SelectedItems &items) {
@@ -600,7 +607,8 @@ bool AddForwardSelectedAction(
 		return false;
 	}
 
-	menu->addAction(tr::lng_context_forward_selected(tr::now), [=] {
+	const auto actionMenu6 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Forward);
+	actionMenu6->addAction(tr::lng_context_forward_selected(tr::now), [=] {
 		const auto weak = base::make_weak(list);
 		const auto callback = [=] {
 			if (const auto strong = weak.get()) {
@@ -612,7 +620,7 @@ bool AddForwardSelectedAction(
 			ExtractIdsList(request.selectedItems),
 			callback);
 	}, &st::menuIconForward);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Forward);
+	Nagram::Menu::Tag(actionMenu6->actions().back(), Nagram::Menu::ActionId::Forward);
 	return true;
 }
 
@@ -638,7 +646,8 @@ bool AddForwardMessageAction(
 		}
 	}
 	const auto itemId = item->fullId();
-	menu->addAction(tr::lng_context_forward_msg(tr::now), [=] {
+	const auto actionMenu7 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Forward);
+	actionMenu7->addAction(tr::lng_context_forward_msg(tr::now), [=] {
 		if (const auto item = owner->message(itemId)) {
 			Window::ShowForwardMessagesBox(
 				request.navigation,
@@ -647,7 +656,7 @@ bool AddForwardMessageAction(
 					: MessageIdsList{ 1, itemId }));
 		}
 	}, &st::menuIconForward);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Forward);
+	Nagram::Menu::Tag(actionMenu7->actions().back(), Nagram::Menu::ActionId::Forward);
 	return true;
 }
 
@@ -890,7 +899,8 @@ bool AddReplyToMessageAction(
 		: tr::lng_context_quote_and_reply)(
 			tr::now,
 			Ui::Text::FixAmpersandInAction);
-	menu->addAction(std::move(text), [=, itemId = item->fullId()] {
+	const auto actionMenu8 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Reply);
+	actionMenu8->addAction(std::move(text), [=, itemId = item->fullId()] {
 		list->replyToMessageRequestNotify({
 			.messageId = itemId,
 			.quote = quote.highlight.quote,
@@ -898,7 +908,7 @@ bool AddReplyToMessageAction(
 			.todoItemId = todoListTaskId,
 		}, base::IsCtrlPressed());
 	}, &st::menuIconReply);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Reply);
+	Nagram::Menu::Tag(actionMenu8->actions().back(), Nagram::Menu::ActionId::Reply);
 	return true;
 }
 
@@ -930,6 +940,7 @@ bool AddViewRepliesAction(
 		not_null<Ui::PopupMenu*> menu,
 		const ContextMenuRequest &request,
 		not_null<ListWidget*> list) {
+	menu = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Replies);
 	const auto context = list->elementContext();
 	const auto item = request.item;
 	if (!item
@@ -969,6 +980,7 @@ bool AddViewRepliesAction(
 			rootId,
 			highlightId);
 	}), &st::menuIconViewReplies);
+	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Replies);
 	return true;
 }
 
@@ -998,7 +1010,8 @@ bool AddEditMessageAction(
 	}
 	const auto owner = &item->history()->owner();
 	const auto itemId = item->fullId();
-	menu->addAction(tr::lng_context_edit_msg(tr::now), [=] {
+	const auto actionMenu9 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Edit);
+	actionMenu9->addAction(tr::lng_context_edit_msg(tr::now), [=] {
 		const auto item = owner->message(itemId);
 		if (!item) {
 			return;
@@ -1009,7 +1022,7 @@ bool AddEditMessageAction(
 		}
 		list->editMessageRequestNotify(item->fullId());
 	}, &st::menuIconEdit);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Edit);
+	Nagram::Menu::Tag(actionMenu9->actions().back(), Nagram::Menu::ActionId::Edit);
 	return true;
 }
 
@@ -1063,7 +1076,8 @@ bool AddPinMessageAction(
 			&item->history()->session(),
 			ExtractIdsList(request.selectedItems));
 		if (!ids.empty()) {
-			menu->addAction(
+			const auto actionMenu10 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Pin);
+			actionMenu10->addAction(
 				tr::lng_context_unpin_selected(tr::now),
 				crl::guard(controller, [=] {
 					const auto clear = crl::guard(list, [=] {
@@ -1072,7 +1086,7 @@ bool AddPinMessageAction(
 					Window::UnpinMessages(controller, ids, clear);
 				}),
 				&st::menuIconUnpin);
-			Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Pin);
+			Nagram::Menu::Tag(actionMenu10->actions().back(), Nagram::Menu::ActionId::Pin);
 			return true;
 		}
 	}
@@ -1085,10 +1099,11 @@ bool AddPinMessageAction(
 	}
 	const auto pinItemId = pinItem->fullId();
 	const auto isPinned = pinItem->isPinned();
-	menu->addAction(isPinned ? tr::lng_context_unpin_msg(tr::now) : tr::lng_context_pin_msg(tr::now), crl::guard(controller, [=] {
+	const auto actionMenu11 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Pin);
+	actionMenu11->addAction(isPinned ? tr::lng_context_unpin_msg(tr::now) : tr::lng_context_pin_msg(tr::now), crl::guard(controller, [=] {
 		Window::ToggleMessagePinned(controller, pinItemId, !isPinned);
 	}), isPinned ? &st::menuIconUnpin : &st::menuIconPin);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Pin);
+	Nagram::Menu::Tag(actionMenu11->actions().back(), Nagram::Menu::ActionId::Pin);
 	return true;
 }
 
@@ -1134,7 +1149,8 @@ bool AddDeleteSelectedAction(
 		return false;
 	}
 
-	menu->addAction(tr::lng_context_delete_selected(tr::now), [=] {
+	const auto actionMenu12 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Delete);
+	actionMenu12->addAction(tr::lng_context_delete_selected(tr::now), [=] {
 		const auto clear = crl::guard(list, [=] { list->cancelSelection(); });
 		if (ranges::all_of(request.selectedItems, &SelectedItem::ephemeral)) {
 			const auto owner = &request.navigation->session().data();
@@ -1158,7 +1174,7 @@ bool AddDeleteSelectedAction(
 		box->setDeleteConfirmedCallback(clear);
 		request.navigation->parentController()->show(std::move(box));
 	}, &st::menuIconDelete);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Delete);
+	Nagram::Menu::Tag(actionMenu12->actions().back(), Nagram::Menu::ActionId::Delete);
 	return true;
 }
 
@@ -1229,12 +1245,13 @@ bool AddDeleteMessageAction(
 			&st::menuIconCancel);
 		return true;
 	}
-	menu->addAction(Ui::DeleteMessageContextAction(
-		menu->menu(),
+	const auto actionMenu13 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Delete);
+	actionMenu13->addAction(Ui::DeleteMessageContextAction(
+		actionMenu13->menu(),
 		callback,
 		item->ttlDestroyAt(),
 		[=] { delete menu; }));
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Delete);
+	Nagram::Menu::Tag(actionMenu13->actions().back(), Nagram::Menu::ActionId::Delete);
 	return true;
 }
 
@@ -1306,11 +1323,12 @@ void AddReportAction(
 			ShowReportMessageBox(controller->uiShow(), peer, ids, {});
 		}
 	});
-	menu->addAction(
+	const auto actionMenu14 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Report);
+	actionMenu14->addAction(
 		tr::lng_context_report_msg(tr::now),
 		callback,
 		&st::menuIconReport);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Report);
+	Nagram::Menu::Tag(actionMenu14->actions().back(), Nagram::Menu::ActionId::Report);
 }
 
 void AddBlockSenderAction(
@@ -1326,13 +1344,14 @@ void AddBlockSenderAction(
 	const auto owner = &item->history()->owner();
 	const auto controller = list->controller();
 	const auto itemId = item->fullId();
-	menu->addAction(tr::lng_profile_block_user(tr::now), crl::guard(controller, [=] {
+	const auto actionMenu15 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::BlockSender);
+	actionMenu15->addAction(tr::lng_profile_block_user(tr::now), crl::guard(controller, [=] {
 		if (owner->message(itemId)) {
 			controller->show(
 				Box(Window::BlockSenderFromRepliesBox, controller, itemId));
 		}
 	}), &st::menuIconBlock);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::BlockSender);
+	Nagram::Menu::Tag(actionMenu15->actions().back(), Nagram::Menu::ActionId::BlockSender);
 }
 
 bool AddClearSelectionAction(
@@ -1342,10 +1361,11 @@ bool AddClearSelectionAction(
 	if (!request.overSelection || request.selectedItems.empty()) {
 		return false;
 	}
-	menu->addAction(tr::lng_context_clear_selection(tr::now), [=] {
+	const auto actionMenu16 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Select);
+	actionMenu16->addAction(tr::lng_context_clear_selection(tr::now), [=] {
 		list->cancelSelection();
 	}, &st::menuIconSelect);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Select);
+	Nagram::Menu::Tag(actionMenu16->actions().back(), Nagram::Menu::ActionId::Select);
 	return true;
 }
 
@@ -1366,7 +1386,8 @@ bool AddSelectMessageAction(
 	const auto owner = &item->history()->owner();
 	const auto itemId = item->fullId();
 	const auto asGroup = (request.pointState != PointState::GroupPart);
-	menu->addAction(tr::lng_context_select_msg(tr::now), [=] {
+	const auto actionMenu17 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Select);
+	actionMenu17->addAction(tr::lng_context_select_msg(tr::now), [=] {
 		if (const auto item = owner->message(itemId)) {
 			if (asGroup) {
 				list->selectItemAsGroup(item);
@@ -1375,14 +1396,15 @@ bool AddSelectMessageAction(
 			}
 		}
 	}, &st::menuIconSelect);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Select);
+	Nagram::Menu::Tag(actionMenu17->actions().back(), Nagram::Menu::ActionId::Select);
 	if (!request.selectedItems.empty() && list->canSelectItemsUpTo(item)) {
-		menu->addAction(tr::lng_context_select_msg_bulk(tr::now), [=] {
+		const auto actionMenu18 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Select);
+		actionMenu18->addAction(tr::lng_context_select_msg_bulk(tr::now), [=] {
 			if (const auto item = owner->message(itemId)) {
 				list->selectItemsUpTo(item);
 			}
 		}, &st::menuIconSelect);
-		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Select);
+		Nagram::Menu::Tag(actionMenu18->actions().back(), Nagram::Menu::ActionId::Select);
 	}
 	return true;
 }
@@ -1418,10 +1440,11 @@ bool AddViewStatisticsAction(
 	}
 	const auto controller = list->controller();
 	const auto itemId = item->fullId();
-	menu->addAction(tr::lng_stats_title(tr::now), crl::guard(controller, [=] {
+	const auto actionMenu19 = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Statistics);
+	actionMenu19->addAction(tr::lng_stats_title(tr::now), crl::guard(controller, [=] {
 		controller->showSection(Info::Statistics::Make(channel, itemId, {}));
 	}), &st::menuIconStats);
-	Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Statistics);
+	Nagram::Menu::Tag(actionMenu19->actions().back(), Nagram::Menu::ActionId::Statistics);
 	return true;
 }
 
@@ -1445,7 +1468,6 @@ void AddMessageActions(
 		const ContextMenuRequest &request,
 		not_null<ListWidget*> list) {
 	if (request.item) {
-		const auto context = request.view ? request.view->context() : Context::History;
 		if (!request.item->isService() && !request.item->forbidsForward()
 			&& request.selectedItems.empty()) {
 			Regram::Filters::AddRuleAction(menu, list->controller(),
@@ -1454,8 +1476,6 @@ void AddMessageActions(
 		}
 		AyuUi::AddHistoryAction(menu, request.item);
 		AyuUi::AddUserMessagesAction(menu, request.item);
-		AyuUi::AddRepeatMessageAction(menu, request.item, context);
-		AyuUi::AddMessageDetailsAction(menu, request.item);
 	}
 
 	AddPostLinkAction(menu, request);
@@ -1892,16 +1912,18 @@ void FillContextMenuItems(
 		const auto text = request.selectedItems.empty()
 			? tr::lng_context_copy_selected(tr::now)
 			: tr::lng_context_copy_selected_items(tr::now);
-		result->addAction(text, [=] {
+		const auto actionMenu20 = Nagram::Menu::Destination(result, Nagram::Menu::ActionId::Copy);
+		actionMenu20->addAction(text, [=] {
 			list->copySelectedText();
 		}, &st::menuIconCopy);
-		Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Copy);
+		Nagram::Menu::Tag(actionMenu20->actions().back(), Nagram::Menu::ActionId::Copy);
 	}
 	if (request.overSelection
 		&& view
 		&& !Ui::SkipTranslate(list->getSelectedText().rich)) {
 		const auto owner = &view->history()->owner();
-		result->addAction(tr::lng_context_translate_selected(tr::now), [=] {
+		const auto actionMenu21 = Nagram::Menu::Destination(result, Nagram::Menu::ActionId::Translate);
+		actionMenu21->addAction(tr::lng_context_translate_selected(tr::now), [=] {
 			if (const auto item = owner->message(itemId)) {
 				list->controller()->show(Box(
 					Ui::TranslateBox,
@@ -1911,7 +1933,7 @@ void FillContextMenuItems(
 					list->hasCopyRestrictionForSelected()));
 			}
 		}, &st::menuIconTranslate);
-		Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Translate);
+		Nagram::Menu::Tag(actionMenu21->actions().back(), Nagram::Menu::ActionId::Translate);
 	}
 
 	AddTopMessageActions(result, request, list);
@@ -1958,7 +1980,8 @@ void FillContextMenuItems(
 		if (!link && (view->hasVisibleText() || mediaHasTextForCopy)) {
 			if (!list->hasCopyRestriction(view->data())) {
 				const auto asGroup = (request.pointState != PointState::GroupPart);
-				result->addAction(tr::lng_context_copy_text(tr::now), [=] {
+				const auto actionMenu22 = Nagram::Menu::Destination(result, Nagram::Menu::ActionId::Copy);
+				actionMenu22->addAction(tr::lng_context_copy_text(tr::now), [=] {
 					if (const auto item = owner->message(itemId)) {
 						if (!list->showCopyRestriction(item)) {
 							if (asGroup) {
@@ -1974,7 +1997,7 @@ void FillContextMenuItems(
 						}
 					}
 				}, &st::menuIconCopy);
-				Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Copy);
+				Nagram::Menu::Tag(actionMenu22->actions().back(), Nagram::Menu::ActionId::Copy);
 			}
 
 			const auto translate = mediaHasTextForCopy
@@ -1982,11 +2005,18 @@ void FillContextMenuItems(
 					.append('\n')
 					.append(item->originalText()))
 				: item->originalText();
-			if ((!item->translation() || !item->history()->translatedTo())
-				&& !translate.text.isEmpty()
-				&& !Ui::SkipTranslate(translate)) {
-				result->addAction(tr::lng_context_translate(tr::now), [=] {
+			if (!translate.text.isEmpty()
+				&& (!Ui::SkipTranslate(translate)
+					|| (item->translation() && item->translation()->used))) {
+				const auto actionMenu23 = Nagram::Menu::Destination(result, Nagram::Menu::ActionId::Translate);
+				actionMenu23->addAction(item->translation() && item->translation()->used
+					? tr::lng_translate_show_original(tr::now)
+					: tr::lng_context_translate(tr::now), [=] {
 					if (const auto item = owner->message(itemId)) {
+						if (!mediaHasTextForCopy) {
+							Nagram::ToggleMessageTranslation(item, list->controller());
+							return;
+						}
 						list->controller()->show(Box(
 							Ui::TranslateBox,
 							item->history()->peer,
@@ -1997,7 +2027,7 @@ void FillContextMenuItems(
 							list->hasCopyRestriction(view->data())));
 					}
 				}, &st::menuIconTranslate);
-				Nagram::Menu::Tag(result->actions().back(), Nagram::Menu::ActionId::Translate);
+				Nagram::Menu::Tag(actionMenu23->actions().back(), Nagram::Menu::ActionId::Translate);
 			}
 		}
 	}
@@ -2592,8 +2622,8 @@ void AddWhoReactedAction(
 		not_null<QWidget*> context,
 		not_null<HistoryItem*> item,
 		not_null<Window::SessionController*> controller) {
-	const auto &settings = AyuSettings::getInstance();
-	if (!AyuUi::needToShowItem(settings.showViewsPanelInContextMenu())) {
+	menu = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::SeenBy);
+	if (!Nagram::Menu::Shown(Nagram::Menu::ActionId::SeenBy)) {
 		return;
 	}
 

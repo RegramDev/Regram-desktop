@@ -96,6 +96,7 @@ private:
 
 	base::flat_map<std::shared_ptr<Document>, crl::time> _keptAlive;
 	base::Timer _keptAliveTimer;
+	rpl::lifetime _lifetime;
 
 };
 

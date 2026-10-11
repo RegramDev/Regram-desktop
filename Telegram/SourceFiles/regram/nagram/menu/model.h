@@ -42,6 +42,9 @@ enum class ActionId : int {
 	Summarize = 36,
 	TranscribeSelected = 37,
 	CopyMarkdown = 39,
+	MessageJson = 40,
+	Replies = 41,
+	RestrictSender = 42,
 };
 
 enum class Visibility { Show, Hide, WithOption };
@@ -56,8 +59,9 @@ struct Slot {
 	bool separator = false;
 };
 
-inline constexpr auto kEntries = std::array<Entry, 33>({{
+inline constexpr auto kEntries = std::array<Entry, 35>({{
 	{ ActionId::Reply, "lng_nagram_menu_reply" },
+	{ ActionId::Replies, "lng_regram_message_replies" },
 	{ ActionId::Edit, "lng_nagram_menu_edit" },
 	{ ActionId::Copy, "lng_nagram_menu_copy" },
 	{ ActionId::CopyLink, "lng_nagram_menu_copy_link" },
@@ -68,6 +72,7 @@ inline constexpr auto kEntries = std::array<Entry, 33>({{
 	{ ActionId::Statistics, "lng_nagram_menu_statistics" },
 	{ ActionId::Report, "lng_nagram_menu_report" },
 	{ ActionId::BlockSender, "lng_nagram_menu_block_sender" },
+	{ ActionId::RestrictSender, "lng_regram_restrict_sender" },
 	{ ActionId::Image, "lng_nagram_menu_image" },
 	{ ActionId::Delete, "lng_nagram_menu_delete" },
 	{ ActionId::StickerPack, "lng_nagram_menu_sticker_pack" },
@@ -85,10 +90,10 @@ inline constexpr auto kEntries = std::array<Entry, 33>({{
 	{ ActionId::SelectBetween, "lng_nagram_menu_select_between" },
 	{ ActionId::SeenBy, "lng_nagram_menu_seen_by" },
 	{ ActionId::MessageDetails, "lng_nagram_menu_details" },
+	{ ActionId::MessageJson, "lng_regram_message_json" },
 	{ ActionId::SaveToSaved, "lng_nagram_menu_save_to_saved" },
 	{ ActionId::SelectAll, "lng_nagram_menu_select_all" },
 	{ ActionId::Summarize, "lng_nagram_menu_summarize" },
-	{ ActionId::TranscribeSelected, "lng_nagram_menu_transcribe_selected" },
 	{ ActionId::CopyMarkdown, "lng_nagram_menu_copy_markdown" },
 }});
 
@@ -102,6 +107,17 @@ inline constexpr auto kEntries = std::array<Entry, 33>({{
 	Visibility visibility);
 [[nodiscard]] bool Visible(Visibility visibility, bool optionHeld);
 [[nodiscard]] int EndPosition(const std::vector<Slot> &slots);
+[[nodiscard]] bool ValidActionList(const QByteArray &raw);
+[[nodiscard]] std::vector<ActionId> ReadActionList(const QByteArray &raw);
+[[nodiscard]] QByteArray WriteActionList(const std::vector<ActionId> &ids);
+[[nodiscard]] std::vector<ActionId> ReadActionOrder(const QByteArray &raw);
+
+inline const auto kMenuOrder = Option<QByteArray>{
+	"nagram.regramMenuOrder", Scope::Device, QByteArray(), Category::Menu,
+	"lng_regram_menu_order", static_cast<unsigned>(Flag::Exportable), ValidActionList };
+inline const auto kRegramSubmenu = Option<QByteArray>{
+	"nagram.regramSubmenuActions", Scope::Device, QByteArray(), Category::Menu,
+	"lng_regram_menu_submenu", static_cast<unsigned>(Flag::Exportable), ValidActionList };
 
 inline const auto kMenuConfig = Option<QByteArray>{
 	"nagram.messageMenu", Scope::Device, QByteArray(),
@@ -143,6 +159,8 @@ inline constexpr auto kScrollAfterRepeat = Option<bool>{
 
 inline void RegisterOptions(Registry &registry) {
 	Expects(registry.Add(kMenuConfig));
+	Expects(registry.Add(kMenuOrder));
+	Expects(registry.Add(kRegramSubmenu));
 	Expects(registry.Add(kConfirmRepeat));
 	Expects(registry.Add(kQuickRatingFirst));
 	Expects(registry.Add(kQuickRatingSecond));

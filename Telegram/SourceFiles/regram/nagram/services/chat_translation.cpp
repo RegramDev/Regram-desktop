@@ -9,6 +9,7 @@
 #include "regram/nagram/services/chat_translation_model.h"
 #include "regram/nagram/services/request.h"
 #include "regram/nagram/services/translation.h"
+#include "regram/ayu/ayu_settings.h"
 #include "platform/platform_translate_provider.h"
 #include "window/window_controller.h"
 
@@ -50,10 +51,10 @@ private:
 
 	[[nodiscard]] ChatTranslationMode mode() const;
 	void send(QStringList texts, Fn<void(ChatSendResult)> done);
-	void configChanged();
 	void finished();
 
-	const std::unique_ptr<Ui::TranslateProvider> _upstream;
+	const not_null<Main::Session*> _session;
+	std::unique_ptr<Ui::TranslateProvider> _upstream;
 	std::unique_ptr<Ui::TranslateProvider> _system;
 	ServiceRequest _request;
 	base::Timer _retry;
@@ -68,7 +69,10 @@ private:
 };
 
 ChatTranslateProvider::ChatTranslateProvider(not_null<History*> history)
-: _upstream(Ui::CreateTranslateProvider(&history->session()))
+: _session(&history->session())
+, _upstream(CreateInteractiveTranslateProvider(_session, [](QString error) {
+	Notify(u"chat-translation"_q, error);
+}))
 , _retry([=] {
 	if (const auto callback = base::take(_retryCallback)) {
 		callback();
@@ -80,13 +84,6 @@ ChatTranslateProvider::ChatTranslateProvider(not_null<History*> history)
 	_retryCallback = std::move(callback);
 	_retry.callOnce(kRetryDelay);
 }) {
-	rpl::merge(
-		ForDevice().Value(kServicesConfig) | rpl::skip(1) | rpl::to_empty,
-		ForDevice().Value(
-			kChatTranslationUseService) | rpl::skip(1) | rpl::to_empty
-	) | rpl::on_next([=] {
-		configChanged();
-	}, _lifetime);
 	history->session().changes().historyUpdates(
 		history,
 		Data::HistoryUpdate::Flag::TranslatedTo
@@ -96,11 +93,9 @@ ChatTranslateProvider::ChatTranslateProvider(not_null<History*> history)
 }
 
 ChatTranslationMode ChatTranslateProvider::mode() const {
-	const auto settings = ForDevice().Get(kChatTranslationUseService)
-		? Services()
-		: std::nullopt;
+	const auto settings = Services();
 	return ChooseChatTranslationMode(
-		ForDevice().Get(kChatTranslationUseService),
+		true,
 		settings.has_value(),
 		settings ? settings->value(u"translation"_q).toString() : QString());
 }
@@ -157,7 +152,7 @@ void ChatTranslateProvider::requestBatch(
 				tr::lng_nagram_system_translation_unavailable(tr::now));
 			return;
 		} else if (!_system) {
-			_system = Platform::CreateTranslateProvider();
+			_system = PreserveTranslationEntities(Platform::CreateTranslateProvider());
 		}
 		_system->requestBatch(
 			std::move(requests),
@@ -244,21 +239,16 @@ void ChatTranslateProvider::finished() {
 	}
 }
 
-void ChatTranslateProvider::configChanged() {
-	_queue.resume();
-	_request.cancel();
-	_retry.cancel();
-	_retryCallback = nullptr;
-	_failure = {};
-	_queue.fail();
-}
-
 void ChatTranslateProvider::cancel() {
 	_queue.cancel();
 	_request.cancel();
 	_retry.cancel();
 	_retryCallback = nullptr;
 	_failure = {};
+	_system = nullptr;
+	_upstream = CreateInteractiveTranslateProvider(_session, [](QString error) {
+		Notify(u"chat-translation"_q, error);
+	});
 }
 
 } // namespace
@@ -269,16 +259,23 @@ std::unique_ptr<Ui::TranslateProvider> CreateChatTranslateProvider(
 }
 
 bool ChatTranslationServiceActive() {
-	if (!ForDevice().Get(kChatTranslationUseService)) {
-		return false;
-	}
 	const auto settings = Services();
 	if (!settings) {
 		return false;
 	}
 	const auto selected = settings->value(u"translation"_q).toString();
 	switch (ChooseChatTranslationMode(true, true, selected)) {
-	case ChatTranslationMode::Upstream: return false;
+	case ChatTranslationMode::Upstream:
+		if (selected == u"telegram"_q) {
+			return false;
+		}
+		switch (AyuSettings::getInstance().translationProvider()) {
+		case TranslationProvider::Google: return true;
+		case TranslationProvider::Native:
+			return Platform::IsTranslateProviderAvailable();
+		case TranslationProvider::Telegram: return false;
+		}
+		return false;
 	case ChatTranslationMode::System:
 		return Platform::IsTranslateProviderAvailable();
 	case ChatTranslationMode::External:

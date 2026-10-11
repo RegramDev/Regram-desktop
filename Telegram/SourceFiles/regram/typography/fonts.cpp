@@ -9,6 +9,7 @@
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
 #include "regram/ayu/ayu_settings.h"
+#include "regram/nagram/interface/options.h"
 #include "regram/nagram/settings/restart.h"
 #include "storage/localstorage.h"
 #include "ui/boxes/confirm_box.h"
@@ -32,6 +33,7 @@
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <map>
+#include <array>
 
 #include "styles/style_layers.h"
 #include "styles/style_nagram_interface.h"
@@ -43,7 +45,7 @@ namespace {
 constexpr auto kMaxFontBytes = 64 * 1024 * 1024;
 constexpr auto kCjkFamilyKey = "regram.cjkFontFamily";
 
-enum class Target { Interface, Chinese, Code };
+enum class Target { All, Interface, Chat, Chinese, Code };
 
 struct FontFile {
 	QString name;
@@ -198,7 +200,23 @@ void ApplyFamily(
 		Target target) {
 	auto &settings = Core::App().settings();
 	switch (target) {
-	case Target::Interface: settings.setCustomFontFamily(family); break;
+	case Target::All:
+		settings.setCustomFontFamily(family);
+		Expects(Nagram::ForDevice().Set(Nagram::Interface::kChatFontFamily, QString()));
+		break;
+	case Target::Interface:
+		if (Nagram::ForDevice().Get(Nagram::Interface::kChatFontFamily).isEmpty()) {
+			const auto current = settings.customFontFamily();
+			Expects(Nagram::ForDevice().Set(Nagram::Interface::kChatFontFamily,
+				current == style::SystemFontTag() ? u":system"_q
+					: current.isEmpty() ? u"Open Sans"_q : current));
+		}
+		settings.setCustomFontFamily(family);
+		break;
+	case Target::Chat:
+		Expects(Nagram::ForDevice().Set(Nagram::Interface::kChatFontFamily,
+			family.isEmpty() ? u"Open Sans"_q : family));
+		break;
 	case Target::Chinese: SetCjkFamily(family); break;
 	case Target::Code: AyuSettings::getInstance().setMonoFont(family); break;
 	}
@@ -232,7 +250,9 @@ void ChooseFamily(
 			box, std::move(title), st::settingsButtonNoIcon));
 		button->setClickedCallback([=] { ApplyFamily(box, controller, family, target); });
 	};
-	add(Target::Interface, tr::lng_regram_font_use_main());
+	add(Target::All, tr::lng_regram_font_use_main());
+	add(Target::Interface, tr::lng_regram_font_use_interface());
+	add(Target::Chat, tr::lng_regram_font_use_chat());
 	add(Target::Chinese, tr::lng_regram_font_use_chinese());
 	add(Target::Code, tr::lng_regram_font_use_code());
 	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
@@ -387,6 +407,9 @@ bool RemoveFont(not_null<Ui::GenericBox*> box, Installed entry) {
 	if (unavailable(settings.customFontFamily())) {
 		settings.setCustomFontFamily({});
 	}
+	if (unavailable(Nagram::ForDevice().Get(Nagram::Interface::kChatFontFamily))) {
+		Expects(Nagram::ForDevice().Set(Nagram::Interface::kChatFontFamily, u"Open Sans"_q));
+	}
 	if (unavailable(CjkFamily())) {
 		SetCjkFamily(QString());
 	}
@@ -492,13 +515,148 @@ void SystemFontsBox(
 
 } // namespace
 
+QJsonObject NativeFontSettings() {
+	return {
+		{ u"interface"_q, Core::App().settings().customFontFamily() },
+		{ u"messages"_q, Nagram::ForDevice().Get(Nagram::Interface::kChatFontFamily) },
+		{ u"chinese"_q, CjkFamily() },
+	};
+}
+
+namespace {
+
+const auto kIosFamilies = std::array{
+	std::pair{ u"jetBrainsMono", u"JetBrainsMono" },
+	std::pair{ u"jetBrainsMonoNL", u"JetBrainsMonoNL" },
+	std::pair{ u"inter", u"Inter" },
+	std::pair{ u"poppins", u"Poppins" },
+	std::pair{ u"lora", u"Lora" },
+	std::pair{ u"ibmPlexSans", u"IBMPlexSans" },
+	std::pair{ u"ibmPlexSerif", u"IBMPlexSerif" },
+	std::pair{ u"ibmPlexMono", u"IBMPlexMono" },
+	std::pair{ u"ibmPlexSansSC", u"IBMPlexSansSC" },
+	std::pair{ u"sourceSans3", u"SourceSans3" },
+	std::pair{ u"sourceSerif4", u"SourceSerif4" },
+	std::pair{ u"notoSerifSC", u"NotoSerifSC" },
+};
+
+std::optional<std::pair<QString, QString>> EncodeIosFont(const QString &name) {
+	if (name.isEmpty() || name == u"Open Sans"_q || name == style::SystemFontTag() || name == u":system"_q) {
+		return std::pair{ u"system"_q, QString() };
+	}
+	for (const auto &entry : InstalledFonts()) {
+		if (!entry.families.contains(name)) {
+			continue;
+		}
+		if (entry.imported) {
+			const auto parts = entry.id.split(u'-');
+			if (parts.size() == 2 && parts.front().size() == 64) {
+				const auto face = parts.back().toInt();
+				return std::pair{ u"system"_q, parts.front() + (face ? u":"_q + QString::number(face) : QString()) };
+			}
+		}
+		for (const auto &[ios, id] : kIosFamilies) {
+			if (entry.id == QString::fromUtf16(id)) {
+				return std::pair{ QString::fromUtf16(ios), QString() };
+			}
+		}
+	}
+	return std::nullopt;
+}
+
+std::optional<QString> DecodeIosFont(const QString &family, const QString &imported, bool chinese) {
+	const auto entries = InstalledFonts();
+	if (!imported.isEmpty()) {
+		const auto parts = imported.split(u':');
+		const auto id = parts.front().toLower() + u'-' + (parts.size() == 2 ? parts.back() : u"0"_q);
+		for (const auto &entry : entries) {
+			if (entry.imported && entry.id == id
+				&& ranges::all_of(entry.files, [](const QString &file) { return QFileInfo::exists(Root() + file); })) {
+				return entry.families.front();
+			}
+		}
+		return std::nullopt;
+	} else if (family == u"system"_q) {
+		return chinese ? QString() : style::SystemFontTag();
+	}
+	for (const auto &[ios, id] : kIosFamilies) {
+		if (family != QString::fromUtf16(ios)) {
+			continue;
+		}
+		const auto found = ranges::find(entries, QString::fromUtf16(id), &Installed::id);
+		if (found != entries.end()
+			&& ranges::all_of(found->files, [](const QString &file) { return QFileInfo::exists(Root() + file); })) {
+			return found->families.front();
+		}
+	}
+	return std::nullopt;
+}
+
+} // namespace
+
+QJsonObject IosFontSettings() {
+	const auto native = NativeFontSettings();
+	const auto ui = EncodeIosFont(native.value(u"interface"_q).toString());
+	const auto chatName = native.value(u"messages"_q).toString();
+	const auto chat = chatName.isEmpty() ? ui : EncodeIosFont(chatName);
+	const auto cjk = EncodeIosFont(native.value(u"chinese"_q).toString());
+	if (!ui || !chat || !cjk
+		|| (ui->first != u"system"_q && chat->first != u"system"_q && *ui != *chat)
+		|| (!ui->second.isEmpty() && !chat->second.isEmpty() && *ui != *chat)) {
+		return {};
+	}
+	const auto uiOn = ui->first != u"system"_q || !ui->second.isEmpty();
+	const auto chatOn = chat->first != u"system"_q || !chat->second.isEmpty();
+	if (uiOn && chatOn && *ui != *chat) {
+		return {};
+	}
+	if ((!uiOn || !chatOn) && (cjk->first != u"system"_q || !cjk->second.isEmpty())) {
+		return {};
+	}
+	const auto selected = uiOn ? *ui : *chat;
+	return {
+		{ u"fontFamily"_q, selected.first },
+		{ u"fontImportedLatin"_q, selected.second },
+		{ u"fontChineseFamily"_q, cjk->first },
+		{ u"fontImportedChinese"_q, cjk->second },
+		{ u"fontApplyToInterface"_q, uiOn },
+		{ u"fontApplyToMessages"_q, chatOn },
+	};
+}
+
+std::optional<QJsonObject> ResolveIosFonts(const QJsonObject &settings) {
+	const auto ui = settings.value(u"fontApplyToInterface"_q).toBool(true);
+	const auto chat = settings.value(u"fontApplyToMessages"_q).toBool(true);
+	const auto latin = DecodeIosFont(settings.value(u"fontFamily"_q).toString(u"system"_q),
+		settings.value(u"fontImportedLatin"_q).toString(), false);
+	const auto cjk = DecodeIosFont(settings.value(u"fontChineseFamily"_q).toString(u"system"_q),
+		settings.value(u"fontImportedChinese"_q).toString(), true);
+	if (!latin || !cjk || (ui != chat && !cjk->isEmpty())) {
+		return std::nullopt;
+	}
+	return QJsonObject{
+		{ u"interface"_q, ui ? *latin : QString() },
+		{ u"messages"_q, chat ? (*latin == style::SystemFontTag() ? u":system"_q : *latin) : u"Open Sans"_q },
+		{ u"chinese"_q, ui && chat ? *cjk : QString() },
+	};
+}
+
+void ApplyIosFonts(const QJsonObject &settings) {
+	Core::App().settings().setCustomFontFamily(settings.value(u"interface"_q).toString());
+	Expects(Nagram::ForDevice().Set(Nagram::Interface::kChatFontFamily, settings.value(u"messages"_q).toString()));
+	SetCjkFamily(settings.value(u"chinese"_q).toString());
+}
+
 void Start() {
 	auto &settings = Core::App().settings();
 	const auto active = QStringList{
 		settings.customFontFamily(),
+		Nagram::ForDevice().Get(Nagram::Interface::kChatFontFamily),
 		CjkFamily(),
 		AyuSettings::getInstance().monoFont(),
 	};
+	const auto chat = Nagram::ForDevice().Get(Nagram::Interface::kChatFontFamily);
+	style::SetCustomChatFont(chat == u":system"_q ? style::SystemFontTag() : chat);
 	for (const auto &entry : InstalledFonts()) {
 		if (!ranges::any_of(entry.families, [&](const QString &family) {
 			return active.contains(family);

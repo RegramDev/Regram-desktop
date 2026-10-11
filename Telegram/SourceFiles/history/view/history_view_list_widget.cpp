@@ -6,6 +6,8 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_list_widget.h"
+#include "regram/media/loading.h"
+#include "regram/nagram/media/options.h"
 #include "regram/filters/runtime.h"
 #include "regram/nagram/messages/online.h"
 #include "regram/nagram/messages/content.h"
@@ -1552,6 +1554,25 @@ void ListWidget::visibleTopBottomUpdated(
 	const auto scrolledUp = (visibleTop < _visibleTop);
 	_visibleTop = visibleTop;
 	_visibleBottom = visibleBottom;
+	Regram::Media::UpdateViewport(_session, this, this, visibleTop, visibleBottom);
+	if (!_items.empty() && Nagram::ForDevice().Get(Nagram::Media::kLoadingExperiment)) {
+		const auto first = ranges::find(_items, findItemByY(visibleTop)) - _items.begin();
+		auto messages = std::vector<FullMsgId>();
+		for (const auto direction : { 1, -1 }) {
+			auto count = 0;
+			auto scanned = 0;
+			for (auto i = first + (direction < 0 ? -1 : 0)
+				; i >= 0 && i < int(_items.size()) && count < 6 && scanned < 64
+				; i += direction, ++scanned) {
+				if (_items[i]->height() > 0 && _items[i]->data()->media()) {
+					messages.push_back(_items[i]->data()->fullId());
+					++count;
+				}
+			}
+		}
+		Regram::Media::PrefetchWindow(_session, this, std::move(messages));
+	}
+
 	markReadMetricsStale();
 	registerReadMetricsActivity();
 

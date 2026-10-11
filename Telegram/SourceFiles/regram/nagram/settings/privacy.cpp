@@ -232,6 +232,16 @@ const auto kMeta = BuildHelper({
 		u"regram/nagram/privacy/show-registration-date"_q,
 		{ u"profile"_q, u"registration"_q, u"date"_q });
 	builder.addDividerText(tr::lng_nagram_show_registration_date_about());
+	AddToggle(builder, Privacy::kAntiAutoDelete,
+		tr::lng_regram_anti_auto_delete(), u"regram/privacy/anti-auto-delete"_q,
+		{ u"auto delete"_q, u"TTL"_q });
+	AddToggle(builder, Privacy::kAntiSelfDestruct,
+		tr::lng_regram_anti_self_destruct(), u"regram/privacy/anti-self-destruct"_q,
+		{ u"self destruct"_q, u"media"_q });
+	AddToggle(builder, Privacy::kProfileCommonGroupsFirst,
+		tr::lng_regram_profile_common_groups_first(),
+		u"regram/privacy/common-groups-first"_q,
+		{ u"profile"_q, u"common groups"_q, u"bot"_q });
 	AddToggle(builder, Privacy::kHideProfileGifts,
 		tr::lng_nagram_hide_profile_gifts(),
 		u"regram/nagram/privacy/hide-profile-gifts"_q,

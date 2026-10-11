@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/media/history_view_save_document_action.h"
+#include "regram/nagram/menu/actions.h"
 
 #include "base/call_delayed.h"
 #include "data/data_document.h"
@@ -122,11 +123,16 @@ void AddSaveDocumentAction(
 	if (!item || list->hasCopyMediaRestriction(item) || ItemHasTtl(item)) {
 		return;
 	}
+	menu = Nagram::Menu::Destination(menu, Nagram::Menu::ActionId::Image);
+	const auto count = menu->actions().size();
 	AddSaveDocumentAction(
 		Ui::Menu::CreateAddActionCallback(menu),
 		item,
 		document,
 		list->controller());
+	if (menu->actions().size() > count) {
+		Nagram::Menu::Tag(menu->actions().back(), Nagram::Menu::ActionId::Image);
+	}
 }
 
 } // namespace HistoryView

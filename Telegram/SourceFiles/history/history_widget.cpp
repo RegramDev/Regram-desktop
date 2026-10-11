@@ -994,20 +994,6 @@ HistoryWidget::HistoryWidget(
 		this->update();
 	}, lifetime());
 
-	AyuSettings::getInstance().translationProviderChanges(
-	) | rpl::on_next([=](TranslationProvider) {
-		if (_history) {
-			for (const auto &block : _history->blocks) {
-				for (const auto &view : block->messages) {
-					const auto item = view->data();
-					if (item->Has<HistoryMessageTranslation>()) {
-						item->removeTranslationBit();
-						_history->owner().requestItemTextRefresh(item);
-					}
-				}
-			}
-		}
-	}, lifetime());
 
 	using MessageUpdateFlag = Data::MessageUpdate::Flag;
 	session().changes().messageUpdates(
@@ -8560,20 +8546,20 @@ void HistoryWidget::updateControlsGeometry() {
 		pinnedBar->move(0, pinnedBarTop);
 		pinnedBar->resizeToWidth(innerWidth);
 	}
-	const auto sponsoredMessageBarTop = pinnedBarTop
+	const auto translateTop = pinnedBarTop
 		+ (pinnedBar ? pinnedBar->height() : 0);
-	if (_sponsoredMessageBar) {
-		_sponsoredMessageBar->move(0, sponsoredMessageBarTop);
-		_sponsoredMessageBar->resizeToWidth(innerWidth);
-	}
-	const auto translateTop = sponsoredMessageBarTop
-		+ (_sponsoredMessageBar ? _sponsoredMessageBar->height() : 0);
 	if (_translateBar) {
 		_translateBar->move(0, translateTop);
 		_translateBar->resizeToWidth(innerWidth);
 	}
-	const auto paysStatusTop = translateTop
+	const auto sponsoredMessageBarTop = translateTop
 		+ (_translateBar ? _translateBar->height() : 0);
+	if (_sponsoredMessageBar) {
+		_sponsoredMessageBar->move(0, sponsoredMessageBarTop);
+		_sponsoredMessageBar->resizeToWidth(innerWidth);
+	}
+	const auto paysStatusTop = sponsoredMessageBarTop
+		+ (_sponsoredMessageBar ? _sponsoredMessageBar->height() : 0);
 	if (_paysStatus) {
 		_paysStatus->bar().move(0, paysStatusTop);
 	}

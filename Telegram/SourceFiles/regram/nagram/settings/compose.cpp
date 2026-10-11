@@ -283,6 +283,11 @@ const auto kMeta = BuildHelper({
 }, [](SectionBuilder &builder) {
 	const auto controller = builder.controller();
 	const auto session = builder.session();
+	AddToggle(builder, Compose::kNicknameMentions,
+		tr::lng_regram_nickname_mentions(),
+		u"regram/compose/nickname-mentions"_q,
+		{ u"mention"_q, u"nickname"_q, u"iOS"_q });
+	builder.addDividerText(tr::lng_regram_nickname_mentions_about());
 	const auto formatting = [&](bool account) {
 		builder.addButton({
 			.id = account ? u"regram/compose/account-formatting"_q : u"regram/compose/default-formatting"_q,

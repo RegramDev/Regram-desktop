@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "storage/file_download_web.h"
+#include "regram/diagnostics/diagnostics.h"
 
 #include "storage/cache/storage_cache_types.h"
 #include "base/timer.h"
@@ -609,6 +610,7 @@ void webFileLoader::loadProgress(
 		qint64 total,
 		const QByteArray &streamed) {
 	_fullSize = _loadSize = total;
+	Regram::Diagnostics::RecordMediaReceived(&session(), ready >= _ready ? ready - _ready : ready);
 	_ready = ready;
 	if (!streamed.isEmpty()
 		&& !writeResultPart(_streamedOffset, bytes::make_span(streamed))) {
@@ -620,6 +622,7 @@ void webFileLoader::loadProgress(
 }
 
 void webFileLoader::loadFinished(const QByteArray &data) {
+	Regram::Diagnostics::RecordMediaReceived(&session(), std::max(int64(0), int64(data.size()) - _ready));
 	cancelRequest();
 	if (writeResultPart(0, bytes::make_span(data))) {
 		finalizeResult();

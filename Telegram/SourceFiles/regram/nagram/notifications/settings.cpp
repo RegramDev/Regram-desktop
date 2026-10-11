@@ -9,8 +9,11 @@
 #include "ui/widgets/labels.h"
 #include "styles/style_layers.h"
 #include "styles/style_widgets.h"
+#include "styles/style_settings.h"
 
 #include <QtCore/QLocale>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 
 namespace Nagram::Notifications {
 namespace {
@@ -39,6 +42,54 @@ void AddTitle(not_null<Ui::GenericBox*> box, rpl::producer<QString> text) {
 }
 
 } // namespace
+
+QString PolicyLabel(const QString &policy) {
+	return policy == u"silenced"_q ? tr::lng_regram_notification_silenced(tr::now)
+		: policy == u"disabled"_q ? tr::lng_nagram_config_off(tr::now)
+		: tr::lng_nagram_preview_follow(tr::now);
+}
+
+void PolicyBox(
+		not_null<Ui::GenericBox*> box,
+		not_null<Main::Session*> session,
+		bool pinned,
+		uint64 peer) {
+	const auto option = pinned ? kPinnedPolicy : kMentionPolicy;
+	const auto exception = pinned ? kPinnedExceptions : kMentionExceptions;
+	const auto key = QString::number(peer);
+	auto &options = ForAccount(session);
+	const auto raw = options.Get(exception);
+	const auto entry = QJsonDocument::fromJson(raw).object().value(key).toString();
+	const auto policies = QStringList{ u"default"_q, u"silenced"_q, u"disabled"_q };
+	const auto chosen = peer ? policies.indexOf(entry) : policies.indexOf(options.Get(option));
+	const auto group = std::make_shared<Ui::RadiobuttonGroup>(int(chosen));
+	box->setTitle(pinned ? tr::lng_regram_pinned_notifications() : tr::lng_regram_mention_notifications());
+	if (peer) {
+		box->addRow(object_ptr<Ui::Radiobutton>(
+			box, group, -1, tr::lng_regram_notification_inherit(tr::now),
+			st::settingsSendType));
+	}
+	for (auto i = 0; i != policies.size(); ++i) {
+		box->addRow(object_ptr<Ui::Radiobutton>(
+			box, group, i, PolicyLabel(policies[i]), st::settingsSendType));
+	}
+	group->setChangedCallback(crl::guard(session, [=](int value) {
+		auto &options = ForAccount(session);
+		if (!peer) {
+			Expects(options.Set(option, policies[value]));
+		} else {
+			auto values = QJsonDocument::fromJson(options.Get(exception)).object();
+			if (value < 0) {
+				values.remove(key);
+			} else {
+				values.insert(key, policies[value]);
+			}
+			Expects(options.Set(exception, QJsonDocument(values).toJson(QJsonDocument::Compact)));
+		}
+		box->closeBox();
+	}));
+	box->addButton(tr::lng_close(), [=] { box->closeBox(); });
+}
 
 rpl::producer<QString> QuietHoursLabel() {
 	return ForDevice().Value(kQuietHours) | rpl::map([](const QByteArray &raw) {

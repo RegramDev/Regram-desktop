@@ -118,6 +118,45 @@ constexpr auto kMaxCachedPatterns = 128;
 
 } // namespace
 
+bool ValidPolicy(const QString &value) {
+	return value == u"default"_q || value == u"silenced"_q || value == u"disabled"_q;
+}
+
+bool ValidPolicyExceptions(const QByteArray &raw) {
+	if (raw.isEmpty()) {
+		return true;
+	}
+	const auto document = QJsonDocument::fromJson(raw);
+	if (!document.isObject() || document.object().size() > 10000) {
+		return false;
+	}
+	const auto values = document.object();
+	for (auto i = values.begin(); i != values.end(); ++i) {
+		auto ok = false;
+		const auto id = i.key().toULongLong(&ok);
+		if (!ok || !id || QString::number(id) != i.key()
+			|| !i.value().isString() || !ValidPolicy(i.value().toString())) {
+			return false;
+		}
+	}
+	return true;
+}
+
+QString PolicyForPeer(
+		const QString &fallback,
+		const QByteArray &exceptions,
+		const QString &peer) {
+	return PolicyForPeer(fallback, QJsonDocument::fromJson(exceptions).object(), peer);
+}
+
+QString PolicyForPeer(
+		const QString &fallback,
+		const QJsonObject &exceptions,
+		const QString &peer) {
+	const auto value = exceptions.value(peer).toString();
+	return ValidPolicy(value) ? value : fallback;
+}
+
 std::optional<QuietHours> ParseQuietHours(const QByteArray &raw) {
 	if (raw.isEmpty()) {
 		return QuietHours();

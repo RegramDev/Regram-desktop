@@ -72,6 +72,7 @@ void InsertMediaInfoAction(
 		return;
 	}
 	const auto itemId = item->fullId();
+	menu = Destination(menu, ActionId::MediaInfo);
 	const auto action = Ui::Menu::CreateAction(menu,
 		tr::lng_nagram_menu_media_info(tr::now),
 		crl::guard(controller, [=] {

@@ -35,6 +35,7 @@ void InsertReadingAction(
 		return;
 	}
 	const auto id = item->fullId();
+	menu = Destination(menu, ActionId::Reading);
 	const auto session = &item->history()->owner();
 	const auto title = item->nagramOriginalShown()
 		? tr::lng_nagram_reading_apply(tr::now)

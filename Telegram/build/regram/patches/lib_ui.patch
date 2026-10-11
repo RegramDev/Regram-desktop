@@ -285,7 +285,7 @@ index ec3171e..6c646f0 100644
  
  	if (!_specialLayerCache.isNull() && specialLayerOpacity > 0) {
 diff --git a/ui/style/style_core_font.cpp b/ui/style/style_core_font.cpp
-index 46b65c4..1328060 100644
+index 46b65c4..b90a5d9 100644
 --- a/ui/style/style_core_font.cpp
 +++ b/ui/style/style_core_font.cpp
 @@ -21,6 +21,11 @@
@@ -300,7 +300,31 @@ index 46b65c4..1328060 100644
  void style_InitFontsResource() {
  #ifdef Q_OS_MAC // Use resources from the .app bundle on macOS.
  
-@@ -147,7 +152,9 @@ bool LoadCustomFont(const QString &filePath) {
+@@ -44,6 +49,7 @@ namespace {
+ constexpr auto kSubSuperMultiplier = 0.75;
+ 
+ QString Custom;
++QString ChatCustom;
+ 
+ } // namespace
+ 
+@@ -56,6 +62,15 @@ void SetCustomFont(const QString &font) {
+ 	Custom = font;
+ }
+ 
++void SetCustomChatFont(const QString &font) {
++	ChatCustom = font;
++}
++
++const QString &ChatFontTag() {
++	static const auto result = u"Regram Chat Font"_q;
++	return result;
++}
++
+ namespace internal {
+ 
+ struct ResolvedFont {
+@@ -147,7 +162,9 @@ bool LoadCustomFont(const QString &filePath) {
  }
  
  [[nodiscard]] QString ManualMonospaceFont() {
@@ -310,7 +334,7 @@ index 46b65c4..1328060 100644
  		u"Cascadia Mono"_q,
  		u"Consolas"_q,
  		u"Liberation Mono"_q,
-@@ -175,7 +182,8 @@ bool LoadCustomFont(const QString &filePath) {
+@@ -175,7 +192,8 @@ bool LoadCustomFont(const QString &filePath) {
  		// Prefer system monospace font.
  		const auto metrics = QFontMetrics(QFont(system));
  		const auto useSystem = manual.isEmpty()
@@ -320,6 +344,41 @@ index 46b65c4..1328060 100644
  #endif // Q_OS_WIN
  		return useSystem ? system : manual;
  	}();
+@@ -331,15 +349,18 @@ struct Metrics {
+ 		FontFlags flags,
+ 		int size) {
+ 	auto font = QFont(QFont().family());
++	const auto &resolved = (family == ChatFontTag())
++		? (ChatCustom.isEmpty() ? Custom : ChatCustom)
++		: family;
+ 
+ 	const auto monospace = (flags & FontFlag::Monospace) != 0;
+-	const auto system = !monospace && (family == SystemFontTag());
+-	const auto overriden = !monospace && !system && !family.isEmpty();
++	const auto system = !monospace && (resolved == SystemFontTag());
++	const auto overriden = !monospace && !system && !resolved.isEmpty();
+ 	if (monospace) {
+ 		font.setFamily(MonospaceFont());
+ 	} else if (system) {
+ 	} else if (overriden) {
+-		font.setFamily(family);
++		font.setFamily(resolved);
+ 	} else {
+ 		font.setFamily("Open Sans"_q);
+ 	}
+diff --git a/ui/style/style_core_font.h b/ui/style/style_core_font.h
+index 42e3248..20432ee 100644
+--- a/ui/style/style_core_font.h
++++ b/ui/style/style_core_font.h
+@@ -21,6 +21,8 @@ namespace style {
+ 
+ [[nodiscard]] const QString &SystemFontTag();
+ void SetCustomFont(const QString &font);
++void SetCustomChatFont(const QString &font);
++[[nodiscard]] const QString &ChatFontTag();
+ 
+ enum class FontFlag : uchar {
+ 	Bold       = 0x01,
 diff --git a/ui/text/text.h b/ui/text/text.h
 index 92ce9ec..3570ca4 100644
 --- a/ui/text/text.h
@@ -504,6 +563,76 @@ index df0dc58..8515f13 100644
  		const auto vTop = 0. + xTop + _st->vshift;
  		QPointF pathV[] = {
  			{ vLeft, vTop + xSize - vSize + stroke },
+diff --git a/ui/widgets/fields/input_field.h b/ui/widgets/fields/input_field.h
+index 24f98a3..c50c981 100644
+--- a/ui/widgets/fields/input_field.h
++++ b/ui/widgets/fields/input_field.h
+@@ -218,6 +218,11 @@ public:
+ 	void hideError();
+ 
+ 	void setMaxLength(int maxLength);
++
++	[[nodiscard]] int maxLength() const {
++		return _maxLength;
++	}
++
+ 	void setMinHeight(int minHeight);
+ 	void setMaxHeight(int maxHeight);
+ 	void setMode(Mode mode);
+diff --git a/ui/widgets/menu/menu.cpp b/ui/widgets/menu/menu.cpp
+index 5421134..47eed45 100644
+--- a/ui/widgets/menu/menu.cpp
++++ b/ui/widgets/menu/menu.cpp
+@@ -224,6 +224,37 @@ void Menu::removeAction(int position) {
+ 	resizeFromInner(width(), recountHeight());
+ }
+ 
++void Menu::reorderActions(const std::vector<not_null<QAction*>> &order) {
++	Expects(order.size() == _actions.size());
++	if (order == _actions) {
++		return;
++	}
++	auto indices = std::vector<int>();
++	auto used = std::vector<bool>(_actions.size());
++	for (const auto action : order) {
++		auto index = 0;
++		while (index != int(_actions.size()) && (used[index] || _actions[index] != action)) {
++			++index;
++		}
++		Expects(index != int(_actions.size()));
++		used[index] = true;
++		indices.push_back(index);
++	}
++	const auto frozen = _mouseSelectionFrozen;
++	setMouseSelectionFrozen(true);
++	auto widgets = base::take(_actionWidgets);
++	_actions = order;
++	for (const auto index : indices) {
++		_actionWidgets.push_back(std::move(widgets[index]));
++	}
++	for (auto index = 0; index != int(_actionWidgets.size()); ++index) {
++		_actionWidgets[index]->setIndex(index);
++	}
++	resizeFromInner(width(), recountHeight());
++	setMouseSelectionFrozen(frozen);
++	update();
++}
++
+ not_null<QAction*> Menu::addSeparator(const style::MenuSeparator *st) {
+ 	const auto separator = new QAction(this);
+ 	separator->setSeparator(true);
+diff --git a/ui/widgets/menu/menu.h b/ui/widgets/menu/menu.h
+index 4fa82b7..675e046 100644
+--- a/ui/widgets/menu/menu.h
++++ b/ui/widgets/menu/menu.h
+@@ -57,6 +57,7 @@ public:
+ 		int position,
+ 		base::unique_qptr<ItemBase> widget);
+ 	void removeAction(int position);
++	void reorderActions(const std::vector<not_null<QAction*>> &order);
+ 	void clearActions();
+ 	void clearLastSeparator();
+ 	void finishAnimating();
 diff --git a/ui/widgets/popup_menu.cpp b/ui/widgets/popup_menu.cpp
 index cb2983e..03da8e0 100644
 --- a/ui/widgets/popup_menu.cpp

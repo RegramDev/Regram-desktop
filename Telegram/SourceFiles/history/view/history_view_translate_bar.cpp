@@ -372,6 +372,7 @@ void TranslateBar::setup(not_null<History*> history) {
 
 	rpl::combine(
 		_to.value(),
+		Core::App().settings().translateChatEnabledValue(),
 		history->session().changes().historyFlagsValue(
 			history,
 			(Data::HistoryUpdate::Flag::TranslatedTo
@@ -381,11 +382,12 @@ void TranslateBar::setup(not_null<History*> history) {
 			Data::PeerUpdate::Flag::TranslationDisabled)
 	) | rpl::map([=](
 			LanguageId to,
+			bool enabled,
 			const auto&,
 			const auto&) {
 		using Flag = PeerData::TranslationFlag;
 		const auto automatic = history->peer->autoTranslation();
-		return (history->peer->translationFlag() != Flag::Enabled)
+		return (!enabled || history->peer->translationFlag() == Flag::Disabled)
 			? rpl::single(QString())
 			: history->translatedTo()
 			? (automatic
@@ -394,9 +396,7 @@ void TranslateBar::setup(not_null<History*> history) {
 					rpl::single(Ui::LanguageName(
 						history->translateOfferedFrom())))
 				: tr::lng_translate_show_original())
-			: history->translateOfferedFrom()
-			? Ui::TranslateBarTo(to)
-			: rpl::single(QString());
+			: Ui::TranslateBarTo(to);
 	}) | rpl::flatten_latest(
 	) | rpl::distinct_until_changed(
 	) | rpl::on_next([=](QString phrase) {

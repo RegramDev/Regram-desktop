@@ -74,6 +74,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "iv/iv_instance.h"
 #include "lang/lang_keys.h"
 #include "main/main_session.h"
+#include "regram/filters/runtime.h"
 #include "menu/menu_mute.h"
 #include "settings/settings_common.h"
 #include "support/support_helper.h"
@@ -1301,6 +1302,7 @@ private:
 	void addFastButtonsMode(not_null<UserData*> user);
 	void addReportAction();
 	void addBlockAction(not_null<UserData*> user);
+	void addHideMessagesAction(not_null<UserData*> user);
 	void addLeaveChannelAction(not_null<ChannelData*> channel);
 	void addJoinChannelAction(not_null<ChannelData*> channel);
 	void fillUserActions(not_null<UserData*> user);
@@ -3245,6 +3247,28 @@ void ActionsFiller::addReportAction() {
 		st::infoBlockButton);
 }
 
+void ActionsFiller::addHideMessagesAction(not_null<UserData*> user) {
+	const auto controller = _controller->parentController();
+	auto text = Nagram::ForAccount(&user->session()).Value(
+		Regram::Filters::kHiddenSenders
+	) | rpl::map([=] {
+		return Regram::Filters::SenderHidden(user)
+			? tr::lng_nagram_filter_author_show()
+			: tr::lng_nagram_filter_author_hide();
+	}) | rpl::flatten_latest();
+	AddActionButton(
+		_wrap,
+		std::move(text),
+		rpl::single(true),
+		crl::guard(controller, [=] {
+			if (!Regram::Filters::SetSenderHidden(
+					user, !Regram::Filters::SenderHidden(user))) {
+				controller->showToast(tr::lng_regram_filter_scope_limit(tr::now));
+			}
+		}),
+		&st::infoIconBlock);
+}
+
 void ActionsFiller::addBlockAction(not_null<UserData*> user) {
 	const auto controller = _controller->parentController();
 	const auto window = &controller->window();
@@ -3346,6 +3370,7 @@ void ActionsFiller::fillUserActions(not_null<UserData*> user) {
 	if (!user->isSelf()) {
 		addEditContactAction(user);
 		addDeleteContactAction(user);
+		addHideMessagesAction(user);
 	}
 	if (CanReportBot(user)) {
 		addBotCommandActions(user);

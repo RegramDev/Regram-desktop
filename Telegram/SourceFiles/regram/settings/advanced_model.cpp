@@ -133,6 +133,9 @@ QJsonObject Pick(const QJsonObject &source, std::span<const Entry> schema) {
 			result.insert(key, source.value(key));
 		}
 	}
+	if (result.value(u"translationProvider"_q) == u"yandex"_q) {
+		result.insert(u"translationProvider"_q, u"google"_q);
+	}
 	return result;
 }
 
@@ -194,7 +197,7 @@ std::optional<QJsonObject> ParseAdvancedSettings(const QByteArray &raw) {
 	}
 	auto error = QJsonParseError();
 	const auto document = QJsonDocument::fromJson(raw, &error);
-	const auto object = document.object();
+	auto object = document.object();
 	if (error.error != QJsonParseError::NoError || !document.isObject()
 		|| object.size() != 4 || object.value(u"version"_q) != QJsonValue(1)) {
 		return std::nullopt;
@@ -207,6 +210,11 @@ std::optional<QJsonObject> ParseAdvancedSettings(const QByteArray &raw) {
 		if (!value.isObject() || !ValidValues(value.toObject(), schema)) {
 			return std::nullopt;
 		}
+	}
+	auto settings = object.value(u"settings"_q).toObject();
+	if (settings.value(u"translationProvider"_q) == u"yandex"_q) {
+		settings.insert(u"translationProvider"_q, u"google"_q);
+		object.insert(u"settings"_q, settings);
 	}
 	return object;
 }

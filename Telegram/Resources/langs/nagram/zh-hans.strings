@@ -426,12 +426,12 @@
 "lng_nagram_service_testing" = "正在等待服务响应…";
 "lng_nagram_service_url" = "基础 URL";
 "lng_nagram_service_use_key" = "使用 API 密钥认证";
-"lng_nagram_services" = "翻译与转写服务";
-"lng_nagram_services_about" = "外部服务只接收你手动请求处理的文本或音频，除非在下方开启“翻译整个对话时使用所选翻译服务”。API 密钥保存在系统凭据库，不随配置导出。";
+"lng_nagram_services" = "翻译服务";
+"lng_nagram_services_about" = "快速翻译、整聊翻译和发送翻译共用所选来源。在聊天中开启翻译后，会通过该来源处理消息。API 密钥保存在系统凭据库，不随配置导出。";
 "lng_nagram_draft_changed" = "预览期间草稿已更改。请关闭预览并重新翻译当前草稿。";
 "lng_nagram_inherit" = "跟随上游";
 "lng_nagram_service_system" = "系统翻译";
-"lng_nagram_service_translation" = "手动翻译";
+"lng_nagram_service_translation" = "翻译来源";
 "lng_nagram_translate_apply" = "应用到草稿";
 "lng_nagram_translate_draft" = "翻译草稿…";
 "lng_nagram_system_translation_unavailable" = "当前设备或系统版本不支持系统翻译。请选择 Telegram 或已配置的服务。";
@@ -492,8 +492,8 @@
 "lng_nagram_filter_exported" = "已复制规则模板，不含账号或会话标识，导出的规则均为停用状态。";
 "lng_nagram_filter_import" = "从剪贴板导入规则模板";
 "lng_nagram_filter_import_about" = "添加以下规则？保留已有规则，导入项保持停用，需手动启用。";
-"lng_nagram_filter_author_show" = "取消本地隐藏此作者";
-"lng_nagram_filter_author_hide" = "在本地隐藏此作者";
+"lng_nagram_filter_author_show" = "取消屏蔽此用户的消息";
+"lng_nagram_filter_author_hide" = "屏蔽此用户的消息";
 "lng_nagram_filter_chat_enable" = "在此会话应用本地过滤";
 "lng_nagram_filter_chat_disable" = "此会话不应用本地过滤";
 "lng_nagram_filter_menu_saved" = "已保存此账号的过滤偏好，总开关位于 Regram → 本地消息过滤。";
@@ -910,3 +910,68 @@
 "lng_regram_filter_mute_notifications" = "不通知被过滤的消息";
 
 "lng_regram_filter_all_chats" = "适用于所有聊天";
+
+"lng_regram_nickname_mentions" = "按昵称提及";
+"lng_regram_nickname_mentions_about" = "输入完整 @用户名 后，自动转换为用户全名和原生用户提及，保留文字格式。代码、链接和输入法尚未提交的文字保持原样；解析失败时保留原用户名。";
+
+"lng_regram_message_json" = "消息 JSON";
+
+"lng_regram_menu_order" = "消息菜单顺序";
+"lng_regram_menu_order_about" = "拖动手柄调整菜单顺序，也可以使用上下按钮。保存后生效。";
+"lng_regram_menu_submenu" = "放入 Regram 子菜单";
+"lng_regram_menu_move_up" = "上移";
+"lng_regram_menu_move_down" = "下移";
+
+"lng_regram_message_replies" = "消息回复";
+
+"lng_regram_format_code_block" = "代码块";
+"lng_regram_format_newline" = "插入换行";
+
+"lng_regram_restrict_sender" = "限制此用户";
+
+"lng_regram_profile_common_groups_first" = "默认展示共同群组";
+"lng_regram_font_use_interface" = "仅用于界面";
+"lng_regram_font_use_chat" = "仅用于消息";
+
+"lng_regram_diagnostics" = "诊断";
+"lng_regram_diagnostics_transfer" = "{name}：已接收 {amount} MiB · 最近速率 {value} MiB/s";
+"lng_regram_diagnostics_testing" = "正在测试 100 条消息…";
+"lng_regram_diagnostics_result" = "平均每条耗时：{value} ms\n触及匹配限制：{amount} 条";
+"lng_regram_diagnostics_boost_on" = "下载加速：已开启";
+"lng_regram_diagnostics_boost_off" = "下载加速：已关闭";
+"lng_regram_diagnostics_about" = "统计本次运行已登录账号收到的媒体数据，包括重新下载。缓存、本地文件及字体下载不计入；速率为最近三秒平均值，不代表全部协议流量。";
+"lng_regram_diagnostics_run" = "测试 100 条消息的过滤耗时";
+"lng_regram_diagnostics_idle" = "平均耗时：—";
+"lng_regram_diagnostics_filter_about" = "使用与 Regram iOS 相同的合成消息，仅测试时忽略会话范围。测试在后台执行，再次点击会取消上一轮；结果不代表滚动帧率。";
+"lng_regram_cross_platform_backup" = "兼容 Regram iOS 的备份";
+"lng_regram_backup_appearance" = "外观";
+"lng_regram_backup_messages" = "消息";
+"lng_regram_backup_privacy" = "隐私";
+"lng_regram_backup_translation" = "翻译";
+"lng_regram_backup_media" = "媒体";
+"lng_regram_backup_notifications" = "通知";
+"lng_regram_backup_invalid" = "备份无效、版本不支持或超过 2 MB。";
+"lng_regram_backup_about" = "使用与 Regram iOS 相同的 JSON 格式。包含所选设备设置及当前账号的会话配置；全局隐私选项遵循客户端当前作用域。不包含登录会话、消息、API 凭据、服务密钥及字体文件。恢复前会预览更改。";
+"lng_regram_backup_unsupported" = "有 {amount} 个值无法在此桌面版本应用，将保留用于重新导出至 iOS：";
+"lng_regram_backup_changed" = "预览后设置发生了变化，请重新打开预览。";
+"lng_regram_backup_anti_revoke" = "保留已删除消息";
+
+"lng_regram_backup_reset" = "重置所选跨端设置";
+"lng_regram_backup_reset_confirm" = "将所选跨端设置恢复为桌面默认值？同时移除这些类别中保留的移动端专属备份值。应用前会再次预览。";
+
+"lng_regram_backup_items" = "{amount} 项";
+
+"lng_regram_pinned_notifications" = "置顶消息通知";
+"lng_regram_mention_notifications" = "提及与回复通知";
+"lng_regram_notification_silenced" = "静默通知";
+"lng_regram_notification_inherit" = "使用 Regram 通知设置";
+
+"lng_regram_anti_auto_delete" = "保留自动删除的消息";
+"lng_regram_anti_self_destruct" = "保留阅后即焚媒体";
+"lng_regram_anti_revoke_chat" = "保留此聊天已删除的消息";
+"lng_regram_anti_revoke_chat_disable" = "停止保留此聊天已删除的消息";
+
+"lng_regram_media_loading_experiment" = "媒体加载优化（实验）";
+"lng_regram_default_video_quality" = "默认视频画质";
+"lng_regram_video_quality_highest" = "最高可用";
+"lng_regram_video_quality_lowest" = "最低可用";

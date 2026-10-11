@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/media/history_view_gif.h"
 
+#include "regram/media/loading.h"
 #include "apiwrap.h"
 #include "regram/nagram/media/options.h"
 #include "regram/nagram/media/extras.h"
@@ -283,9 +284,10 @@ Gif::Gif(
 }
 
 Gif::~Gif() {
+	Regram::Media::ForgetInline(_parent);
 	if (_streamed || _dataMedia) {
 		if (_streamed) {
-			_data->owner().streaming().keepAlive(_data);
+			_data->owner().streaming().keepAlive(_streamed->chosen);
 			setStreamed(nullptr);
 		}
 		if (_dataMedia) {
@@ -613,7 +615,8 @@ bool Gif::autoplayEligible(bool fullFeatured) const {
 		&& autoplayEnabled()
 		&& _dataMedia->canBePlayed()
 		&& canPlayInline()
-		&& !(_data->uploading() && _data->uploadingData->preparing);
+		&& !(_data->uploading() && _data->uploadingData->preparing)
+		&& Regram::Media::AdmitInline(_parent);
 }
 
 float64 Gif::revealedProgress() const {
@@ -2531,6 +2534,7 @@ void Gif::playAnimation(bool autoplay) {
 	if (_streamed) {
 		stopAnimation();
 	} else if (_dataMedia->canBePlayed()) {
+		_regramManualPlayback = !autoplay;
 		if (!autoplayEnabled()) {
 			history()->owner().checkPlayingAnimations();
 		}
@@ -2616,6 +2620,19 @@ void Gif::checkStreamedIsStarted() const {
 	if (!_streamed || _streamed->instance.playerLocked()) {
 		return;
 	}
+	if (!_regramManualPlayback && !Regram::Media::AdmitInline(_parent)) {
+		if (!_regramSuspendedAt) {
+			_regramSuspendedAt = crl::now();
+		}
+		_streamed->instance.setPriority(0);
+		if (_streamed->instance.active() && !_streamed->instance.paused()) {
+			_streamed->instance.pause();
+		}
+		return;
+	}
+	_regramSuspendedAt = 0;
+	_streamed->instance.setPriority(1);
+
 	if (_streamed->instance.active()) {
 		if (_streamed->instance.paused()) {
 			_streamed->instance.resume();
@@ -2693,7 +2710,11 @@ void Gif::streamingReady(::Media::Streaming::Information &&info) {
 }
 
 void Gif::stopAnimation() {
+	_regramSuspendedAt = 0;
 	if (_streamed) {
+		if (Nagram::ForDevice().Get(Nagram::Media::kLoadingExperiment)) {
+			_data->owner().streaming().keepAlive(_streamed->chosen);
+		}
 		setStreamed(nullptr);
 		history()->owner().requestViewResize(_parent);
 	}
@@ -2702,6 +2723,13 @@ void Gif::stopAnimation() {
 void Gif::checkAnimation() {
 	if (_streamed && !autoplayEnabled()) {
 		stopAnimation();
+		return;
+	}
+	if (_streamed && !_regramManualPlayback && !_streamed->instance.playerLocked()) {
+		checkStreamedIsStarted();
+		if (_regramSuspendedAt && crl::now() - _regramSuspendedAt >= crl::time(1500)) {
+			stopAnimation();
+		}
 	}
 }
 

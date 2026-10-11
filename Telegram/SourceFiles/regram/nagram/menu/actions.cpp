@@ -8,13 +8,13 @@
 #include "regram/nagram/menu/reading.h"
 #include "regram/nagram/filters/menu.h"
 #include "regram/nagram/services/summary.h"
-#include "regram/nagram/services/transcription.h"
 #include "regram/nagram/snapshot/snapshot.h"
 
 #include "ui/widgets/menu/menu.h"
 #include "ui/widgets/menu/menu_item_base.h"
 #include "ui/widgets/popup_menu.h"
 #include "styles/style_nagram_compose.h"
+#include "styles/style_menu_icons.h"
 #include "styles/style_widgets.h"
 
 #include <QtGui/QAction>
@@ -24,6 +24,37 @@ namespace Nagram::Menu {
 namespace {
 
 constexpr auto kActionIdProperty = "nagramMenuActionId";
+constexpr auto kRootProperty = "regramMessageMenuRoot";
+constexpr auto kSubmenuProperty = "regramMessageMenuSubmenu";
+
+void Reorder(not_null<Ui::PopupMenu*> menu) {
+	const auto raw = ForDevice().Get(kMenuOrder);
+	if (raw.isEmpty()) {
+		return;
+	}
+	const auto ids = ReadActionOrder(raw);
+	auto ranked = std::vector<not_null<QAction*>>();
+	for (const auto action : menu->actions()) {
+		if (action->property(kActionIdProperty).isValid()) {
+			ranked.push_back(action);
+		}
+	}
+	const auto rank = [&](not_null<QAction*> action) {
+		const auto id = ActionId(action->property(kActionIdProperty).toInt());
+		return std::find(ids.begin(), ids.end(), id) - ids.begin();
+	};
+	std::stable_sort(ranked.begin(), ranked.end(), [&](const auto a, const auto b) {
+		return rank(a) < rank(b);
+	});
+	auto order = menu->actions();
+	auto index = 0;
+	for (auto &action : order) {
+		if (action->property(kActionIdProperty).isValid()) {
+			action = ranked[index++];
+		}
+	}
+	menu->menu()->reorderActions(order);
+}
 
 } // namespace
 
@@ -61,6 +92,28 @@ bool Shown(ActionId id) {
 		optionHeld);
 }
 
+not_null<Ui::PopupMenu*> Destination(not_null<Ui::PopupMenu*> menu, ActionId id) {
+	const auto storedRoot = menu->property(kRootProperty).value<QObject*>();
+	const auto root = storedRoot
+		? not_null<Ui::PopupMenu*>(static_cast<Ui::PopupMenu*>(storedRoot))
+		: menu;
+	const auto grouped = ReadActionList(ForDevice().Get(kRegramSubmenu));
+	if (!Shown(id) || !ranges::contains(grouped, id)) {
+		return root;
+	}
+	for (const auto action : root->actions()) {
+		if (action->property(kSubmenuProperty).toBool()) {
+			return root->ensureSubmenu(action, root->st());
+		}
+	}
+	auto submenu = std::make_unique<Ui::PopupMenu>(root, root->st());
+	const auto result = submenu.get();
+	result->setProperty(kRootProperty, QVariant::fromValue<QObject*>(root));
+	root->addAction(u"Regram"_q, std::move(submenu), &st::menuIconNagram)
+		->setProperty(kSubmenuProperty, true);
+	return result;
+}
+
 void Apply(
 		Ui::PopupMenu *menu,
 		HistoryItem *item,
@@ -78,7 +131,6 @@ void Apply(
 				selected, select);
 			Snapshot::InsertAction(menu, controller, item, selected);
 			InsertSummaryAction(menu, item, controller, selected);
-			InsertTranscribeSelectedAction(menu, controller, selected);
 		}
 		if (item) {
 			InsertMediaInfoAction(menu, item, controller);
@@ -88,12 +140,10 @@ void Apply(
 			InsertMessageToolActions(menu, item, controller, select);
 		}
 	}
-	auto removedUpstreamAction = false;
 	for (auto index = int(menu->actions().size()); index != 0;) {
 		--index;
 		const auto value = menu->actions()[index]->property(kActionIdProperty);
 		if (value.isValid() && !Shown(ActionId(value.toInt()))) {
-			removedUpstreamAction |= IsUpstream(ActionId(value.toInt()));
 			menu->removeAction(index);
 		}
 	}
@@ -105,9 +155,20 @@ void Apply(
 			widget->setIndex(index);
 		}
 	}
-	if (!removedUpstreamAction) {
-		return;
+	for (const auto action : menu->actions()) {
+		if (action->property(kSubmenuProperty).toBool()) {
+			Reorder(menu->ensureSubmenu(action, menu->st()));
+		}
 	}
+	for (auto index = int(menu->actions().size()); index != 0;) {
+		--index;
+		const auto action = menu->actions()[index];
+		if (action->property(kSubmenuProperty).toBool()
+			&& menu->ensureSubmenu(action, menu->st())->empty()) {
+			menu->removeAction(index);
+		}
+	}
+	Reorder(menu);
 	auto previousSeparator = true;
 	for (auto index = 0; index != int(menu->actions().size());) {
 		const auto separator = menu->actions()[index]->isSeparator();
@@ -120,6 +181,11 @@ void Apply(
 	}
 	if (!menu->actions().empty() && menu->actions().back()->isSeparator()) {
 		menu->removeAction(int(menu->actions().size()) - 1);
+	}
+	for (auto index = 0; index != int(menu->actions().size()); ++index) {
+		if (const auto widget = menu->menu()->itemForAction(menu->actions()[index])) {
+			widget->setIndex(index);
+		}
 	}
 }
 

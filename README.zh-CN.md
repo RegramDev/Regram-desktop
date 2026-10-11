@@ -24,11 +24,11 @@ Regram 是基于 Telegram Desktop 的独立跨平台 Telegram 客户端。项目
 - 已接收消息的本地历史记录及防撤回控制。
 - 幽灵模式、隐私偏好及更多账号／聊天选项。
 - 消息与草稿翻译、格式保护及可配置的翻译提供方。
-- 音频转写、下载后连续转写和批量处理。
+- 行内富文本翻译、整聊翻译和无需翻译的语言设置。
 - 更多外观、媒体、通知、截图和右键菜单设置。
 - Regram 设置、设置搜索及可携带的偏好备份。
 
-当前源码已合并 Regram 设置，包含 iOS 过滤器备份、快速翻译、本地会员显示修复、聊天独立输入设置和 iOS 字体目录。具体实现与验证情况见 [iOS 功能对齐记录](docs/regram/ios-parity.md)；各安装包实际包含的源码以随附发布清单为准。
+当前源码已合并 Regram 设置，包含 iOS 过滤器及设置备份、行内富文本翻译、昵称提及、本地隐藏用户消息、可拖拽的右键菜单、独立消息字体、通知策略和媒体加载实验。具体实现与验证情况见 [iOS 功能对齐记录](docs/regram/ios-parity.md)；各安装包实际包含的源码以随附发布清单为准。
 
 Liquid Glass 和独立 AppKit 界面已移除，使用 Telegram Desktop 原版 Qt 布局。Regram 的应用标识和数据目录与官方客户端分离。上游自动更新和崩溃上传已关闭，请通过 Regram Releases 更新。
 
@@ -36,7 +36,7 @@ Liquid Glass 和独立 AppKit 界面已移除，使用 Telegram Desktop 原版 Q
 
 ## 源码构建
 
-从 [Regram 构建与打包指南](docs/regram/building.md) 开始。开发和回归使用 Debug，分发安装包使用 Release。Telegram API 凭据放在 Git 忽略的 `.local/regram/api.cmake` 或 GitHub Actions Secrets 中，不写入公共源码。
+从 [Regram 构建与打包指南](docs/regram/building.md) 开始。本次发布流程使用 Release 检查源码和回归测试，通过后生成分发安装包。Telegram API 凭据放在 Git 忽略的 `.local/regram/api.cmake` 或 GitHub Actions Secrets 中，不写入公共源码。
 
 [Regram Release 工作流](.github/workflows/regram-release.yml) 在对应系统上构建 Windows x64、Linux x64 和 macOS Intel。独立 macOS Release 脚本通过 `--arch arm64` 或 `--arch x86_64` 支持 Apple Silicon 和 Intel，分别使用独立构建目录。安装包提供校验值及构建清单，不携带账号数据、构建日志或本地凭据文件。
 

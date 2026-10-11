@@ -66,8 +66,18 @@ inline constexpr auto kBlockArchiveAutoDownload = Option<bool>{
 	"nagram.blockArchiveAutoDownload", Scope::Device, false,
 	Category::Media, "lng_nagram_block_archive_auto_download" };
 
+inline constexpr auto kLoadingExperiment = Option<bool>{
+	"nagram.regramMediaLoadingExperiment", Scope::Device, false,
+	Category::Media, "lng_regram_media_loading_experiment" };
+inline constexpr auto kDefaultVideoQuality = Option<int>{
+	"nagram.regramDefaultVideoQuality", Scope::Device, 0,
+	Category::Media, "lng_regram_default_video_quality", 0,
+	[](const int &value) { return value >= 0 && value <= 2; } };
+
 inline void RegisterOptions(Registry &registry) {
 	Expects(registry.Add(kStickerScale));
+	Expects(registry.Add(kLoadingExperiment));
+	Expects(registry.Add(kDefaultVideoQuality));
 	Expects(registry.Add(kHideStickerTime));
 	Expects(registry.Add(kRecentStickerLimit));
 	Expects(registry.Add(kHideGroupStickers));

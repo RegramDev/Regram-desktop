@@ -240,8 +240,6 @@ set(ayugram_files
         regram/ayu/features/translator/html_parser.h
         regram/ayu/features/translator/implementations/google.cpp
         regram/ayu/features/translator/implementations/google.h
-        regram/ayu/features/translator/implementations/yandex.cpp
-        regram/ayu/features/translator/implementations/yandex.h
         regram/ayu/features/translator/implementations/base.cpp
         regram/ayu/features/translator/implementations/base.h
         regram/ayu/data/messages_storage.cpp

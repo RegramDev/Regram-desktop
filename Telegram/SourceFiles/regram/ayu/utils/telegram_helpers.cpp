@@ -6,6 +6,9 @@
 // Copyright @Radolyn, 2026
 #include "regram/ayu/utils/telegram_helpers.h"
 
+#include "regram/nagram/privacy/options.h"
+#include "base/flat_set.h"
+
 #include "regram/filters/runtime.h"
 
 #include "apiwrap.h"
@@ -58,6 +61,7 @@
 #include <functional>
 #include <latch>
 #include <QTimer>
+#include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 
@@ -691,10 +695,56 @@ int getScheduleTime(int64 sumSize) {
 	return time;
 }
 
+bool isHistoryProtected(not_null<PeerData*> peer) {
+	struct Cache {
+		base::weak_ptr<Main::Session> session;
+		QByteArray raw;
+		base::flat_set<uint64> ids;
+	};
+	static auto caches = std::map<Main::Session*, Cache>();
+	std::erase_if(caches, [](const auto &entry) { return !entry.second.session; });
+	const auto session = &peer->session();
+	auto &cache = caches[session];
+	cache.session = base::make_weak(session);
+	const auto raw = Nagram::ForAccount(session).Get(Nagram::Privacy::kAntiRevokePeers);
+	if (cache.raw != raw) {
+		cache.raw = raw;
+		cache.ids.clear();
+		for (const auto &entry : QJsonDocument::fromJson(raw).array()) {
+			cache.ids.emplace(entry.toString().toULongLong());
+		}
+	}
+	return cache.ids.contains(SerializePeerId(peer->id));
+}
+
+bool setHistoryProtected(not_null<PeerData*> peer, bool enabled) {
+	auto &options = Nagram::ForAccount(&peer->session());
+	const auto raw = options.Get(Nagram::Privacy::kAntiRevokePeers);
+	const auto id = QString::number(SerializePeerId(peer->id));
+	auto result = QJsonArray();
+	for (const auto &entry : QJsonDocument::fromJson(raw).array()) {
+		if (entry.toString() != id) {
+			result.push_back(entry);
+		}
+	}
+	if (enabled) {
+		result.push_back(id);
+	}
+	return options.Set(Nagram::Privacy::kAntiRevokePeers, QJsonDocument(result).toJson(QJsonDocument::Compact));
+}
+
+bool isSelfDestructMediaSavable() {
+	return AyuSettings::getInstance().saveDeletedMessages()
+		|| Nagram::ForDevice().Get(Nagram::Privacy::kAntiSelfDestruct);
+}
+
 bool isMessageSavable(const not_null<HistoryItem*> item) {
 	const auto &settings = AyuSettings::getInstance();
 
-	if (!settings.saveDeletedMessages()) {
+	if (isHistoryProtected(item->history()->peer)
+		|| (item->ttlDestroyAt() > 0 && Nagram::ForDevice().Get(Nagram::Privacy::kAntiAutoDelete))) {
+		return true;
+	} else if (!settings.saveDeletedMessages()) {
 		return false;
 	}
 

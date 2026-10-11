@@ -74,6 +74,25 @@ void AddToggle(
 	}
 }
 
+QString VideoQualityLabel(int value) {
+	return value == 1 ? tr::lng_regram_video_quality_highest(tr::now)
+		: value == 2 ? tr::lng_regram_video_quality_lowest(tr::now)
+		: tr::lng_nagram_preview_follow(tr::now);
+}
+
+void VideoQualityBox(not_null<Ui::GenericBox*> box) {
+	box->setTitle(tr::lng_regram_default_video_quality());
+	const auto group = std::make_shared<Ui::RadiobuttonGroup>(ForDevice().Get(Media::kDefaultVideoQuality));
+	for (auto value = 0; value <= 2; ++value) {
+		box->addRow(object_ptr<Ui::Radiobutton>(
+			box, group, value, VideoQualityLabel(value), st::settingsSendType));
+	}
+	group->setChangedCallback([=](int value) {
+		Expects(ForDevice().Set(Media::kDefaultVideoQuality, value));
+		box->closeBox();
+	});
+}
+
 void StickerScaleBox(not_null<Ui::GenericBox*> box) {
 	box->setTitle(tr::lng_nagram_sticker_scale());
 	const auto group = std::make_shared<Ui::RadiobuttonGroup>(
@@ -292,6 +311,16 @@ const auto kMeta = BuildHelper({
 	.title = &tr::lng_nagram_media,
 	.icon = &st::menuIconChatBubble,
 }, [](SectionBuilder &builder) {
+	const auto mediaController = builder.controller();
+	AddToggle(builder, Media::kLoadingExperiment, tr::lng_regram_media_loading_experiment(),
+		u"regram/media/loading-experiment"_q, { u"media"_q, u"performance"_q });
+	builder.addButton({
+		.id = u"regram/media/video-quality"_q,
+		.title = tr::lng_regram_default_video_quality(),
+		.st = &st::settingsButtonNoIcon,
+		.label = ForDevice().Value(Media::kDefaultVideoQuality) | rpl::map(VideoQualityLabel),
+		.onClick = [=] { mediaController->show(Box(VideoQualityBox)); },
+	});
 	const auto controller = builder.controller();
 	builder.addButton({
 		.id = u"regram/nagram/media/sticker-scale"_q,

@@ -1,6 +1,17 @@
 using "ui/basic.style";
 using "ui/widgets/widgets.style";
 
+nagramMessageJsonHeight: 320px;
+nagramDiagnosticStatusHeight: 40px;
+nagramMenuOrderRowHeight: 48px;
+nagramMenuOrderSkip: 8px;
+nagramMenuOrderUp: icon {{ "history_down_arrow-flip_vertical", menuIconFg }};
+nagramMenuOrderDown: icon {{ "history_down_arrow", menuIconFg }};
+nagramMenuOrderButton: IconButton(defaultIconButton) {
+	width: 28px;
+	height: 28px;
+}
+
 nagramFilterTypeRecent: icon {{ "folders/folders_type_recent", historyPeerUserpicFg }};
 nagramFoldersArchive: icon {{ "folders/svg/folders_archive-36x36", sideBarIconFg }};
 nagramFoldersArchiveActive: icon {{ "folders/svg/folders_archive-36x36", sideBarIconFgActive }};

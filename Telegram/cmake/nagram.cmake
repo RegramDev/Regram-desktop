@@ -17,6 +17,8 @@ set(nagram_sources
     regram/nagram/compose/channel.cpp
     regram/nagram/compose/confirm.cpp
     regram/nagram/compose/format_toolbar.cpp
+    regram/nagram/compose/nickname_mentions.cpp
+    regram/nagram/compose/nickname_mentions.h
     regram/nagram/compose/placeholder.cpp
     regram/nagram/compose/spacing.cpp
     regram/nagram/compose/text.cpp
@@ -240,6 +242,8 @@ if (DESKTOP_APP_TEST_APPS)
         regram/nagram/services/translation_model.cpp
         regram/settings/advanced_model.cpp
         regram/nagram/tests/test_advanced_settings.cpp
+        regram/settings/ios_backup_model.cpp
+        regram/nagram/tests/test_ios_backup.cpp
         regram/nagram/tests/test_translation.cpp
         regram/nagram/privacy/registration_model.cpp
         regram/nagram/messages/markdown.cpp

@@ -17,6 +17,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/translate_mtproto_provider.h"
 #include "lang/translate_url_provider.h"
 #include "platform/platform_translate_provider.h"
+#include "regram/nagram/services/translation.h"
 
 // AyuGram includes
 #include "regram/ayu/ayu_settings.h"
@@ -55,11 +56,10 @@ std::unique_ptr<TranslateProvider> CreateTranslateProvider(
 	const auto provider = ResolveTranslateProvider();
 	switch (provider) {
 	case TranslationProvider::Google:
-	case TranslationProvider::Yandex:
 		return CreateAyuTranslateProvider(session, provider);
 	case TranslationProvider::Native:
 		if (auto native = Platform::CreateTranslateProvider()) {
-			return native;
+			return Nagram::PreserveTranslationEntities(std::move(native));
 		}
 		break;
 	case TranslationProvider::Telegram:

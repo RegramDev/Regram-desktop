@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "storage/download_manager_mtproto.h"
+#include "regram/nagram/media/options.h"
 
 #include "mtproto/facade.h"
 #include "mtproto/mtproto_auth_key.h"
@@ -16,6 +17,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "base/openssl_help.h"
 #include "regram/nagram/network/runtime.h"
+#include "regram/diagnostics/diagnostics.h"
 
 namespace Storage {
 namespace {
@@ -88,6 +90,22 @@ auto DownloadManagerMtproto::Queue::nextTask(bool onlyHighestPriority) const
 	if (_tasks.empty()) {
 		return nullptr;
 	}
+	const auto experiment = Nagram::ForDevice().Get(Nagram::Media::kLoadingExperiment);
+	const auto streaming = experiment && ranges::any_of(_tasks, [](const Enqueued &entry) {
+		return entry.task->streamingDownload() && entry.task->hasActiveRequests();
+	});
+	const auto activeAutomatic = experiment ? ranges::count_if(_tasks, [](const Enqueued &entry) {
+		return entry.task->automaticDownload() && entry.task->hasActiveRequests();
+	}) : 0;
+	if (experiment) {
+		const auto manual = ranges::find_if(_tasks, [](const Enqueued &entry) {
+			return !entry.task->automaticDownload() && !entry.task->streamingDownload()
+				&& !entry.task->hasActiveRequests() && entry.task->readyToRequest();
+		});
+		if (manual != _tasks.end()) {
+			return manual->task;
+		}
+	}
 	const auto highestPriority = _tasks.front().priority;
 	const auto notHighestPriority = [&](const Enqueued &enqueued) {
 		return (enqueued.priority != highestPriority);
@@ -96,7 +114,9 @@ auto DownloadManagerMtproto::Queue::nextTask(bool onlyHighestPriority) const
 		? ranges::find_if(_tasks, notHighestPriority)
 		: end(_tasks);
 	const auto readyToRequest = [&](const Enqueued &enqueued) {
-		return enqueued.task->readyToRequest();
+		return enqueued.task->readyToRequest()
+			&& (!experiment || !enqueued.task->automaticDownload()
+				|| enqueued.task->hasActiveRequests() || activeAutomatic < (streaming ? 1 : 2));
 	};
 	const auto first = ranges::find_if(
 		ranges::make_subrange(begin(_tasks), till),
@@ -634,6 +654,7 @@ void DownloadMtprotoTask::normalPartLoaded(
 	result.match([&](const MTPDupload_fileCdnRedirect &data) {
 		switchToCDN(requestData, data);
 	}, [&](const MTPDupload_file &data) {
+		Regram::Diagnostics::RecordMediaReceived(&owner->api().session(), data.vbytes().v.size());
 		partLoaded(requestData.offset, data.vbytes().v);
 	});
 
@@ -650,6 +671,7 @@ void DownloadMtprotoTask::webPartLoaded(
 	const auto owner = _owner;
 	const auto dcId = this->dcId();
 	result.match([&](const MTPDupload_webFile &data) {
+		Regram::Diagnostics::RecordMediaReceived(&owner->api().session(), data.vbytes().v.size());
 		if (setWebFileSizeHook(data.vsize().v)) {
 			partLoaded(requestData.offset, data.vbytes().v);
 		}
@@ -677,6 +699,7 @@ void DownloadMtprotoTask::cdnPartLoaded(const MTPupload_CdnFile &result, mtpRequ
 		}).toDC(shiftedDcId).send();
 		placeSentRequest(requestId, requestData);
 	}, [&](const MTPDupload_cdnFile &data) {
+		Regram::Diagnostics::RecordMediaReceived(&_owner->api().session(), data.vbytes().v.size());
 		const auto requestData = finishSentRequest(
 			requestId,
 			FinishRequestReason::Success);
@@ -911,6 +934,10 @@ void DownloadMtprotoTask::cancelRequest(mtpRequestId requestId) {
 			requestMoreCdnFileHashes();
 		});
 	}
+}
+
+bool DownloadMtprotoTask::hasActiveRequests() const {
+	return haveSentRequests();
 }
 
 void DownloadMtprotoTask::addToQueue(int priority) {

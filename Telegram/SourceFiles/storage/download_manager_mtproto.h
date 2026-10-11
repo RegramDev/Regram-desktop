@@ -154,6 +154,9 @@ public:
 	[[nodiscard]] uint64 objectId() const;
 	[[nodiscard]] const Location &location() const;
 
+	[[nodiscard]] bool hasActiveRequests() const;
+	[[nodiscard]] virtual bool automaticDownload() const { return false; }
+	[[nodiscard]] virtual bool streamingDownload() const { return false; }
 	[[nodiscard]] virtual bool readyToRequest() const = 0;
 	void loadPart(int sessionIndex);
 	void removeSession(int sessionIndex);

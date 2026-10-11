@@ -91,8 +91,39 @@ inline const auto kKeywordAlerts = Option<QByteArray>{
 	Category::Rules, "lng_nagram_keyword_alerts", 0,
 	ValidKeywordAlerts };
 
+[[nodiscard]] bool ValidPolicy(const QString &value);
+[[nodiscard]] bool ValidPolicyExceptions(const QByteArray &raw);
+[[nodiscard]] QString PolicyForPeer(
+	const QString &fallback,
+	const QByteArray &exceptions,
+	const QString &peer);
+
+[[nodiscard]] QString PolicyForPeer(
+	const QString &fallback,
+	const QJsonObject &exceptions,
+	const QString &peer);
+
+inline const auto kPinnedPolicy = Option<QString>{
+	"nagram.regramPinnedNotifications", Scope::Account, u"default"_q,
+	Category::Interface, "lng_regram_pinned_notifications", 0, ValidPolicy };
+inline const auto kMentionPolicy = Option<QString>{
+	"nagram.regramMentionNotifications", Scope::Account, u"default"_q,
+	Category::Interface, "lng_regram_mention_notifications", 0, ValidPolicy };
+inline const auto kPinnedExceptions = Option<QByteArray>{
+	"nagram.regramPinnedNotificationExceptions", Scope::Account, QByteArray(),
+	Category::Interface, "lng_regram_pinned_notifications",
+	static_cast<unsigned>(Flag::Hidden), ValidPolicyExceptions };
+inline const auto kMentionExceptions = Option<QByteArray>{
+	"nagram.regramMentionNotificationExceptions", Scope::Account, QByteArray(),
+	Category::Interface, "lng_regram_mention_notifications",
+	static_cast<unsigned>(Flag::Hidden), ValidPolicyExceptions };
+
 inline void RegisterOptions(Registry &registry) {
 	Expects(registry.Add(kQuietHours));
+	Expects(registry.Add(kPinnedPolicy));
+	Expects(registry.Add(kMentionPolicy));
+	Expects(registry.Add(kPinnedExceptions));
+	Expects(registry.Add(kMentionExceptions));
 	Expects(registry.Add(kKeywordAlerts));
 }
 
