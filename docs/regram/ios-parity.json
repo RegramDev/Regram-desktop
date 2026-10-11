@@ -229,9 +229,9 @@
   ],
   "validation": {
     "scope": "Current workspace; Release preflight initiated after user authorization. Runtime acceptance remains pending.",
-    "application_compilation": "Full arm64 and x86_64 Release builds started; completion and runtime checks pending.",
+    "application_compilation": "Full arm64 Release build/link passed, followed by Qt 6 language-signal fix and successful incremental build. Intel/Windows/Linux builds continue.",
     "cpp_tests": "33 Nagram extension regression groups and five standalone Release suites passed.",
-    "installed_gui_validation": false,
+    "installed_gui_validation": "Private logged-account copy initialized online, displayed dialogs and opened Regram Settings. Long-history performance and all operations still pending.",
     "cross_platform_runtime_validation": false,
     "feature_inventory": "Static option/hook/title checks passed; does not prove feature behavior.",
     "localization_and_encoding": "New keys present; UTF-8 without BOM, LF and invisible-character checks passed.",
@@ -239,7 +239,8 @@
     "ios_backup_schema": "Static comparison: all 106 allowlisted keys and six categories match the pinned iOS source.",
     "new_cpp_cases": "iOS backup boundaries, sensitive-key removal, IDs, categories and font-face compatibility cases added; not executed.",
     "current_option_count": 224,
-    "production_translation_units": "70 affected units passed actual arm64 Release compiler arguments; six initial failures corrected and rechecked, plus subsequent cache changes."
+    "production_translation_units": 72,
+    "native_font_files_verified": 92
   },
   "settings_shared_enums": [
     "profile ID format"

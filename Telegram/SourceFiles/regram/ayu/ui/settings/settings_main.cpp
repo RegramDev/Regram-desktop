@@ -84,17 +84,6 @@ void BuildVersionInfo(SectionBuilder &builder) {
 		};
 	});
 
-	builder.addSkip();
-
-	builder.add([](const WidgetContext &ctx) -> SectionBuilder::WidgetToAdd {
-		return {
-			.widget = object_ptr<Ui::FlatLabel>(
-				ctx.container,
-				tr::ayu_SettingsDescription(),
-				st::centeredBoxLabel),
-			.align = style::al_top,
-		};
-	});
 }
 
 void BuildCategories(SectionBuilder &builder) {

@@ -124,9 +124,26 @@ void AyuLanguage::fetchLanguage(const QString &id, const QString &baseId) {
 		url.setUrl(qsl("https://cdn.jsdelivr.net/gh/AyuGram/Languages@l10n_main/values/langs/%1/Shared.json").arg(
 			needFallback ? baseId : finalLangPackId));
 	}
-	_chkReply = networkManager.get(QNetworkRequest(url));
-	connect(_chkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(fetchError(QNetworkReply::NetworkError)));
-	connect(_chkReply, SIGNAL(finished()), this, SLOT(fetchFinished()));
+	if (const auto previous = base::take(_chkReply)) {
+		previous->disconnect(this);
+		if (previous->isRunning() && previous->error() == QNetworkReply::NoError) {
+			previous->abort();
+		}
+		previous->deleteLater();
+	}
+	const auto reply = networkManager.get(QNetworkRequest(url));
+	_chkReply = reply;
+	connect(reply, &QNetworkReply::errorOccurred, this, [=](QNetworkReply::NetworkError error) {
+		if (_chkReply == reply) {
+			fetchError(error);
+		}
+	});
+	connect(reply, &QNetworkReply::finished, this, [=] {
+		if (_chkReply == reply) {
+			fetchFinished();
+		}
+		reply->deleteLater();
+	});
 }
 
 void AyuLanguage::fetchFinished() {
