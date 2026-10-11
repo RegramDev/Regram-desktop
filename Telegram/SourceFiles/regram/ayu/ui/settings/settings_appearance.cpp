@@ -155,8 +155,6 @@ void BuildAvatarCorners(SectionBuilder &builder, AyuSectionBuilder &ayu) {
 }
 
 void BuildAppearance(SectionBuilder &builder, AyuSectionBuilder &ayu) {
-	auto *settings = &AyuSettings::getInstance();
-
 	builder.addSubsectionTitle(tr::ayu_CategoryAppearance());
 
 	ayu.addSettingToggle({

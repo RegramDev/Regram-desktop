@@ -25,7 +25,11 @@ void Check(bool passed, const char *name) {
 
 QByteArray Read(const QString &path) {
 	auto file = QFile(path);
-	Check(file.open(QIODevice::ReadOnly), "font fixture opens");
+	if (!file.open(QIODevice::ReadOnly)) {
+		std::cerr << "Cannot read font fixture: "
+			<< path.toStdString() << '\n';
+		std::exit(1);
+	}
 	return file.readAll();
 }
 
@@ -33,11 +37,14 @@ QByteArray Read(const QString &path) {
 
 int main(int argc, char *argv[]) {
 	auto app = QGuiApplication(argc, argv);
-	const auto catalog = QJsonDocument::fromJson(Read(QString::fromUtf8(REGRAM_FONT_CATALOG))).object();
+	const auto catalogPath = (argc == 3)
+		? QString::fromLocal8Bit(argv[2])
+		: QString::fromUtf8(REGRAM_FONT_CATALOG);
+	const auto catalog = QJsonDocument::fromJson(Read(catalogPath)).object();
 	const auto families = catalog.value(QStringLiteral("families")).toArray();
 	const auto files = catalog.value(QStringLiteral("files")).toArray();
 	Check(families.size() == 17 && files.size() == 92, "complete iOS font catalog retained");
-	if (argc == 2) {
+	if (argc >= 2) {
 		const auto root = QString::fromLocal8Bit(argv[1]) + '/';
 		auto loaded = 0;
 		auto names = std::map<QString, QString>();

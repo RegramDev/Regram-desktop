@@ -13,7 +13,8 @@ def main():
     parser.add_argument("--fixtures", required=True, type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[3]
-    catalog = json.loads((root / "Telegram/Resources/regram/fonts/catalog.json").read_text())
+    catalog_path = root / "Telegram/Resources/regram/fonts/catalog.json"
+    catalog = json.loads(catalog_path.read_text())
     args.fixtures.mkdir(parents=True, exist_ok=True)
     for entry in catalog["files"]:
         path = args.fixtures / entry["file"]
@@ -23,7 +24,8 @@ def main():
             if len(data) != entry["bytes"] or hashlib.sha256(data).hexdigest() != entry["sha256"]:
                 raise RuntimeError("Font download does not match the frozen catalog: " + entry["file"])
             path.write_bytes(data)
-    subprocess.run([str(args.executable.resolve()), str(args.fixtures.resolve())],
+    subprocess.run([str(args.executable.resolve()), str(args.fixtures.resolve()),
+                    str(catalog_path.resolve())],
                    cwd=args.fixtures.resolve(), check=True)
 
 
