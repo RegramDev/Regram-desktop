@@ -663,8 +663,6 @@ rpl::producer<Ui::WhoReadContent> WhoReacted(
 				});
 				return;
 			}
-			auto &owner = item->history()->owner();
-
 			state->current.state = peers.state;
 			state->current.fullReadCount = int(peers.read.size());
 			state->current.fullReactionsCount = peers.fullReactionsCount;
