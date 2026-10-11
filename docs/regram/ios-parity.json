@@ -23,8 +23,8 @@
         "过滤性能处理",
         "规则测试与临时恢复"
       ],
-      "status": "本轮补齐主页屏蔽入口，未编译验证",
-      "desktop_notes": "六字段 iOS 数组、旧四字段数组、Desktop v1/v2；保留规则优先；启停、会话开关、右键导入、去重、后台样例测试；统一按账号的五分钟临时恢复，通知过滤不受临时显示影响。 用户主页与聊天右键复用同一隐藏发送者配置；隐藏发送者的通知独立于关键词通知过滤开关。"
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
+      "desktop_notes": "公开交换采用六字段 iOS 数组并兼容旧四字段数组；Desktop v1/v2 仅迁移本机存储；保留规则优先；启停、会话开关、右键导入、去重、后台样例测试；统一按账号的五分钟临时恢复，通知过滤不受临时显示影响。 用户主页与聊天右键复用同一隐藏发送者配置；隐藏发送者的通知独立于关键词通知过滤开关。"
     },
     {
       "category": "2. 防删除、内容保存与幽灵模式",
@@ -42,8 +42,8 @@
         "不上报在线状态",
         "不发送输入状态"
       ],
-      "status": "本轮新增桌面对应实现，Release 验证中",
-      "desktop_notes": "补上按聊天防撤回、独立自动删除和阅后即焚保留；复用既有历史数据库、全局保存和幽灵模式。全局 Ayu 保存继续包含原有 TTL 行为。秘密聊天及其截图通知不在 Desktop 引擎范围内。新增部分进入 Release 前置编译，尚未运行验收。"
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
+      "desktop_notes": "补上按聊天防撤回、独立自动删除和阅后即焚保留；复用既有历史数据库、全局保存和幽灵模式。全局 Ayu 保存继续包含原有 TTL 行为。秘密聊天及其截图通知不在 Desktop 引擎范围内。macOS 双架构完整编译通过；功能运行验收仍待完成。"
     },
     {
       "category": "3. 消息菜单与操作",
@@ -55,8 +55,8 @@
         "保存到收藏夹、选择此人所有消息、保存媒体、查看消息回复、回复、置顶、限制用户、举报、查看消息 JSON，均已纳入可配置菜单项目。",
         "双击自己发出的消息进入编辑。"
       ],
-      "status": "本轮新增桌面对应实现，Release 验证中",
-      "desktop_notes": "普通历史与回复列表共用操作配置；拖拽手柄、边缘自动滚动及上下按钮调整顺序，保存后生效。混排插入、删除控件父级及限制用户回调已修复。JSON 为含实体和富文本块的本地标准化模型，非原始 MTProto 响应。新增部分进入 Release 前置编译。"
+      "status": "菜单设置、拖拽和取消已实测；消息操作待验收",
+      "desktop_notes": "普通历史与回复列表共用操作配置；拖拽手柄、边缘自动滚动及上下按钮调整顺序，保存后生效。混排插入、删除控件父级及限制用户回调已修复。JSON 为含实体和富文本块的本地标准化模型，非原始 MTProto 响应。macOS 双架构完整编译通过。"
     },
     {
       "category": "4. 输入与发送增强",
@@ -71,7 +71,7 @@
         "隐藏录音按钮、控制“以……身份发送”按钮显示。",
         "表情键盘默认展示表情页，以及标准表情优先于高级表情。"
       ],
-      "status": "本轮补齐昵称提及解析和格式面板，未编译验证",
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
       "desktop_notes": "开启按昵称提及后，自动补全与手动 @username 使用完整昵称和原生实体；解析保护 IME、草稿版本、选择和光标，并映射 UTF-16／文档坐标。格式面板增加代码块及换行，共 11 项；窄窗口自动换行排列。既有全局／账号／聊天格式与盘古之白保留。"
     },
     {
@@ -84,7 +84,7 @@
         "翻译容错",
         "语音转写"
       ],
-      "status": "本轮统一行内与整聊翻译，未编译验证",
+      "status": "翻译入口和来源列表已实测；译文交互待验收",
       "desktop_notes": "翻译栏位于置顶下方；普通聊天及回复列表的整条消息译文直接替换显示内容，可恢复原文。整聊包含发送消息，按阅读范围分批加载；手动原文覆盖受到保护。服务切换及消息编辑拒绝旧结果；富文本复制块结构再翻译文字字段。无需翻译语言继续隐藏快捷按钮。用户要求移除自定义转写及重复整聊控件；Yandex 后端和云协议已移除，仅保留旧配置迁移。 macOS 系统翻译也使用与 iOS 一致的实体保护规划；取消整聊会释放后端，阻止后续分段调度。"
     },
     {
@@ -99,7 +99,7 @@
         "账户颜色：调整饱和度，设为 0 可关闭账户颜色效果。",
         "应用外观：切换应用图标、自定义截图中显示的 App Badge。"
       ],
-      "status": "设置合并已实现，桌面布局沿用 Qt",
+      "status": "Regram 设置入口和标题已实测；其余逐项验收",
       "desktop_notes": "直接进入 Regram 设置；合并共用配置的重复开关、字体、图标、翻译与贴纸数量入口。手机底栏和侧滑行为采用桌面对应操作。 本轮再合并赞助、计数器、快捷分享、推荐频道、回复、尾巴及资料 ID；立即通知纳入原延迟选择器。"
     },
     {
@@ -115,8 +115,8 @@
         "隐藏动态、禁用侧滑拍摄、查看动态前询问、控制“转发到动态”入口。",
         "原有快拍隐身开关仍有接入，入口受 `canUseStealthMode` 配置控制；幽灵模式另有独立的“不上报快拍浏览”。"
       ],
-      "status": "本轮新增桌面对应实现，Release 验证中",
-      "desktop_notes": "默认共同群组开关覆盖标签页、经典资料页及第三栏；首次未缓存资料在四秒内取得数据后导航，用户操作或返回完整资料时不会自动跳转。资料 ID、DC、注册日期及既有快拍控制保留。新增部分进入 Release 前置编译。"
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
+      "desktop_notes": "默认共同群组开关覆盖标签页、经典资料页及第三栏；首次未缓存资料在四秒内取得数据后导航，用户操作或返回完整资料时不会自动跳转。资料 ID、DC、注册日期及既有快拍控制保留。macOS 双架构完整编译通过。"
     },
     {
       "category": "8. 照片、贴纸、音视频与网络",
@@ -133,7 +133,7 @@
         "默认视频画质：自动／最高可用／最低可用；与媒体加载试验独立，单个视频仍可手动选择。",
         "代理设置支持使用系统 DNS 解析代理域名。"
       ],
-      "status": "已有桌面实现，逐项核验中",
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
       "desktop_notes": "复用发送质量、贴纸缩放、视频档位、网络选项；最近贴纸上限／不限已合并成同一入口。"
     },
     {
@@ -150,7 +150,7 @@
         "解码首帧就绪后再交接封面，协调聊天与画廊之间的切换。",
         "同方向持续滚动也会刷新可见资源窗口及播放准入。"
       ],
-      "status": "本轮新增桌面对应实现，Release 验证中",
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
       "desktop_notes": "新增 Qt 调度器：每方向六项、合并刷新、去重、延迟释放三个项目、每会话两项自动播放、原生权限及省电/后台暂停、有限共享播放器保留、MTP 自动并发及手动启动机会。使用原生 VideoPreload 缓存。尚无本轮运行测量，不宣称与 iOS HLS 或内存警告机制相同。"
     },
     {
@@ -167,8 +167,8 @@
         "请求归属和一次性完成保护，避免旧回调影响新推送。",
         "保留静音、角标及空提醒清理兜底，并校验异常加密载荷长度。"
       ],
-      "status": "本轮新增桌面对应实现，Release 验证中",
-      "desktop_notes": "补上置顶、提及和回复的默认/静默/关闭策略及聊天例外；静默尊重原生通知资格。iOS 例外按通知扩展使用的普通群组裸 ID 交换，频道例外保留 Desktop 格式。APNs 与共享容器为移动平台机制。新增部分进入 Release 前置编译。"
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
+      "desktop_notes": "补上置顶、提及和回复的默认/静默/关闭策略及聊天例外；静默尊重原生通知资格。iOS 例外按通知扩展使用的普通群组裸 ID 交换，频道例外保留 Desktop 格式。APNs 与共享容器为移动平台机制。macOS 双架构完整编译通过。"
     },
     {
       "category": "11. 本地 Premium 与应用管理",
@@ -182,7 +182,7 @@
         "存储管理增加较低缓存上限（包括 1 GB）及 1 小时自动清理选项。",
         "清除全部本地数据：退出本机账户并清理数据库、缓存、设置和相关 Keychain 数据，执行前有确认。"
       ],
-      "status": "本轮修复本地 Premium 展示及状态",
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
       "desktop_notes": "自己及本机其他已登录账号的昵称徽章、贴纸／表情预览刷新、按账号持久保存本地表情状态与到期恢复；真实订阅和服务端权限保持服务器状态。"
     },
     {
@@ -199,7 +199,7 @@
         "可编辑富文本消息中的任务复选框可以点按更新；他人消息、翻译结果等不适用。",
         "富文本媒体接入画廊、共享媒体和预览链路，以及相应的自动下载／播放处理。"
       ],
-      "status": "复用上游完整富文本路径，专项验证未完成",
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
       "desktop_notes": "原生文章编辑器、标题、列表、任务、表格、媒体、公式、草稿及 Markdown；本轮接入手动富文本翻译。跨端发送、编辑、粘贴、媒体和流式组合仍需专项回归。"
     },
     {
@@ -211,8 +211,8 @@
         "删除正在使用的字体会使对应文字类别恢复系统字体；清除下载保留用户导入文件。",
         "字符覆盖不足时使用字体级联回退，图标、表情与代码保留专用显示。"
       ],
-      "status": "本轮新增桌面对应实现，Release 验证中",
-      "desktop_notes": "独立界面/消息字体、中文回退和代码字体；六个 iOS 备份关联字段可映射本机已安装的目录字体、SHA-256 和字体面。缺少文件、Apple 专用设计或无法表达的两种字体组合会提示并保留。中文回退仍为 Qt 应用级。修改需重启，新增部分进入 Release 前置编译。"
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
+      "desktop_notes": "独立界面/消息字体、中文回退和代码字体；六个 iOS 备份关联字段可映射本机已安装的目录字体、SHA-256 和字体面。缺少文件、Apple 专用设计或无法表达的两种字体组合会提示并保留。中文回退仍为 Qt 应用级。修改需重启，macOS 双架构完整编译通过。"
     },
     {
       "category": "14. 配置备份与诊断",
@@ -223,24 +223,31 @@
         "显示最近 3 秒平均速率与下载加速开启／关闭状态；每次用 100 条合成消息测试规则，显示平均每条耗时。再次点击会重新测试，旧任务取消且结果不会覆盖新一轮；进度与结果使用固定布局。",
         "数据量不包含所有协议流量；速率与测试耗时不是固定加速倍数或手机帧率测量。"
       ],
-      "status": "本轮新增桌面对应实现，Release 验证中",
-      "desktop_notes": "iOS 六类别、106 字段、2 MB 格式；72 项 Desktop 绑定，支持类别、预览、恢复、重置及未支持值保留回传。通知策略/普通群组例外、媒体实验/画质、字体及原生发送选项已补映射。诊断媒体流量及三秒速率采用会话计量；合成样本后台测试可取消。新增部分进入 Release 前置编译。"
+      "status": "已进入 macOS 双架构 Release；完整运行验收待完成",
+      "desktop_notes": "iOS 六类别、106 字段、2 MB 格式；72 项 Desktop 绑定，支持类别、预览、恢复、重置及未支持值保留回传。通知策略/普通群组例外、媒体实验/画质、字体及原生发送选项已补映射。诊断媒体流量及三秒速率采用会话计量；合成样本后台测试可取消。macOS 双架构完整编译通过。"
     }
   ],
   "validation": {
-    "scope": "Current workspace; Release preflight initiated after user authorization. Runtime acceptance remains pending.",
-    "application_compilation": "Full arm64 Release build/link passed, followed by Qt 6 language-signal fix and successful incremental build. Intel/Windows/Linux builds continue.",
+    "scope": "Source 898623d0ec; full macOS Release builds and limited packaged GUI acceptance. Complete runtime parity remains pending.",
+    "application_compilation": "Full arm64 and x86_64 Release application compilation/linking passed. Windows and Linux final-source CI builds are in progress.",
     "cpp_tests": "33 Nagram extension regression groups and five standalone Release suites passed.",
-    "installed_gui_validation": "Private logged-account copy initialized online, displayed dialogs and opened Regram Settings. Long-history performance and all operations still pending.",
+    "installed_gui_validation": "Private account copy of the packaged arm64 application passed Regram Settings navigation/title, removed description, provider list without Yandex, filter/input/menu settings, whole-chat bar below pinned messages, menu dragging and cancel recovery. Channel/group scroll input exercised without an FPS measurement.",
     "cross_platform_runtime_validation": false,
     "feature_inventory": "Static option/hook/title checks passed; does not prove feature behavior.",
     "localization_and_encoding": "New keys present; UTF-8 without BOM, LF and invisible-character checks passed.",
     "library_patches": "All three retained submodule patches recognized as already applied.",
     "ios_backup_schema": "Static comparison: all 106 allowlisted keys and six categories match the pinned iOS source.",
-    "new_cpp_cases": "iOS backup boundaries, sensitive-key removal, IDs, categories and font-face compatibility cases added; not executed.",
+    "new_cpp_cases": "iOS settings-backup category, type, sensitive-key and identity cases passed in the 33-group Release regression executable.",
     "current_option_count": 224,
     "production_translation_units": 72,
-    "native_font_files_verified": 92
+    "native_font_files_verified": 92,
+    "packaged_macos_arm64_startup": true,
+    "packaged_macos_x86_64_rosetta_startup": true,
+    "native_intel_hardware_verified": false,
+    "macos_12_runtime_verified": false,
+    "message_context_actions_verified": false,
+    "format_panel_gui_verified": false,
+    "long_history_frame_timing_verified": false
   },
   "settings_shared_enums": [
     "profile ID format"
