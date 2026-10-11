@@ -857,8 +857,6 @@ void FiltersMenu::applyReorder(
 	}
 
 	// AyuGram hideAllChatsFolder
-	const auto &settings = AyuSettings::getInstance();
-
 	const auto filters = &_session->session().data().chatsFilters();
 	if (!premium() && !filters->allChatsHidden()) {
 		if (filters->list()[0].id() != FilterId()) {
