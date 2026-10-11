@@ -12,6 +12,10 @@ PRIVATE
     regram/filters/rules.h
     regram/filters/matcher.cpp
     regram/filters/matcher.h
+    regram/filters/preview.cpp
+    regram/filters/preview.h
+    regram/filters/preview_policy.cpp
+    regram/filters/preview_policy.h
     regram/filters/reveal.cpp
     regram/filters/reveal.h
     regram/filters/reveal_policy.cpp

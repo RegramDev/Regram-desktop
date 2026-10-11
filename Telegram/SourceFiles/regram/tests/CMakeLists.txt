@@ -8,6 +8,7 @@ add_executable(regram_policy_tests
     ../core/peer_address.cpp
     ../filters/rules.cpp
     ../filters/matcher.cpp
+    ../filters/preview_policy.cpp
     ../filters/reveal_policy.cpp
     policy_tests.cpp
 )

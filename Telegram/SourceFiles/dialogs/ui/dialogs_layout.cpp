@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/ui/dialogs_layout.h"
+#include "regram/filters/preview.h"
 #include "regram/filters/runtime.h"
 #include "regram/nagram/chats/layout.h"
 #include "regram/nagram/chats/local_pins.h"
@@ -576,7 +577,7 @@ void PaintRow(
 	if (context.narrow) {
 		if (!draft
 			&& item
-			&& !itemIsEmpty) {
+			&& (!itemIsEmpty || itemIsFiltered)) {
 			PaintNarrowCounter(p, context, badgesState);
 		}
 		return;
@@ -850,7 +851,7 @@ void PaintRow(
 					tr::lng_community_chat_loading(tr::now));
 			}
 		}
-	} else if (!itemIsEmpty) {
+	} else if (!itemIsEmpty || itemIsFiltered) {
 		if ((thread || sublist) && !promoted) {
 			PaintDialogDate(p, entry, fakeRow, date, rectForName, context);
 		}
@@ -1195,6 +1196,8 @@ void RowPainter::Paint(
 	const auto badgesState = entry->chatListBadgesState();
 	entry->chatListPreloadData(); // Allow chat list message resolve.
 	const auto item = entry->chatListMessage();
+	const auto preview = (item && thread)
+		? Regram::Filters::PreviewItem(thread, item) : item;
 	const auto cloudDraft = [&]() -> const Data::Draft*{
 		if (!thread) {
 			return nullptr;
@@ -1279,16 +1282,16 @@ void RowPainter::Paint(
 			: thread
 			? &thread->lastItemDialogsView()
 			: nullptr;
-		if (view) {
+		if (view && preview) {
 			const auto forum = (peer && context.st->topicsHeight)
 				? peer->forum()
 				: nullptr;
 			const auto monoforum = (peer && context.st->topicsHeight)
 				? peer->monoforum()
 				: nullptr;
-			if (!view->prepared(item, forum, monoforum)) {
+			if (!view->prepared(preview, forum, monoforum)) {
 				view->prepare(
-					item,
+					preview,
 					forum,
 					monoforum,
 					[=] { entry->updateChatListEntry(); },
@@ -1303,6 +1306,12 @@ void RowPainter::Paint(
 				rect.setHeight(context.st->topicsHeight + rect.height());
 			}
 			view->paint(p, rect, context);
+		} else if (view) {
+			p.setFont(st::dialogsTextFont);
+			p.setPen(color);
+			p.drawTextLeft(rect.x(), rect.y(), context.width,
+				p.fontMetrics().elidedText(tr::lng_nagram_filter_hidden(tr::now),
+					Qt::ElideRight, rect.width()));
 		}
 	};
 	PaintRow(

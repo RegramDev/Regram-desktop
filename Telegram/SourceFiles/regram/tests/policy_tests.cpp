@@ -2,6 +2,7 @@
 #include "regram/filters/rules.h"
 #include "regram/filters/matcher.h"
 #include "regram/filters/reveal_policy.h"
+#include "regram/filters/preview_policy.h"
 
 #include <bit>
 #include <cstdlib>
@@ -98,6 +99,50 @@ void TimeoutRecovery() {
 	auto text = std::u16string(100000, u'a') + u"! sale";
 	Check(engine.evaluate(text, std::nullopt).hidden,
 		"iOS timeout budget continues to check literal rules");
+}
+
+void Previews() {
+	using namespace Regram;
+	using namespace Regram::Filters;
+	const auto peer = PeerAddress{ PeerKind::Channel, 42 };
+	const auto hide = Rule{ .id = "hide", .pattern = u"sale" };
+	const auto keep = Rule{
+		.id = "keep", .pattern = u"approved", .exception = true,
+	};
+	auto candidates = std::vector<PreviewCandidate>{
+		{ .id = 99, .text = u"SALE today" },
+		{ .id = 98, .text = u"approved sale" },
+		{ .id = 97, .text = u"ordinary message" },
+	};
+	Check(SelectPreview(candidates, peer, { hide }, true) == 97,
+		"filtered previews fall back to the newest visible message");
+	Check(SelectPreview(candidates, peer, { hide, keep }, true) == 98,
+		"preview substitution respects keep-rule priority");
+	Check(SelectPreview(candidates, peer, { hide }, false) == 99,
+		"disabled chat filtering restores the original preview");
+	candidates[0].senderHidden = true;
+	Check(SelectPreview(candidates, peer, { hide }, false) == 98,
+		"hidden users still apply when chat keywords are disabled");
+	candidates[0].senderHidden = false;
+	candidates[0].incoming = false;
+	Check(SelectPreview(candidates, peer, { hide }, true) == 99,
+		"outgoing text is not filtered from the preview");
+	candidates[0].incoming = true;
+	candidates[0].text = u"edited safe text";
+	Check(SelectPreview(candidates, peer, { hide }, true) == 99,
+		"edited message text can become the visible preview");
+	auto scoped = hide;
+	scoped.scopes = { { PeerKind::User, 42 } };
+	candidates[0].text = u"sale";
+	Check(SelectPreview(candidates, peer, { scoped }, true) == 99,
+		"preview rules do not leak into another conversation namespace");
+	auto longHistory = std::vector<PreviewCandidate>(kPreviewLookback + 1,
+		{ .id = 99, .text = u"sale" });
+	longHistory.back() = { .id = 1, .text = u"safe beyond the limit" };
+	Check(!SelectPreview(longHistory, peer, { hide }, true),
+		"all-hidden previews remain empty within a bounded history lookup");
+	Check(!SelectPreview({}, peer, { hide }, true),
+		"empty history does not expose a filtered top message");
 }
 
 void Reveal() {
@@ -203,5 +248,6 @@ int main() {
 	Exceptions();
 	TimeoutRecovery();
 	Reveal();
+	Previews();
 	std::cout << "Regram policy tests passed\n";
 }
