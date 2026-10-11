@@ -45,6 +45,7 @@ Before a release, check the latest upstream stable release and development commi
 ## Documentation
 
 - [Build and packaging instructions](docs/regram/building.md)
+- [Release build planning and failure recovery (Chinese)](docs/regram/build-plan.zh-CN.md)
 - [Feature coverage and remaining differences](docs/regram/feature-checks.md)
 - [Nagram integration and performance work](docs/regram/nagram-latest.md)
 - [Measured Debug UI performance](docs/regram/debug-click-performance.md)

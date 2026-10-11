@@ -45,6 +45,7 @@ Liquid Glass 和独立 AppKit 界面已移除，使用 Telegram Desktop 原版 Q
 ## 文档
 
 - [构建与安装包制作](docs/regram/building.md)
+- [Release 编译流程规划与失败恢复](docs/regram/build-plan.zh-CN.md)
 - [功能核对与尚存差异](docs/regram/feature-checks.md)
 - [Nagram 接入和性能工作](docs/regram/nagram-latest.md)
 - [Debug 界面性能实测](docs/regram/debug-click-performance.md)
