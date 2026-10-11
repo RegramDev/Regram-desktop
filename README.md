@@ -28,7 +28,7 @@ Builds currently use ad-hoc signing on macOS and are unsigned on Windows. They a
 - Additional appearance, media, notification, screenshot, and context-menu settings.
 - Regram settings, settings search, and portable preference backups.
 
-The next version consolidates Regram settings and adds iOS filter backups, quick translation, local Premium display fixes, per-chat input preferences, and the iOS font catalog. See the [iOS parity record](docs/regram/ios-parity.md) for implementation and verification status; these changes are not part of the existing 7.3.1 packages.
+Current source consolidates Regram settings and includes iOS filter backups, quick translation, local Premium display fixes, per-chat input preferences, and the iOS font catalog. See the [iOS parity record](docs/regram/ios-parity.md) for implementation and verification status. Package manifests identify the exact source included in each installer.
 
 Liquid Glass and the separate AppKit interface have been removed. Regram retains Telegram Desktop's Qt layout and uses independent application and data identifiers. Upstream automatic updates and crash uploads are disabled; update through Regram Releases.
 
@@ -38,7 +38,7 @@ Porting is ongoing. This list does **not** mean every Nagram/AyuGram feature or 
 
 Start with the [Regram build and packaging guide](docs/regram/building.md). Development and regression tests use Debug; distribution packages use Release. Private Telegram API credentials belong in the ignored `.local/regram/api.cmake` file or GitHub Actions secrets, never in source control.
 
-The [Regram Release workflow](.github/workflows/regram-release.yml) builds Windows x64, Linux x64, and macOS Intel on native runners. Apple Silicon uses the isolated macOS release script. Installers include checksums and build manifests; account data, build logs, and local credential files are excluded.
+The [Regram Release workflow](.github/workflows/regram-release.yml) builds Windows x64, Linux x64, and macOS Intel on native runners. The isolated macOS release script supports Apple Silicon and Intel through `--arch arm64` or `--arch x86_64`, using separate build directories. Installers include checksums and build manifests; account data, build logs, and local credential files are excluded.
 
 Before a release, check the latest upstream stable release and development commits, integrate applicable source updates while retaining Regram features, then push the synchronized source and build the packages. The stable baseline is v7.3.1; the [upstream sync record](docs/regram/upstream-sync.json) identifies the additional development fixes used by the release.
 

@@ -38,7 +38,8 @@ def copy_qt_sources(source, target):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build an isolated macOS arm64 Release.")
+    parser = argparse.ArgumentParser(description="Build an isolated macOS Release.")
+    parser.add_argument("--arch", choices=["arm64", "x86_64"], default="arm64")
     parser.add_argument("--work-dir", type=Path)
     parser.add_argument("--api-config", type=Path)
     parser.add_argument("--jobs", type=int, default=4)
@@ -47,7 +48,18 @@ def main():
         parser.error("Use macOS and a positive job count.")
     root = Path(__file__).resolve().parents[3]
     libraries = root.parent / "Libraries"
-    work = (args.work_dir or root / ".local/regram/release").resolve()
+    work_name = "release" if args.arch == "arm64" else "release-intel"
+    work = (args.work_dir or root / ".local/regram" / work_name).resolve()
+    rust_target = (
+        "aarch64-apple-darwin" if args.arch == "arm64" else "x86_64-apple-darwin"
+    )
+    for build_name in ["qt-build", "rnnoise-build", "rtc-build", "tde2e-build", "app-build"]:
+        cache = work / build_name / "CMakeCache.txt"
+        if cache.is_file():
+            architecture = re.search(r"^CMAKE_OSX_ARCHITECTURES:[^=]+=(.*)$",
+                                     cache.read_text(), re.M)
+            if architecture and architecture.group(1) != args.arch:
+                parser.error(f"{cache} targets another architecture; use a separate work directory.")
     api = (args.api_config or root / ".local/regram/api.cmake").resolve()
     if not api.is_file():
         parser.error("Provide the ignored local API configuration.")
@@ -101,7 +113,7 @@ def main():
             "-securetransport", "-system-webp", "-I", libraries / "local/include",
             "-no-feature-futimens", "-no-feature-brotli",
             "-no-feature-cxx17_filesystem", "-platform", "macx-clang", "--",
-            "-DCMAKE_OSX_ARCHITECTURES=arm64", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
+            f"-DCMAKE_OSX_ARCHITECTURES={args.arch}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
             f"-DCMAKE_OSX_SYSROOT={sdk}", f"-DCMAKE_PREFIX_PATH={libraries / 'local'}",
             "-DQT_NO_HANDLE_APPLE_SINGLE_ARCH_CROSS_COMPILING=ON",
             "-DQT_SYNC_HEADERS_AT_CONFIGURE_TIME=ON",
@@ -111,7 +123,7 @@ def main():
     run(["cmake", "--install", qt_build])
     common = [
         "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release",
-        "-DCMAKE_OSX_ARCHITECTURES=arm64", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
+        f"-DCMAKE_OSX_ARCHITECTURES={args.arch}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
         f"-DCMAKE_OSX_SYSROOT={sdk}",
     ]
     run(["cmake", "-S", libraries / "rnnoise", "-B", work / "rnnoise-build", *common])
@@ -136,14 +148,14 @@ def main():
     run(["cmake", "--build", work / "tde2e-build", "--parallel", args.jobs])
     run([
         "cargo", "rustc", "--manifest-path", libraries / "tdesktop_rust/Cargo.toml",
-        "--locked", "--lib", "--release", "--target", "aarch64-apple-darwin",
+        "--locked", "--lib", "--release", "--target", rust_target,
         "--config", "profile.release.opt-level='z'",
         "--config", "profile.release.lto='thin'",
         "--config", "profile.release.codegen-units=1",
         "--config", "profile.release.panic='unwind'",
         "--config", "profile.release.package.tlottie.opt-level=3",
     ])
-    shutil.copy2(work / "rust-target/aarch64-apple-darwin/release/libtdesktop_rust.a",
+    shutil.copy2(work / "rust-target" / rust_target / "release/libtdesktop_rust.a",
                  prefix / "lib/libtdesktop_rust.a")
     os.environ.pop("QT", None)
     run([
@@ -151,12 +163,12 @@ def main():
         "-UQt*_DIR", "-UQT*_DIR",
         f"-Dqt_requested={qt}", f"-DREGRAM_DEPENDENCIES_DIR={dependencies}",
         "-DREGRAM_DEBUG_QT_GUI_LIBRARY=", "-DDESKTOP_APP_RELEASE_QT=ON",
-        "-DDESKTOP_APP_TEST_APPS=OFF", "-DDESKTOP_APP_MAC_ARCH=arm64",
-        "-DCMAKE_OSX_ARCHITECTURES=arm64", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
+        "-DDESKTOP_APP_TEST_APPS=OFF", f"-DDESKTOP_APP_MAC_ARCH={args.arch}",
+        f"-DCMAKE_OSX_ARCHITECTURES={args.arch}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
         f"-DCMAKE_OSX_SYSROOT={sdk}", "-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO",
     ])
     run(["cmake", "--build", work / "app-build", "--config", "Release",
-         "--target", "Telegram", "--parallel", args.jobs, "--", "-arch", "arm64"])
+         "--target", "Telegram", "--parallel", args.jobs, "--", "-arch", args.arch])
     print(f"Release app: {work / 'app-build/Release/Regram.app'}")
 
 

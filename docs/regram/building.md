@@ -35,25 +35,34 @@ env -u QT cmake -S . -B out -C .local/regram/api.cmake
 
 ## macOS Release 安装包
 
-先按前述路径准备源码依赖及本地 API 配置。下面的脚本在 Git 忽略的 `.local/regram/release/` 内复制已打补丁的 Qt 源码、编译 arm64 Release Qt、Rust、WebRTC 与降噪库，并建立独立依赖目录及 Xcode 构建树。它保留现有 Debug Qt、构建产物和账号目录。Qt 使用带符号的优化配置；Regram 应用使用 Release。首次编译较耗时，后续增量执行。
+先按前述路径准备源码依赖及本地 API 配置。下面的脚本在 Git 忽略的目录内复制已打补丁的 Qt 源码、编译目标架构的 Release Qt、Rust、WebRTC 与降噪库，并建立独立依赖目录及 Xcode 构建树。Apple Silicon 默认使用 `.local/regram/release/`，Intel 默认使用 `.local/regram/release-intel/`，架构不匹配时拒绝复用构建目录。它保留现有 Debug Qt、构建产物和账号目录。Qt 使用带符号的优化配置；Regram 应用使用 Release。首次编译较耗时，后续增量执行。
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-python3 Telegram/build/regram/build_macos_release.py --jobs 4
+python3 Telegram/build/regram/build_macos_release.py --arch arm64 --jobs 4
 python3 Telegram/build/regram/package_macos.py \
   --build-dir .local/regram/release/app-build \
   --output-dir .local/regram/installers
+```
+
+在 Apple Silicon 上构建 Intel 包，需要 Rosetta 可运行 x86_64 构建工具，以及现有依赖中的 x86_64 库和 Rust 目标。使用独立目录：
+
+```sh
+python3 Telegram/build/regram/build_macos_release.py --arch x86_64 --jobs 3
+python3 Telegram/build/regram/package_macos.py \
+  --build-dir .local/regram/release-intel/app-build \
+  --output-dir .local/regram/installers-intel
 ```
 
 打包脚本只接收 `Release/Regram.app` 和生产标识 `dev.regram.desktop`，拒绝 Debug／启用测试应用的构建、外部动态库以及包内账号数据。DMG 包含应用、Applications 快捷入口、安装说明、LICENSE 和 LEGAL，并生成 SHA-256 及机器可读发布清单。构建目录、凭据、日志和账号不上传。
 
 默认只做 ad-hoc 签名，**不等于 Apple Developer ID 分发签名或公证**。持有合适证书时可显式提供 `--identity 'Developer ID Application: …'`；提供 `--notary-profile <已存储的钥匙串配置名>` 后脚本等待 Apple 接受公证并装订票据。未公证的下载包可能被 Gatekeeper 阻止，需按安装说明查看系统“隐私与安全性”提示。
 
-当前包面向 Apple Silicon，最低声明 macOS 12；macOS 12 实机和 Intel 包需分别验证。完整功能移植的验收边界见 [feature-checks.md](feature-checks.md)，不能用安装包生成成功替代这些测试。
+两种架构最低声明 macOS 12；Rosetta 启动检查不能代替 macOS 12 或 Intel 实机验证。完整功能移植的验收边界见 [feature-checks.md](feature-checks.md)，不能用安装包生成成功替代这些测试。
 
-Windows x64 使用 `docs/building-win.md`，在 x64 Native Tools Command Prompt 中准备依赖并配置，再执行 `cmake --build out --config Debug --target Telegram`。本轮尚未在 Windows 执行构建或运行。
+Windows x64 使用 `docs/building-win.md`，在 x64 Native Tools Command Prompt 中准备依赖并配置。正式安装包使用 Release 工作流中的 MSVC、Windows SDK 和 ATL 环境；macOS 上的 Linux Docker 容器不能代替 Windows 工具链。
 
-Linux x64 使用 `docs/building-linux.md` 或 `Telegram/build/docker/centos_env/build_debug.sh`，不得把 Docker/Linux 树交给原生 Windows CMake 构建。本轮尚未在 Linux 执行构建或运行。
+Linux x64 使用 `docs/building-linux.md` 的 Docker 依赖环境，正式安装包由 Release 工作流构建并检查字体、安装及启动。在 Apple Silicon 上运行 x64 环境需要指定 `--platform linux/amd64` 并使用独立源码和构建目录；仿真编译可能慢于原生 CI。不得把 Docker/Linux 树交给原生 Windows CMake 构建。
 
 策略层可在整应用依赖准备期间独立验证。需要 C++20、CMake 和 ICU 64 以上；本机验证使用 ICU 78.3。测试没有真实消息、账户凭据或联网请求。
 
