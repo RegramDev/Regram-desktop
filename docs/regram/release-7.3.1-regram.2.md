@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | macOS Apple Silicon | 完整 Release 编译、链接和 DMG 校验通过；已交付 | DMG 中的应用启动；私有真实账号副本设置与菜单检查 |
 | macOS Intel | 完整 Release 编译、链接和 DMG 校验通过；已交付 | Apple Silicon 上通过 Rosetta 启动；原生 Intel 未测试 |
-| Windows x64 | [首轮链接失败](https://github.com/RegramDev/Regram-desktop/actions/runs/38171024897)：LNK1102，分发工作流已减少符号开销 | 单平台重跑及安装、字体、启动检查待完成 |
+| Windows x64 | [首轮链接失败](https://github.com/RegramDev/Regram-desktop/actions/runs/38171024897)：LNK1102，分发工作流已减少符号开销 | [单平台重跑](https://github.com/RegramDev/Regram-desktop/actions/runs/38191607882)已复用依赖缓存并进入应用构建；安装、字体、启动检查待完成 |
 | Linux x64 | [原生 Release 编译与打包通过](https://github.com/RegramDev/Regram-desktop/actions/runs/38171026920)；包已交付 | 92 份字体、独立目录安装和 12 秒启动检查通过；来源、ELF 架构和 SHA-256 一致 |
 
 macOS 最低版本为 12.0，使用 ad-hoc 签名，未公证；最低系统上的运行尚未验证。两个包的应用标识均为 `dev.regram.desktop`，架构与来源清单匹配，包内不包含账号数据。
