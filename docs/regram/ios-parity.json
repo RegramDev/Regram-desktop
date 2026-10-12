@@ -229,7 +229,7 @@
   ],
   "validation": {
     "scope": "Source 898623d0ec; full macOS Release builds and limited packaged GUI acceptance. Complete runtime parity remains pending.",
-    "application_compilation": "Full arm64, x86_64 macOS and Linux x64 Release builds/packages passed. Windows source compilation passed but executable linking failed with LNK1102; Windows-only distribution workflow correction pending native rerun.",
+    "application_compilation": "Full macOS arm64/x86_64, Windows x64 and Linux x64 Release builds, packages and basic startup passed. Windows-only distribution workflow fix passed in run 38191607882.",
     "cpp_tests": "33 Nagram extension regression groups and five standalone Release suites passed.",
     "installed_gui_validation": "Private account copy of the packaged arm64 application passed Regram Settings navigation/title, removed description, provider list without Yandex, filter/input/menu settings, whole-chat bar below pinned messages, menu dragging and cancel recovery. Channel/group scroll input exercised without an FPS measurement.",
     "cross_platform_runtime_validation": false,
@@ -250,7 +250,9 @@
     "long_history_frame_timing_verified": false,
     "linux_release_install_and_startup": true,
     "native_linux_font_files_verified": 92,
-    "animation_hitches_probe": "Output did not complete within the bounded wait; no frame timing accepted."
+    "animation_hitches_probe": "Output did not complete within the bounded wait; no frame timing accepted.",
+    "windows_release_install_and_startup": true,
+    "native_windows_font_files_verified": 92
   },
   "settings_shared_enums": [
     "profile ID format"
@@ -267,7 +269,7 @@
     "filter_matchers": "canonical and legacy ICU paths share 5 ms match and stack limits; 20 ms whole-pass limit",
     "filter_verdict_cache": "bounded cache with account, owner lifetime and text revision isolation",
     "application_configuration": "Release only, per latest user instruction",
-    "font_windows_woff2": "Explicitly unpack WOFF/WOFF2 with DirectWrite before native Qt registration; Windows CI validation pending",
+    "font_windows_woff2": "WOFF/WOFF2 unpacking, original hashes and native Qt registration verified by the 92-file Windows CI font test.",
     "standalone_release_tests": "5 suites passed: policy, exchange, SQLCipher, Foundation regex, typography",
     "modified_production_translation_units_compiled": 64,
     "native_release_font_files_verified": 92

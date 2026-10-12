@@ -61,10 +61,10 @@
       "7.3.1 version metadata"
     ],
     "features_preserved": true,
-    "release_validation": "macOS arm64/x86_64 and Linux x64 Release packaging/startup passed; Windows final-source build pending"
+    "release_validation": "macOS arm64/x86_64, Windows x64 and Linux x64 Release packaging and basic startup passed; full GUI/performance acceptance incomplete"
   },
   "latest_publication_check": {
-    "checked_at": "2026-10-11T22:00:15.300183+00:00",
+    "checked_at": "2026-10-12T03:06:07.984461+00:00",
     "latest_stable": "v7.3.1",
     "stable_release": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.3.1",
     "dev_commit": "6fed91ffab9861771a75f29df65031b3c80b6941",

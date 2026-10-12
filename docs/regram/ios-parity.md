@@ -2,7 +2,7 @@
 
 参考版本：[`a5c80b6d5f`](https://github.com/RegramDev/Regram-ios/tree/a5c80b6d5ff8b995cd6e4d5737a058dd894e3293)。核对日期：2026-10-12。安装包源码为 `898623d0ec217c7610d11328d4c705af16de6d95`。
 
-macOS arm64 和 x86_64 的完整 Release 编译、链接、DMG 校验及包内应用启动检查通过。Intel 启动使用 Apple Silicon 上的 Rosetta，尚未在原生 Intel 或 macOS 12 机器实测。Linux x64 对应源码的原生编译、打包、92 份字体、安装和启动检查通过；Windows 仍在准备依赖。完整发布记录见 [本版验收记录](release-7.3.1-regram.2.md)。
+macOS arm64 和 x86_64 的完整 Release 编译、链接、DMG 校验及包内应用启动检查通过。Intel 启动使用 Apple Silicon 上的 Rosetta，尚未在原生 Intel 或 macOS 12 机器实测。Linux x64 及 Windows x64 的原生编译、打包、92 份字体、安装和启动检查通过。Windows 以分发流程修复提交重跑，应用功能源码相同。完整发布记录见 [本版验收记录](release-7.3.1-regram.2.md)。
 
 | 类别 | 当前状态 | 实现与边界 |
 | --- | --- | --- |
