@@ -1,12 +1,12 @@
 # Regram Desktop 7.3.1 · regram.2
 
-本版安装包源码为 `898623d0ec217c7610d11328d4c705af16de6d95`。两个 macOS 包来自本地独立 Release 构建；Windows、Linux 构建使用同一提交。`v7.3.1-regram.2` 是独立 Release 草稿，不混用旧 `regram.1` 的来源或产物。
+本版安装包源码为 `898623d0ec217c7610d11328d4c705af16de6d95`。两个 macOS 包来自本地独立 Release 构建；Linux 构建使用同一提交；Windows 首轮同提交构建在链接时内存不足，正以单独的工作流修复提交重跑，最终来源以包清单为准。`v7.3.1-regram.2` 是独立 Release 草稿，不混用旧 `regram.1` 的来源或产物。
 
 | 平台 | 构建与打包 | 运行证据 |
 | --- | --- | --- |
 | macOS Apple Silicon | 完整 Release 编译、链接和 DMG 校验通过；已交付 | DMG 中的应用启动；私有真实账号副本设置与菜单检查 |
 | macOS Intel | 完整 Release 编译、链接和 DMG 校验通过；已交付 | Apple Silicon 上通过 Rosetta 启动；原生 Intel 未测试 |
-| Windows x64 | [Actions 构建中](https://github.com/RegramDev/Regram-desktop/actions/runs/38171024897) | 待安装、字体及启动检查 |
+| Windows x64 | [首轮链接失败](https://github.com/RegramDev/Regram-desktop/actions/runs/38171024897)：LNK1102，分发工作流已减少符号开销 | 单平台重跑及安装、字体、启动检查待完成 |
 | Linux x64 | [原生 Release 编译与打包通过](https://github.com/RegramDev/Regram-desktop/actions/runs/38171026920)；包已交付 | 92 份字体、独立目录安装和 12 秒启动检查通过；来源、ELF 架构和 SHA-256 一致 |
 
 macOS 最低版本为 12.0，使用 ad-hoc 签名，未公证；最低系统上的运行尚未验证。两个包的应用标识均为 `dev.regram.desktop`，架构与来源清单匹配，包内不包含账号数据。
@@ -25,6 +25,6 @@ macOS 最低版本为 12.0，使用 ad-hoc 签名，未公证；最低系统上�
 
 ## English
 
-Packages use source `898623d0ec217c7610d11328d4c705af16de6d95`. Both macOS architectures passed full Release compilation, linking, DMG integrity/signature checks and packaged startup. Intel startup was checked with Rosetta on Apple Silicon. Linux x64 passed native compilation, 92 font checks, installation and fresh-profile startup; source, ELF architecture and checksums match. Windows remains in progress at the linked run. The new release remains a draft with its own provenance.
+Packages use source `898623d0ec217c7610d11328d4c705af16de6d95`. Both macOS architectures passed full Release compilation, linking, DMG integrity/signature checks and packaged startup. Intel startup was checked with Rosetta on Apple Silicon. Linux x64 passed native compilation, 92 font checks, installation and fresh-profile startup; source, ELF architecture and checksums match. The first Windows run failed during linking with LNK1102 (out of memory). A Windows-only workflow correction disables full PDB generation while retaining Release optimization; its native rerun is pending. The new release remains a draft with its own provenance.
 
 Requires macOS 12.0 or later. Packages are ad-hoc signed and not notarized; macOS 12 and native Intel hardware remain untested. All 33 regression groups, five focused Release suites, 72 affected compilation-unit checks and 92 macOS font checks passed. Limited real-account GUI checks passed, including settings navigation, translation controls and menu reordering. Scroll input was exercised without an FPS benchmark. Formatting-panel interactions, all message actions and full iOS parity remain unverified.

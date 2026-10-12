@@ -1,10 +1,18 @@
 # Regram 正式编译流程规划与失败恢复说明
 
-更新日期：2026-10-11。适用分支：`regram`。目标平台：macOS Apple Silicon、macOS Intel、Windows x64、Linux x64。本轮检查和安装包均使用 Release。
+更新日期：2026-10-12。适用分支：`regram`。目标平台：macOS Apple Silicon、macOS Intel、Windows x64、Linux x64。本轮检查和安装包均使用 Release。
 
 目标是先用小规模检查发现编译、链接和环境错误，再执行完整构建；失败后复用已经完成的工作。需要同时补上原生平台检查、客户端编译缓存和独立打包，单纯增加重试次数无法解决时间浪费。
 
 ## 1. 当前为什么反复浪费时间
+
+最新 [Windows 38171024897](https://github.com/RegramDev/Regram-desktop/actions/runs/38171024897) 已完成源码编译，在 `2924/2925` 链接 `Regram.exe` 时以 `LNK1102: out of memory` 退出。末尾链接持续约 19 分钟；之后的字体、安装和上传步骤被跳过。这次不是超时，也不是启动崩溃。依赖准备约 2 小时 11 分、缓存保存约 24 分、应用配置及构建约 2 小时 27 分，成功保存了约 11.1 GB 依赖缓存。
+
+失败命令使用 x64 链接器和 `/DEBUG`，后者相当于合并完整 PDB。Windows 分发工作流现在设置空的 `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`，沿用仓库已有逻辑生成 `/DEBUG:NONE`，保留 `/O2` 优化并跳过符号合并。完整编译前执行 `check_windows_release.py`，检查优化、目标架构、原生 x64 链接器和实际生成的符号参数；检查失败即停止。日志补充可用物理／虚拟内存和磁盘空间。这个检查能发现错误配置，不能证明 runner 内存足够。
+
+已用仓库实际 `cmake/options_win.cmake` 在小型 CMake 工程生成并比较两组 Release 链接参数：旧符号配置生成 `/DEBUG` 并被前置检查拒绝，分发配置生成 `/DEBUG:NONE` 并通过。原生 Windows 全量重跑仍需验收，不能提前宣布内存错误已解决。PDB 调试符号不再由此分发工作流生成；需要诊断符号时使用独立构建。链接错误没有 `/LTCG`，所以没有把降低 LTO 线程数当作本次修复。
+
+以下为此前构建的历史问题：
 
 以下是本次实际日志中的问题，可以分别在流程的不同位置提前发现。
 
@@ -15,7 +23,7 @@
 | [Windows 38123487936](https://github.com/RegramDev/Regram-desktop/actions/runs/38123487936) | `2920/2921`，链接 Qt Network 时缺少 DNS 系统函数，LNK2019/LNK1120 | 在完整客户端之前链接一个使用相同 Qt 依赖的小程序 |
 | 同轮远端 Intel Mac | 超过 GitHub 作业设置的 6 小时上限 | 将依赖准备与应用构建拆成独立作业，保留完成的阶段 |
 
-最新 Windows 构建完成了全部 C++ 编译。依赖准备耗时约 **1 小时 26 分**，缓存保存约 **9 分钟**，应用构建约 **2 小时 5 分**，其中末尾链接约 **31 分钟**。
+此前 Windows 38123487936 完成了全部 C++ 编译。依赖准备耗时约 **1 小时 26 分**，缓存保存约 **9 分钟**，应用构建约 **2 小时 5 分**，其中末尾链接约 **31 分钟**。
 
 最后缺少的符号是 `DnsQueryEx`、`DnsWriteQuestionToBuffer_W` 和 `DnsExtractRecordsFromMessage_W`。失败日志的链接参数没有 `dnsapi`；Microsoft 文档明确列出 `DnsQueryEx` 的导入库为 [Dnsapi.lib](https://learn.microsoft.com/en-us/windows/win32/api/windns/nf-windns-dnsqueryex)。应在 Windows 的 Qt 依赖封装中补齐该依赖，并通过小规模链接检查验证。
 
@@ -28,7 +36,8 @@
 | 分平台选择构建，失败后只重跑对应平台 | 已支持 |
 | macOS 两种架构使用独立 Release 目录 | 已支持 |
 | Windows 完整依赖在应用构建前保存 | 已实现；最新运行已成功保存约 11.1 GB 缓存 |
-| Windows Qt DNS 系统库依赖 | 已补入源码；本轮未编译验证 |
+| Windows Qt DNS 系统库依赖 | 最新构建已越过缺符号问题，在后续 PDB 链接阶段内存不足 |
+| Windows 分发链接参数前置检查 | 已接入；本机 CMake 生成验证通过，原生重跑待验收 |
 | 客户端逐个源文件的编译结果缓存 | 待实现；现有 Windows 工作流没有启用 |
 | Qt 与系统库的小规模链接检查 | 待实现 |
 | 对变更及受影响源文件执行原生快速编译 | 待实现；已有人工单文件检查，尚未自动化 |

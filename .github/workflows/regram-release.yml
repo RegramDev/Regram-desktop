@@ -64,8 +64,13 @@ jobs:
         env:
           QT: '6.11.2'
         run: |
+          Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory,TotalVirtualMemorySize,FreeVirtualMemory | Format-List
+          Get-PSDrive -PSProvider FileSystem | Select-Object Name,Used,Free | Format-Table
           python Telegram/build/regram/apply_patches.py --apply
-          cmake -S . -B out -G "Ninja Multi-Config" -C .local/regram/api.cmake -DDESKTOP_APP_SPECIAL_TARGET=win64 -DDESKTOP_APP_TEST_APPS=OFF
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cmake -S . -B out -G "Ninja Multi-Config" -C .local/regram/api.cmake -DDESKTOP_APP_SPECIAL_TARGET=win64 -DDESKTOP_APP_TEST_APPS=OFF -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT:STRING=
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python Telegram/build/regram/check_windows_release.py --build-dir out
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           cmake --build out --config Release --target Telegram --parallel 4
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
